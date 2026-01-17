@@ -1,0 +1,120 @@
+<?php
+
+namespace App\Http\Service\auth;
+
+use App\Enums\UserStatus;
+use App\Exceptions\BusinessException;
+use App\Exceptions\ErrorCode;
+use App\Exceptions\MessageError;
+use App\Http\Requests\auth\LoginRequest;
+use App\Http\Requests\IntrospectRequest;
+
+use App\Http\Requests\RegisterRequest;
+use App\Http\Responses\Auth\AuthenticationResponse;
+use Carbon\Carbon;
+use Hash;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Support\Facades\Redis;
+use Tymon\JWTAuth\JWTGuard;
+use App\Models\User;
+
+class AuthService
+{
+    /**
+     * @param array $credentials
+     * @return string
+     */
+    public function login(LoginRequest $request): AuthenticationResponse
+    {
+        /** @var JWTGuard $guard */
+        $guard = auth('api');
+
+
+        $user = User::where('username', $request->username())->first();
+
+        if (!$user || !Hash::check($request->password, $user->password)) {
+            throw new BusinessException(
+                ErrorCode::UNAUTHENTICATED
+                ,
+                "Tài khoản không tồn tại hoặc mật khẩu không đúng"
+            );
+        }
+
+        if ($user->status == UserStatus::NONE) {
+            throw new BusinessException(
+                ErrorCode::UNAUTHENTICATED
+                ,
+                "Tài khoản chưa được xác thực"
+            );
+        }
+
+        $token = $guard->login($user);
+        $ttl = (int) config('jwt.ttl');
+
+        return new AuthenticationResponse(
+            token: $token,
+            authenticated: true,
+            role: $user->role->name,
+            expiredAt: Carbon::now()->addMinutes($ttl)
+        );
+    }
+
+    /**
+     * Logout user và invalidate token
+     */
+    public function logout(): void
+    {
+        /** @var JWTGuard $guard */
+        $guard = auth('api');
+        $guard->logout();
+    }
+    /**
+     * Đăng kí người dùng
+     */
+    // public function register(RegisterRequest $request): string
+    // {
+    //     if (User::where('username', $request['username'])->exists()) {
+    //         throw new BusinessException(
+    //             ErrorCode::EXISTED,
+    //             MessageError::USERNAME_EXISTED
+    //         );
+    //     }
+    //     $user = User::create([
+    //     'username' => $request['username'],
+    //     'email' => $request['email'],
+    //     'password' => bcrypt($request['password']),
+    //     'full_name' => $request['full_name'],
+    //     'gender' => $request['gender'],
+    //     'date_of_birth' => $request['date_of_birth'],
+    // ]);
+
+    // }
+
+    /**
+     * Refresh token
+     */
+    public function refresh(): string
+    {
+        /** @var JWTGuard $guard */
+        $guard = auth('api');
+        return $guard->refresh();
+    }
+
+    /**
+     * Lấy thông tin user hiện tại
+     */
+    public function introspect(): array
+    {
+        /** @var JWTGuard $guard */
+        $guard = auth('api');
+        $user = $guard->user();
+
+        return [
+            "valid" => true,
+            "id" => $user->id,
+            "email" => $user->email,
+            "roles" => $user->role ? [$user->role->name] : []
+        ];
+    }
+
+}
