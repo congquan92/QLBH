@@ -10,7 +10,7 @@ class CategoryService
 {
     public function create(CategoryCreationRequest $requests): void
     {
-        // Gate::authorize('CREATE_CATEGORIES');
+        Gate::authorize('CREATE_CATEGORIES');
         DB::transaction(function () use ($requests) {
             $requests = $requests->validated();
             foreach ($requests as $req) {
