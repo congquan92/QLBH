@@ -43,7 +43,7 @@ class GlobalException extends ExceptionHandler
         if ($exception instanceof BusinessException) {
             return response()->json([
                 'timestamp' => now(),
-                'status' => $exception->getCode(),
+                'status' => $exception->getStatus(),
                 'path' => $request->getRequestUri(),
                 'error' => Response::$statusTexts[$exception->getStatus()],
                 'message' => $exception->getMessage(),

@@ -25,12 +25,13 @@ class User extends Authenticatable implements JWTSubject
         'phone',
         'gender',
         'point',
+        'token_version',
         'provider',
         'provider_id',
         'status',
     ];
 
-      protected $casts = [
+    protected $casts = [
         'gender' => Gender::class,
         'status' => UserStatus::class
     ];
@@ -50,7 +51,8 @@ class User extends Authenticatable implements JWTSubject
 
         return [
             'email' => $this->email,
-            'scope' => $roleName
+            'scope' => $roleName,
+            'ver' => $this->token_version,
         ];
     }
 
@@ -60,27 +62,33 @@ class User extends Authenticatable implements JWTSubject
         return $this->belongsTo(Role::class);
     }
 
-    public function favoriteProduct(){
+    public function favoriteProduct()
+    {
         return $this->belongsToMany(Product::class, 'favoriteProducts', 'user_id', 'product_id');
     }
-    
-    public function orders(){
+
+    public function orders()
+    {
         return $this->hasMany(Order::class);
     }
 
-    public function userRank(){
+    public function userRank()
+    {
         return $this->belongsTo(UserRank::class);
     }
 
-    public function address(){
+    public function address()
+    {
         return $this->hasMany(Address::class);
     }
 
-    public function carts(){
+    public function carts()
+    {
         return $this->hasMany(Cart::class);
     }
 
-    public function voucherUsages(){
+    public function voucherUsages()
+    {
         return $this->hasMany(VoucherUsage::class);
     }
 

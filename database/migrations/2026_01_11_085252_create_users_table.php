@@ -42,6 +42,8 @@ return new class extends Migration {
             $table->foreignId('user_rank_id')->constrained();
             $table->foreignId('role_id')->constrained('roles');
 
+            $table->integer('token_version')->default(1);
+
             // ===== Laravel auth =====
             $table->rememberToken();
             $table->timestamps();

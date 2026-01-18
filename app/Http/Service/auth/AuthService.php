@@ -62,12 +62,16 @@ class AuthService
     /**
      * Logout user và invalidate token
      */
-    public function logout(): void
+    public function logout()
     {
-        /** @var JWTGuard $guard */
-        $guard = auth('api');
-        $guard->logout();
+        $user = auth()->user();
+        $user->increment('token_version');
+
+        return response()->json([
+            'message' => 'Logged out'
+        ]);
     }
+
     /**
      * Đăng kí người dùng
      */

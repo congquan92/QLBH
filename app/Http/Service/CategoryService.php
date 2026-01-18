@@ -6,6 +6,7 @@ use App\Http\Requests\category\CategoryCreationRequest;
 use App\Models\Category;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Log;
 class CategoryService
 {
     public function create(CategoryCreationRequest $requests): void

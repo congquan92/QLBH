@@ -2,26 +2,36 @@
 
 namespace App\Http\Middleware;
 
+use App\Exceptions\BusinessException;
+use App\Exceptions\ErrorCode;
 use Closure;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redis;
+use Tymon\JWTAuth\Facades\JWTAuth;
 
 class JwtAuthenticate
 {
     public function handle($request, Closure $next)
     {
-        try {
-            $user = auth()->user();
-            $jti = auth()->payload()->get('jti');
 
-            if (Redis::exists("invalidToken:$jti")) {
-                return response()->json(['message'=>'Token invalid'], 401);
-            }
+        $payload = JWTAuth::parseToken()->getPayload();
+        $user = JWTAuth::parseToken()->authenticate();
 
-        } catch (\Exception $e) {
-            return response()->json(['message'=>'Unauthenticated'], 401);
+        Log::info('JwtAuthenticate hit', [
+            'user_id' => $user->id,
+            'ver_token' => $payload->get('ver'),
+            'ver_db' => $user->token_version,
+        ]);
+
+        if ((int) $payload->get('ver') !== (int) $user->token_version) {
+            throw new BusinessException(
+                ErrorCode::UNAUTHENTICATED
+                ,
+                "Unauthenticated"
+            );
         }
-
         return $next($request);
     }
 }
+
 
