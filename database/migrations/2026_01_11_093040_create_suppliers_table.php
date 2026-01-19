@@ -19,9 +19,10 @@ return new class extends Migration {
             $table->string('province');
             $table->string('district');
             $table->string('ward');
-            $table->string('provinceId');
-            $table->string('districtId');
-            $table->string('wardId');
+            $table->string('province_id');
+            $table->string('district_id');
+             $table->string('phone');
+            $table->string('ward_id');
             $table->string('status')->default(Status::ACTIVE);
             $table->timestamps();
         });

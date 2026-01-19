@@ -2,11 +2,21 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\supplier\SupplierCreationRequest;
+use App\Http\Service\SupplierService;
 use App\Models\Supplier;
 use Illuminate\Http\Request;
 
+
 class SupplierController extends Controller
 {
+
+    protected SupplierService $supplierService;
+
+     public function __construct(SupplierService $supplierService)
+    {
+        $this->supplierService = $supplierService;
+    }
     /**
      * Display a listing of the resource.
      */
@@ -26,9 +36,9 @@ class SupplierController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(SupplierCreationRequest $request)
     {
-        //
+        $this->supplierService->create($request);
     }
 
     /**

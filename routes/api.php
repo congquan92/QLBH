@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\ProductController;
+use App\Http\Controllers\SupplierController;
 use App\Http\Middleware\JwtAuthenticate;
 use Illuminate\Support\Facades\Route;
 
@@ -18,4 +20,12 @@ Route::middleware('auth')->group(function () {
     
     // Category
     Route::post('/category/add', [CategoryController::class, 'store']);
+
+    //Product
+     Route::post('/product/add', [ProductController::class, 'store']);
+
+
+     //Supplier
+     Route::post('/supplier/add', [SupplierController::class,'store']);
+
 });

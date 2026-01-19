@@ -2,11 +2,20 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Product\ProductCreationRequest;
+use App\Http\Service\ProductService;
 use App\Models\Product;
 use Illuminate\Http\Request;
 
+
 class ProductController extends Controller
 {
+     protected ProductService $productService;
+
+     public function __construct(ProductService $productService)
+    {
+        $this->productService = $productService;
+    }
     /**
      * Display a listing of the resource.
      */
@@ -26,9 +35,9 @@ class ProductController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(ProductCreationRequest $request)
     {
-        //
+           $this->productService->create($request);
     }
 
     /**

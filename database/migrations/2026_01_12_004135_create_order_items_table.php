@@ -19,7 +19,7 @@ return new class extends Migration {
             $table->decimal('listPriceSnapShot', 15, 2);
             $table->string('nameProductSnapShot');
             $table->string('urlImageSnapShot');
-            $table->string('variantAttributesSnapshot');
+            $table->json('variantAttributesSnapshot');
             $table->foreignId('order_id')->constrained();
             $table->foreignId('product_id')->constrained();
             $table->timestamps();

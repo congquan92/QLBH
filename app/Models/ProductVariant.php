@@ -30,17 +30,13 @@ class ProductVariant extends Model
         'status' => Status::class,
     ];
 
-    public function product()
-    {
-        return $this->belongsTo(Product::class);
-    }
-
     public function cart(){
         return $this->hasMany(Cart::class);
     }
 
-     public function productAttributeValues()
+     public function attributeValues()
     {
-        return $this->belongsToMany(ProductVariant::class, 'product_variant_attribute_value', 'product_variant_id', 'product_attribute_value_id');
+        return $this->belongsToMany(ProductVariant::class, 'product_variant_attribute_value', 'product_variant_id', 'product_attribute_value_id')
+        ->withTimestamps();;
     }
 }

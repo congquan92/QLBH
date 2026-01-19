@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\Status;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -20,9 +21,9 @@ class Supplier extends Model
         'province',
         'district',
         'ward',
-        'provinceId',
-        'districtId',
-        'wardId',
+        'province_id',
+        'district_id',
+        'ward_id',
         'phone',
         'status'
     ];

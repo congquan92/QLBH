@@ -17,13 +17,15 @@ class Product extends Model
 
     protected $fillable = [
         'name',
-        'urlVideo',
+        'url_video',
         'description',
-        'urlImageCover',
-        'listPrice',
-        'salePrice',
-        'soldQuantity',
-        'avgRating',
+        'url_image_cover',
+        'list_price',
+        'sale_price',
+        'sold_quantity',
+        'avg_rating',
+        'supplier_id',
+        'category_id',
         'status',
     ];
 

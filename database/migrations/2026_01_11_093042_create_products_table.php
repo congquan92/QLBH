@@ -15,15 +15,14 @@ return new class extends Migration {
             $table->id();
 
             $table->string('name');
-            $table->string('urlVideo');
+            $table->string('url_video');
             $table->longText('description');
-            $table->string('urlImageCover');
-            $table->string('listPrice');
-            $table->string('salePrice');
-            $table->string('soldQuantity');
-            $table->string('avgRating');
+            $table->string('url_image_cover');
+            $table->string('list_price');
+            $table->string('sale_price');
+            $table->string('sold_quantity');
+            $table->string('avg_rating');
             $table->string('status')->default(Status::ACTIVE);
-
             $table->foreignId('supplier_id')->constrained();
             $table->foreignId('category_id')->constrained();
             $table->timestamps();

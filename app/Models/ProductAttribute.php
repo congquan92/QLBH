@@ -12,6 +12,10 @@ class ProductAttribute extends Model
     protected $primaryKey = 'id';
     public $incrementing = true; // auto increment
     protected $keyType = 'int';
+    protected $fillable = [
+        'product_id',
+        'attribute_id'
+    ];
     public function product()
     {
         return $this->belongsTo(Product::class);

@@ -27,5 +27,21 @@ class AuthServiceProvider extends ServiceProvider
                     ->exists();
         });
 
+
+        Gate::define('ADD_SUPPLIER', function ($user) {
+            Log::info('Gate ADD_SUPPLIER', [
+                'user_id' => $user->id ?? null,
+                'role' => $user->role?->name,
+            ]);
+            if ($user->role?->name === 'ADMIN') {
+                return true;
+            }
+
+            return $user->role
+                && $user->role->permissions()
+                    ->where('name', 'ADD_SUPPLIER')
+                    ->exists();
+        });
+
     }
 }

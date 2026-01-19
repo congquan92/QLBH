@@ -16,15 +16,12 @@ return new class extends Migration {
 
             $table->string('sku')->unique();
             $table->decimal('price', 15, 2);
-            $table->unsignedBigInteger('quantity');
+            $table->unsignedBigInteger('quantity')->default(0);
             $table->unsignedInteger('weight');
             $table->unsignedInteger('length');
             $table->unsignedInteger('width');
             $table->unsignedInteger('height');
             $table->string('status')->default(Status::ACTIVE);
-            $table->json('variant_attributes');
-
-            $table->foreignId('product_id')->constrained();
             $table->timestamps();
         });
     }
