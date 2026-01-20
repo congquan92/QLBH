@@ -18,8 +18,8 @@ return new class extends Migration {
             $table->string('url_video');
             $table->longText('description');
             $table->string('url_image_cover');
-            $table->string('list_price');
-            $table->string('sale_price');
+            $table->decimal('list_price',15,2)->default(0);
+            $table->decimal('sale_price',15,2)->default(0);
             $table->string('sold_quantity');
             $table->string('avg_rating');
             $table->string('status')->default(Status::ACTIVE);

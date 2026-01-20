@@ -54,7 +54,7 @@ class AuthService
         return new AuthenticationResponse(
             token: $token,
             authenticated: true,
-            role: $user->role->name,
+            role: $user->role->name ?? 'USER',
             expiredAt: Carbon::now()->addMinutes($ttl)
         );
     }

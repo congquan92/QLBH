@@ -22,8 +22,8 @@ class ProductCreationRequest extends FormRequest
             'supplierId' => 'required|integer|exists:suppliers,id',
 
             // ===== Price =====
-            'listPrice' => 'required|numeric|gt:0',
-            'salePrice' => 'required|numeric|gt:0',
+            'listPrice' => 'required|numeric|gt:0|decimal:0,2',
+            'salePrice' => 'required|numeric|gt:0|decimal:0,2',
 
             // ===== Category =====
             'categoryId' => 'required|integer|exists:categories,id',

@@ -31,6 +31,8 @@ class Product extends Model
 
     protected $casts = [
         'status' => Status::class,
+        'list_price' => 'decimal:2',
+        'sale_price' => 'decimal:2'
     ];
 
 

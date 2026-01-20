@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Route;
 
 // Route public
 Route::post('/auth/login', [AuthController::class, 'login']);
+Route::get('/product/list', [ProductController::class,'findAll']);
 
 // Route bảo vệ bởi JWT
 Route::middleware('auth')->group(function () {
@@ -23,6 +24,7 @@ Route::middleware('auth')->group(function () {
 
     //Product
      Route::post('/product/add', [ProductController::class, 'store']);
+    
 
 
      //Supplier

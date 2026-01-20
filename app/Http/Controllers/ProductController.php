@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\Product\ProductCreationRequest;
+use App\Http\Responses\ApiResponse;
 use App\Http\Service\ProductService;
 use App\Models\Product;
 use Illuminate\Http\Request;
@@ -10,11 +11,33 @@ use Illuminate\Http\Request;
 
 class ProductController extends Controller
 {
-     protected ProductService $productService;
+    use ApiResponse;
+    protected ProductService $productService;
 
-     public function __construct(ProductService $productService)
+    public function __construct(ProductService $productService)
     {
         $this->productService = $productService;
+    }
+    public function findAll(Request $request)
+    {
+        $keyword = $request->query('keyword');
+        $sort = $request->query('sort');
+        $page = (int) $request->query('page', 1);
+        $size = (int) $request->query('size', 10);
+
+        $result = $this->productService->findAll($keyword, $sort, $page, $size);
+        return $this->success($result, 'Product list fetched successfully');
+    }
+
+    public function findAllForSale(Request $request)
+    {
+        $sort = $request->query('sort');
+        $page = (int) $request->query('page', 1);
+        $size = (int) $request->query('size', 10);
+
+        $result = $this->productService->findAllForSale($sort, $page, $size);
+
+        return $this->success($result, 'Product list fetched successfully');
     }
     /**
      * Display a listing of the resource.
@@ -37,7 +60,7 @@ class ProductController extends Controller
      */
     public function store(ProductCreationRequest $request)
     {
-           $this->productService->create($request);
+        $this->productService->create($request);
     }
 
     /**
