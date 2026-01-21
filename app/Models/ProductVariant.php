@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\Status;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -23,6 +24,7 @@ class ProductVariant extends Model
         'width',
         'height',
         'variant_attributes',
+        'product_id',
         'status'
     ];
 
@@ -30,13 +32,20 @@ class ProductVariant extends Model
         'status' => Status::class,
     ];
 
-    public function cart(){
+    public function cart()
+    {
         return $this->hasMany(Cart::class);
     }
 
-     public function attributeValues()
+    public function attributeValues()
     {
-        return $this->belongsToMany(ProductVariant::class, 'product_variant_attribute_value', 'product_variant_id', 'product_attribute_value_id')
-        ->withTimestamps();;
+        return $this->belongsToMany(ProductAttributeValue::class, 'product_variant_attribute_value', 'product_variant_id', 'product_attribute_value_id')
+            ->withTimestamps();
+        ;
     }
+    public function product()
+    {
+        return $this->belongsTo(Product::class);
+    }
+
 }

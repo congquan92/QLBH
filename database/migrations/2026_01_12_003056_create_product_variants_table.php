@@ -21,6 +21,7 @@ return new class extends Migration {
             $table->unsignedInteger('length');
             $table->unsignedInteger('width');
             $table->unsignedInteger('height');
+            $table->foreignId('product_id')->constrained();
             $table->string('status')->default(Status::ACTIVE);
             $table->timestamps();
         });

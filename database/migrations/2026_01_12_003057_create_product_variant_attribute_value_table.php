@@ -21,7 +21,7 @@ return new class extends Migration {
             $table->foreignId('product_attribute_value_id')
                 ->constrained()
                 ->cascadeOnDelete()
-                ->name('fk_pvav_pav');
+                ->name('fk_pvav_pav');    
 
             
             $table->unique(

@@ -3,10 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\Product\ProductCreationRequest;
+use App\Http\Requests\product\UpdateProductRequest;
 use App\Http\Responses\ApiResponse;
 use App\Http\Service\ProductService;
 use App\Models\Product;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 
 class ProductController extends Controller
@@ -29,6 +31,18 @@ class ProductController extends Controller
         return $this->success($result, 'Product list fetched successfully');
     }
 
+     public function findAllForAdmin(Request $request)
+    {
+        $keyword = $request->query('keyword');
+        $sort = $request->query('sort');
+        $status = $request->query('status' , Status::ACTIVE);
+        $page = (int) $request->query('page', 1);
+        $size = (int) $request->query('size', 10);
+
+        $result = $this->productService->findAllForAdmin($keyword,$status, $sort, $page, $size);
+        return $this->success($result, 'Product list fetched successfully');
+    }
+
     public function findAllForSale(Request $request)
     {
         $sort = $request->query('sort');
@@ -37,6 +51,17 @@ class ProductController extends Controller
 
         $result = $this->productService->findAllForSale($sort, $page, $size);
 
+        return $this->success($result, 'Product list fetched successfully');
+    }
+
+     public function findAllByCategory(Request $request, $id)
+    {
+        $keyword = $request->query('keyword');
+        $sort = $request->query('sort');
+        $page = (int) $request->query('page', 1);
+        $size = (int) $request->query('size', 10);
+
+        $result = $this->productService->findAllByCategory($id,$keyword, $sort, $page, $size);
         return $this->success($result, 'Product list fetched successfully');
     }
     /**
@@ -71,6 +96,17 @@ class ProductController extends Controller
         //
     }
 
+    public function getProductById($productId){
+        Log::info('ProductController');
+        $product = $this->productService->getProductById($productId);
+        return $this->success($product, 'Product detail fetched successfully');
+    }
+
+    public function getProductByIdForAdmin($productId){
+        $product = $this->productService->getProductByIdForAdmin($productId);
+        return $this->success($product, 'Product detail fetched successfully');
+    }
+
     /**
      * Show the form for editing the specified resource.
      */
@@ -82,16 +118,21 @@ class ProductController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Product $product)
+    public function update(UpdateProductRequest $request)
     {
-        //
+        $this->productService->update($request);
+    }
+
+     public function restoreProduct($productId)
+    {
+        $this->productService->restoreProduct($productId);
     }
 
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Product $product)
+    public function destroy($productId)
     {
-        //
+        $this->productService->deleteProduct($productId);
     }
 }

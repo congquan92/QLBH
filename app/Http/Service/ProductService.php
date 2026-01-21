@@ -4,7 +4,9 @@ use App\Enums\Status;
 use App\Http\Mapper\ProductMapper;
 use App\Http\Requests\Product\ProductCreationRequest;
 use App\Http\Requests\product\UpdateProductRequest;
+use App\Http\Requests\productVariant\ProductVariantCreationRequest;
 use App\Http\Responses\PageResponse;
+use App\Http\Responses\product\ProductResponse;
 use App\Models\Attribute;
 use App\Models\Category;
 use App\Models\ImageProduct;
@@ -21,6 +23,43 @@ class ProductService
     {
 
         $query = Product::where('status', Status::ACTIVE);
+
+
+        $column = 'id';
+        $direction = 'asc';
+        if ($sort && str_contains($sort, ':')) {
+            $parts = explode(':', $sort);
+            $column = $parts[0];
+            $direction = strtolower($parts[1]) === 'asc' ? 'asc' : 'desc';
+        }
+        $query->orderBy($column, $direction);
+
+
+        if (!empty($keyword)) {
+            $query->where(function ($q) use ($keyword) {
+                $q->where('name', 'like', "%{$keyword}%")
+                    ->orWhere('description', 'like', "%{$keyword}%");
+            });
+        }
+
+
+        $paginator = $query->paginate($size, ['*'], 'page', $page);
+
+
+        $dtoItems = $paginator->getCollection()->map(function ($product) {
+            return ProductMapper::toBaseResponse($product);
+        });
+
+
+        $paginator->setCollection($dtoItems);
+
+        return PageResponse::fromLaravelPaginator($paginator);
+    }
+
+    public function findAllForAdmin(?string $keyword, ?Status $status, ?string $sort, int $page, int $size): PageResponse
+    {
+
+        $query = Product::where('status', $status);
 
 
         $column = 'id';
@@ -149,13 +188,21 @@ class ProductService
             ->where('status', Status::ACTIVE)
             ->firstOrFail();
 
+        $category = Category::where('id', $req->categoryId)
+            ->where('status', Status::ACTIVE)
+            ->firstOrFail();
+
+        $supplier = Supplier::where('id', $req->supplierId)
+            ->where('status', Status::ACTIVE)
+            ->firstOrFail();
+
         $data = [
             'name' => $req->name,
             'description' => $req->description,
             'list_price' => $req->listPrice,
             'sale_price' => $req->salePrice,
-            'category_id' => $req->categoryId,
-            'supplier_id' => $req->supplierId,
+            'category_id' => $category->id,
+            'supplier_id' => $supplier->id,
             'url_video' => $req->removeVideo ? null : ($req->video ?? $product->url_video),
             'url_image_cover' => $req->removeCoverImage ? null : ($req->coverImage ?? $product->url_image_cover),
         ];
@@ -208,30 +255,75 @@ class ProductService
     }
     public function deleteProduct(int $productId): void
     {
-         $product = Product::where('id', $productId)
+        $product = Product::where('id', $productId)
             ->where('status', Status::ACTIVE)
             ->firstOrFail();
         $product->status = Status::INACTIVE;
-        $product->save(); 
+        $product->save();
     }
 
-    // public function getProductById(int $productId): Product
+    public function getProductById(int $productId): ProductResponse
+    {
+        $product = Product::where('id', $productId)
+            ->where('status', Status::ACTIVE)
+            ->firstOrFail();
+        return ProductMapper::toDetailResponse($product);
+    }
+
+    public function getProductByIdForAdmin(int $productId): ProductResponse
+    {
+        $product = Product::where('id', $productId)
+            ->firstOrFail();
+        return ProductMapper::toDetailResponse($product);
+    }
+
+    public function addVariants(int $productId, array $requests): void
+    {
+        $product = Product::where('id', $productId)
+            ->where('status', Status::ACTIVE)
+            ->firstOrFail();
+        foreach ($requests as $req) {
+            $exists = $this->checkVariantExists($product, $req);
+            if ($exists)
+                continue;
+            $this->makeBaseProductVariant($req, $product);
+        }
+    }
+    private function checkVariantExists($product, $variantReq): bool
+    {
+        $existingVariants = ProductVariant::where('product_id', $product->id)
+            ->where('status', Status::ACTIVE)->firstOrFail();
+        $reqAttributes = collect($variantReq['variantAttributes'])
+            ->map(fn($item) => trim($item['attribute']) . ':' . trim($item['value']))
+            ->sort()
+            ->values()
+            ->toArray();
+        foreach ($existingVariants as $variant) {
+            $variantAttributes = $variant->attributeValues->map(function ($av) {
+                return trim($av->productAttribute->attribute->name) . ':' . trim($av->value);
+            })->sort()->values()->toArray();
+
+            if ($variantAttributes === $reqAttributes) {
+                return true;
+            }
+        }
+
+        return false;
+
+    }
     private function processAttributes(Product $product, array $attributesData)
     {
         $allCreatedValues = collect();
 
         foreach ($attributesData as $attrReq) {
-            // Bước A: Tìm hoặc tạo Attribute gốc (VD: "Màu sắc")
+
             $attribute = Attribute::firstOrCreate(['name' => $attrReq['name']]);
 
-            // Bước B: Tạo liên kết Nhiều-Nhiều trong bảng product_attribute
-            // Chúng ta dùng Model ProductAttribute để lấy ID của dòng trung gian
             $productAttribute = ProductAttribute::firstOrCreate([
                 'product_id' => $product->id,
                 'attribute_id' => $attribute->id
             ]);
 
-            // Bước C: Lưu các giá trị cụ thể (VD: "Đỏ", "Xanh") cho sản phẩm này
             foreach ($attrReq['attributeValue'] as $valReq) {
                 $value = ProductAttributeValue::create([
                     'product_attribute_id' => $productAttribute->id,
@@ -250,20 +342,24 @@ class ProductService
         return $allCreatedValues;
     }
 
-
+    private function makeBaseProductVariant(ProductVariantCreationRequest $variantReq, Product $product) : ProductVariant
+    {
+        $variant = ProductVariant::create([
+            'product_id' => $product->id,
+            'sku' => $variantReq['sku'] ?? uniqid('SKU_'),
+            'price' => $variantReq['price'],
+            'height' => $variantReq['height'],
+            'width' => $variantReq['width'],
+            'length' => $variantReq['length'],
+            'weight' => $variantReq['weight'],
+        ]);
+        return $variant;
+    }
     private function processVariants(Product $product, $availableValues, array $variantsData)
     {
         foreach ($variantsData as $variantReq) {
 
-            $variant = ProductVariant::create([
-                'product_id' => $product->id,
-                'sku' => $variantReq['sku'] ?? uniqid('SKU_'),
-                'price' => $variantReq['price'],
-                'height' => $variantReq['height'],
-                'width' => $variantReq['width'],
-                'length' => $variantReq['length'],
-                'weight' => $variantReq['weight'],
-            ]);
+            $variant= $this->makeBaseProductVariant($variantReq, $product);
 
             foreach ($variantReq['variantAttributes'] as $vAttr) {
                 $matchedValue = $availableValues->first(function ($item) use ($vAttr) {
