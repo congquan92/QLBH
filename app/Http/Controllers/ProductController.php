@@ -75,9 +75,9 @@ class ProductController extends Controller
     /**
      * Show the form for creating a new resource.
      */
-    public function create()
+    public function updateaddVariants($productId, array $requests)
     {
-        //
+        $this->productService->addVariants($productId, $requests);
     }
 
     /**

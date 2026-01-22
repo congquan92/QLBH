@@ -28,11 +28,13 @@ Route::middleware('auth')->group(function () {
     Route::get('/product/category/{id}', [ProductController::class, 'findAllByCategory']);
     Route::get('/product/admin/detail/{productId}', [ProductController::class, 'getProductByIdForAdmin']);
     Route::post('/product/{productId}/restore', [ProductController::class, 'restoreProduct']);
-     
+    Route::post('/product/{productId}/variants/add', [ProductController::class, 'addVariants']);
+    Route::put('/product/{productId}/variants/update', [ProductController::class, 'updateVariants']);
+
     Route::post('/product/add', [ProductController::class, 'store']);
 
-    Route::put('/product/update', [ProductController::class,'update']);
-    
+    Route::put('/product/update', [ProductController::class, 'update']);
+
     Route::delete('/product/{productId}/delete', [ProductController::class, 'destroy']);
 
 

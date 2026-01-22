@@ -16,6 +16,7 @@ use App\Models\ProductAttributeValue;
 use App\Models\ProductVariant;
 use App\Models\Supplier;
 use Illuminate\Support\Facades\DB;
+use PhpParser\Node\Expr\FuncCall;
 class ProductService
 {
 
@@ -286,7 +287,33 @@ class ProductService
             $exists = $this->checkVariantExists($product, $req);
             if ($exists)
                 continue;
-            $this->makeBaseProductVariant($req, $product);
+            $variant = $this->makeBaseProductVariant($req, $product);
+            foreach ($req['variantAttributes'] as $item) {
+                $attribute = Attribute::firstOrCreate(['name' => $item['attribute']]);
+                $productAttribute = ProductAttribute::firstOrCreate([
+                    'product_id' => $product->id,
+                    'attribute_id' => $attribute->id
+                ]);
+                $value = ProductAttributeValue::create([
+                    'product_attribute_id' => $productAttribute->id,
+                    'value' => $item['value']
+                ]);
+                $variant->attributeValues()->attach($value->id);
+            }
+        }
+    }
+    public function updateVariants(int $productId, array $requests): void
+    {
+        foreach ($requests as $req) {
+            $productVariant = ProductVariant::where('product_id', $productId)->firstOrFail();
+            $data = [
+               'price' => $req['price'],
+               'height' => $req['height'],
+               'width' => $req['width'],
+               'length' => $req['length'],
+               'weight' => $req['weight'],
+            ];
+            $productVariant->update(array_filter($data, fn($value) => !is_null($value)));
         }
     }
     private function checkVariantExists($product, $variantReq): bool
@@ -342,7 +369,7 @@ class ProductService
         return $allCreatedValues;
     }
 
-    private function makeBaseProductVariant(ProductVariantCreationRequest $variantReq, Product $product) : ProductVariant
+    private function makeBaseProductVariant(ProductVariantCreationRequest $variantReq, Product $product): ProductVariant
     {
         $variant = ProductVariant::create([
             'product_id' => $product->id,
@@ -359,7 +386,7 @@ class ProductService
     {
         foreach ($variantsData as $variantReq) {
 
-            $variant= $this->makeBaseProductVariant($variantReq, $product);
+            $variant = $this->makeBaseProductVariant($variantReq, $product);
 
             foreach ($variantReq['variantAttributes'] as $vAttr) {
                 $matchedValue = $availableValues->first(function ($item) use ($vAttr) {
