@@ -24,6 +24,7 @@ class Product extends Model
         'sale_price',
         'sold_quantity',
         'avg_rating',
+        'out_standing',
         'supplier_id',
         'category_id',
         'status',

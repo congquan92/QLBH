@@ -75,7 +75,7 @@ class ProductController extends Controller
     /**
      * Show the form for creating a new resource.
      */
-    public function updateaddVariants($productId, array $requests)
+    public function addVariants($productId, array $requests)
     {
         $this->productService->addVariants($productId, $requests);
     }
@@ -95,6 +95,15 @@ class ProductController extends Controller
     {
         //
     }
+
+    public function deleteAttribute(int $id , array $attributeIds){
+        $this->productService->deleteAttribute($id, $attributeIds);
+    }
+
+     public function deleteAttributeValue(int $id , array $attributeValueIds){
+        $this->productService->deleteAttributeValue($id, $attributeValueIds);
+    }
+
 
     public function getProductById($productId){
         Log::info('ProductController');

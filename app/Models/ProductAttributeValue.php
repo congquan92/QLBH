@@ -13,7 +13,7 @@ class ProductAttributeValue extends Model
     protected $primaryKey = 'id';
     public $incrementing = true; // auto increment
     protected $keyType = 'int';
-    protected $fillable = ['product_attribute_id', 'value'];
+    protected $fillable = ['product_attribute_id', 'value', 'url_image'];
 
     public function productAttribute()
     {

@@ -36,6 +36,8 @@ Route::middleware('auth')->group(function () {
     Route::put('/product/update', [ProductController::class, 'update']);
 
     Route::delete('/product/{productId}/delete', [ProductController::class, 'destroy']);
+    Route::delete('/product/{id}/attribute/delete', [ProductController::class, 'deleteAttribute']);
+    Route::delete('/product/{id}/attributeValue/delete', [ProductController::class, 'deleteAttributeValues']);
 
 
 

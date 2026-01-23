@@ -1,6 +1,8 @@
 <?php
 namespace App\Http\Service;
 use App\Enums\Status;
+use App\Exceptions\BusinessException;
+use App\Exceptions\ErrorCode;
 use App\Http\Mapper\ProductMapper;
 use App\Http\Requests\Product\ProductCreationRequest;
 use App\Http\Requests\product\UpdateProductRequest;
@@ -16,6 +18,7 @@ use App\Models\ProductAttributeValue;
 use App\Models\ProductVariant;
 use App\Models\Supplier;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use PhpParser\Node\Expr\FuncCall;
 class ProductService
 {
@@ -203,6 +206,7 @@ class ProductService
             'list_price' => $req->listPrice,
             'sale_price' => $req->salePrice,
             'category_id' => $category->id,
+            'out_standing' => $req->out_standing,
             'supplier_id' => $supplier->id,
             'url_video' => $req->removeVideo ? null : ($req->video ?? $product->url_video),
             'url_image_cover' => $req->removeCoverImage ? null : ($req->coverImage ?? $product->url_image_cover),
@@ -211,6 +215,30 @@ class ProductService
         $product->update(array_filter($data, fn($value) => !is_null($value)));
         return $product;
     }
+
+    public function deleteAttribute(int $productId, array $attributeIds)
+    {
+        foreach ($attributeIds as $id) {
+            $attribute = Attribute::where('id', $id)->firstOrFail();
+            $productAttribute = ProductAttribute::where('product_id', $productId)
+                ->where('attribute_id', $attribute->id)->firstOrFail();
+            $productAttribute->delete();
+        }
+    }
+
+    public function deleteAttributeValue(int $productId, array $attributeValueIds)
+    {
+        foreach ($attributeValueIds as $id) {
+            $attributeValue = ProductAttributeValue::where('id', $id)->firstOrFail();
+            $productAttribute = ProductAttribute::where('id', $attributeValue->productAttribute)->firstOrFail();
+            if ($productAttribute->product_id !== $productId) {
+                throw new BusinessException(ErrorCode::BAD_REQUEST, 'Thuộc tính không thuộc sản phẩm này!');
+            }
+            $attributeValue->delete();
+        }
+    }
+
+
 
     private function createBaseProduct($req): Product
     {
@@ -294,9 +322,11 @@ class ProductService
                     'product_id' => $product->id,
                     'attribute_id' => $attribute->id
                 ]);
+                Log::info('image ', $item['image']);
                 $value = ProductAttributeValue::create([
                     'product_attribute_id' => $productAttribute->id,
-                    'value' => $item['value']
+                    'value' => $item['value'],
+                    'url_image' => $item['image']
                 ]);
                 $variant->attributeValues()->attach($value->id);
             }
@@ -307,11 +337,11 @@ class ProductService
         foreach ($requests as $req) {
             $productVariant = ProductVariant::where('product_id', $productId)->firstOrFail();
             $data = [
-               'price' => $req['price'],
-               'height' => $req['height'],
-               'width' => $req['width'],
-               'length' => $req['length'],
-               'weight' => $req['weight'],
+                'price' => $req['price'],
+                'height' => $req['height'],
+                'width' => $req['width'],
+                'length' => $req['length'],
+                'weight' => $req['weight'],
             ];
             $productVariant->update(array_filter($data, fn($value) => !is_null($value)));
         }
@@ -354,7 +384,8 @@ class ProductService
             foreach ($attrReq['attributeValue'] as $valReq) {
                 $value = ProductAttributeValue::create([
                     'product_attribute_id' => $productAttribute->id,
-                    'value' => $valReq['value']
+                    'value' => $valReq['value'],
+                    'url_image' => isset($valReq['image']) ? $valReq['image']: null,
                 ]);
 
 
@@ -369,7 +400,7 @@ class ProductService
         return $allCreatedValues;
     }
 
-    private function makeBaseProductVariant(ProductVariantCreationRequest $variantReq, Product $product): ProductVariant
+    private function makeBaseProductVariant($variantReq, Product $product): ProductVariant
     {
         $variant = ProductVariant::create([
             'product_id' => $product->id,
@@ -386,6 +417,7 @@ class ProductService
     {
         foreach ($variantsData as $variantReq) {
 
+            Log::info('variantReq ', $variantReq);
             $variant = $this->makeBaseProductVariant($variantReq, $product);
 
             foreach ($variantReq['variantAttributes'] as $vAttr) {

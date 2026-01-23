@@ -46,6 +46,7 @@ class ProductCreationRequest extends FormRequest
             // ===== Attributes =====
             'attributes' => 'nullable|array',
             'attributes.*.name' => 'required|string|max:255',
+            'attributes.*.attributeValue.*.image' => 'nullable|string',
 
             // ===== Shipping info =====
             'weight' => 'nullable|integer|min:0',

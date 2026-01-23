@@ -22,6 +22,7 @@ return new class extends Migration {
             $table->decimal('sale_price',15,2)->default(0);
             $table->string('sold_quantity');
             $table->string('avg_rating');
+            $table->string('out_standing')->nullable();
             $table->string('status')->default(Status::ACTIVE);
             $table->foreignId('supplier_id')->constrained();
             $table->foreignId('category_id')->constrained();

@@ -19,6 +19,7 @@ class UpdateProductRequest extends FormRequest
             'id' => 'required|integer',
             'name' => 'nullable|string|max:255',
             'description' => 'nullable|string',
+            'out_standing' => 'nullable|boolean',
 
             'supplierId' => 'nullable|integer|exists:suppliers,id',
 
