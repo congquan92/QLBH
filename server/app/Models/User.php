@@ -2,47 +2,94 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Enums\Gender;
+use App\Enums\UserStatus;
+use Tymon\JWTAuth\Contracts\JWTSubject;
 use Illuminate\Foundation\Auth\User as Authenticatable;
-use Illuminate\Notifications\Notifiable;
 
-class User extends Authenticatable
+/**
+ * @property-read \Illuminate\Database\Eloquent\Collection|Role[] $roles
+ */
+class User extends Authenticatable implements JWTSubject
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
+    protected $primaryKey = 'id';
+    public $incrementing = true; // auto increment
+    protected $keyType = 'int';
+
     protected $fillable = [
-        'name',
+        'full_name',
         'email',
         'password',
+        'username',
+        'phone',
+        'gender',
+        'point',
+        'token_version',
+        'provider',
+        'provider_id',
+        'status',
     ];
 
-    /**
-     * The attributes that should be hidden for serialization.
-     *
-     * @var list<string>
-     */
-    protected $hidden = [
-        'password',
-        'remember_token',
+    protected $casts = [
+        'gender' => Gender::class,
+        'status' => UserStatus::class
     ];
 
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
-    protected function casts(): array
+    protected $hidden = ['password'];
+
+    // JWT
+    public function getJWTIdentifier()
     {
+        return $this->getKey(); // int ID
+    }
+
+    public function getJWTCustomClaims()
+    {
+
+        $roleName = $this->role ? 'ROLE_' . $this->role->name : null;
+
         return [
-            'email_verified_at' => 'datetime',
-            'password' => 'hashed',
+            'email' => $this->email,
+            'scope' => $roleName,
+            'ver' => $this->token_version,
         ];
     }
+
+
+    public function role()
+    {
+        return $this->belongsTo(Role::class);
+    }
+
+    public function favoriteProduct()
+    {
+        return $this->belongsToMany(Product::class, 'favoriteProducts', 'user_id', 'product_id');
+    }
+
+    public function orders()
+    {
+        return $this->hasMany(Order::class);
+    }
+
+    public function userRank()
+    {
+        return $this->belongsTo(UserRank::class);
+    }
+
+    public function address()
+    {
+        return $this->hasMany(Address::class);
+    }
+
+    public function carts()
+    {
+        return $this->hasMany(Cart::class);
+    }
+
+    public function voucherUsages()
+    {
+        return $this->hasMany(VoucherUsage::class);
+    }
+
 }
