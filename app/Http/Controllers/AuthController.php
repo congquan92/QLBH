@@ -1,0 +1,48 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Http\Requests\auth\LoginRequest;
+use App\Http\Service\auth\AuthService;
+use Illuminate\Http\Request;
+
+class AuthController extends Controller
+{
+    protected AuthService $authService;
+
+    public function __construct(AuthService $authService)
+    {
+        $this->authService = $authService;
+    }
+
+    public function login(LoginRequest $req)
+    {
+        $response = $this->authService->login($req);
+
+        return response()->json($response->toArray());
+    }
+
+    public function logout()
+    {
+        $this->authService->logout();
+
+        return response()->json(['message' => 'Logged out']);
+    }
+
+    public function refresh()
+    {
+        $token = $this->authService->refresh();
+
+        return response()->json([
+            'access_token' => $token,
+            'type' => 'Bearer'
+        ]);
+    }
+
+    public function introspect()
+    {
+        return response()->json(
+            $this->authService->introspect()
+        );
+    }
+}
