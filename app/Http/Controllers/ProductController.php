@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\Status;
 use App\Http\Requests\Product\ProductCreationRequest;
 use App\Http\Requests\product\UpdateProductRequest;
 use App\Http\Responses\ApiResponse;
@@ -35,7 +36,7 @@ class ProductController extends Controller
     {
         $keyword = $request->query('keyword');
         $sort = $request->query('sort');
-        $status = $request->query('status' , Status::ACTIVE);
+        $status = $request->query('status' , Status::ACTIVE->name);
         $page = (int) $request->query('page', 1);
         $size = (int) $request->query('size', 10);
 
