@@ -4,8 +4,9 @@ namespace App\Http\Mapper;
 use App\Http\Responses\productVariant\ProductVariantResponse;
 use App\Models\ProductVariant;
 use Illuminate\Support\Facades\Log;
+use JsonSerializable;
 
-class ProductVariantMapper
+class ProductVariantMapper implements JsonSerializable
 {
     public static function toVariantResponse(ProductVariant $variant): ProductVariantResponse
     {
@@ -22,5 +23,9 @@ class ProductVariantMapper
                 return variantAttributeMapper::toVariantResponse($val);
             })->toArray()
         );
+    }
+    public function jsonSerialize(): mixed
+    {
+        return get_object_vars($this);
     }
 }

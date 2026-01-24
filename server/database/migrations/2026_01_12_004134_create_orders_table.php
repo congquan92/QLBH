@@ -45,7 +45,7 @@ return new class extends Migration {
             $table->boolean('isConfirmed');
 
             $table->foreignId('user_id')->constrained();
-            $table->foreignId('voucher_id')->constrained();
+            $table->json('voucher_snapshot');
             $table->timestamps();
         });
     }

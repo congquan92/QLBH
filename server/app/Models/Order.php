@@ -18,33 +18,34 @@ class Order extends Model
     protected $keyType = 'int';
 
     protected $fillable = [
-        'customerName',
-        'customerPhone',
-        'deliveryWardName',
-        'deliveryWardCode',
-        'deliveryDistrictId',
-        'deliveryProvinceId',
-        'deliveryDistrictName',
-        'deliveryProvinceName',
-        'deliveryAddress',
-        'serviceTypeId',
-        'originalOrderAmount',
+        'customer_name',
+        'customer_phone',
+        'delivery_ward_name',
+        'delivery_ward_code',
+        'delivery_district_id',
+        'delivery_province_id',
+        'delivery_district_name',
+        'delivery_province_name',
+        'delivery_address',
+        'service_type_id',
+        'original_order_amount',
         'weight',
         'length',
         'width',
         'height',
-        'totalFeeForShip',
-        'orderTrackingCode',
+        'total_fee_for_ship',
+        'order_tracking_code',
         'note',
-        'isPaidForShip',
-        'totalAmount',
-        'orderStatus',
-        'paymentType',
-        'paymentStatus',
-        'deliveredAt',
-        'completedAt',
-        'paymentAt',
-        'isConfirmed'
+        'is_paid_for_ship',
+        'total_amount',
+        'order_status',
+        'payment_type',
+        'voucher_snapshot',
+        'payment_status',
+        'delivered_at',
+        'completed_at',
+        'payment_at',
+        'is_confirmed'
     ];
 
     protected $casts = [
@@ -60,9 +61,4 @@ class Order extends Model
     public function orderItem(){
         return $this->hasMany(OrderItem::class);
     }
-    
-    public function voucher(){
-        return $this->belongsTo(Voucher::class);
-    }
-
 }

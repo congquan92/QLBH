@@ -16,12 +16,17 @@ class OrderItem extends Model
 
     protected $fillable = [
         'quantity',
-        'isReviewed',
-        'finalPrice',
-        'listPriceSnapShot',
-        'nameProductSnapShot',
-        'urlImageSnapShot',
-        'variantAttributesSnapshot',
+        'is_reviewed',
+        'final_price',
+        'list_price_snapShot',
+        'name_product_snapshot',
+        'url_image_snapShot',
+        'order_id',
+        'variant_attributes_snapshot',
+    ];
+
+    protected $casts = [
+        'variant_attributes_snapshot' => 'array'
     ];
 
     public function order(){
