@@ -7,16 +7,17 @@ use App\Enums\VoucherStatus;
 use App\Exceptions\BusinessException;
 use App\Exceptions\ErrorCode;
 use App\Http\Mapper\ProductVariantMapper;
+use App\Http\Service\GhnService;
+use App\Http\Service\VoucherService;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\ProductVariant;
 use App\Models\Voucher;
 use App\Models\VoucherUsage;
 use Illuminate\Support\Facades\DB;
-use App\Http\Requests\OrderCreationRequest;
-use Server\App\Http\Service\GhnService;
-use Server\App\Http\Service\VoucherService;
-use Server\App\Utils\ShippingHelper;
+use App\Http\Requests\orders\OrderCreationRequest;
+use Illuminate\Support\Facades\Log;
+use App\Utils\ShippingHelper;
 class OrderService
 {
     protected $voucherService;
@@ -30,7 +31,11 @@ class OrderService
     public function create(OrderCreationRequest $req)
     {
         return DB::transaction(function () use ($req) {
-            $currentUser = auth()->user();
+            Log::info("create Order");
+            $currentUser = null;
+            if (request()->bearerToken()) {
+                $currentUser = auth('api')->user();
+            }
             $order = new Order();
             $order->customer_name = $req->customerName;
             $order->customer_phone = $req->customerPhone;
@@ -48,7 +53,7 @@ class OrderService
             $order->user_id = $currentUser ? $currentUser->id : null;
 
             $mergedVariants = collect($req->order_items)->reduce(function ($carry, $item) {
-                $id = $item['product_variant_id'];
+                $id = $item['productVariantId'];
                 $quantity = $item['quantity'];
 
                 $carry[$id] = ($carry[$id] ?? 0) + $quantity;
@@ -58,6 +63,7 @@ class OrderService
             $subTotal = 0;
             $orderItems = [];
             $packages = [];
+            $ghnItems = [];
             foreach ($mergedVariants as $variantId => $totalQuantity) {
                 $productVariant = ProductVariant::where('id', $variantId)
                     ->where('status', Status::ACTIVE)
@@ -74,7 +80,8 @@ class OrderService
                 $orderItem = new OrderItem();
                 $orderItem->list_price_snapShot = $productVariant->price;
                 $orderItem->name_product_snapshot = $productVariant->product->name;
-                $orderItem->url_image_snapShot = $productVariant->product->url_cover_image;
+                $orderItem->url_image_snapShot = $productVariant->product->url_image_cover;
+                $orderItem->product_id = $productVariant->product_id;
                 $orderItem->quantity = $totalQuantity;
                 $orderItem->variant_attributes_snapshot = ProductVariantMapper::toVariantResponse($productVariant);
 
@@ -84,28 +91,37 @@ class OrderService
 
                 $orderItems[] = $orderItem;
 
-                $packages = collect($orderItems)->map(function ($item) {
-                    return [
-                        'name' => $item->name_product_snapshot,
-                        'length' => $item->productVariant->length,
-                        'width' => $item->productVariant->width,
-                        'height' => $item->productVariant->height,
-                        'weight' => $item->productVariant->weight,
-                        'quantity' => $item->quantity,
-                    ];
-                })->toArray();
+                $packages[] = [
+                    'name' => $productVariant->product->name,
+                    'length' => $productVariant->length,
+                    'width' => $productVariant->width,
+                    'height' => $productVariant->height,
+                    'weight' => $productVariant->weight,
+                    'quantity' => $totalQuantity,
+                ];
+                $ghnItems[] = [
+                    "name" => $productVariant->product->name,
+                    "weight" => (int) $productVariant->weight,
+                    "width" => (int) $productVariant->width,
+                    "height" => (int) $productVariant->height,
+                    "length" => (int) $productVariant->length,
+                ];
             }
             $order->weight = ShippingHelper::calculateTotalWeight($packages);
             $order->length = ShippingHelper::calculateAverageLength($packages);
             $order->width = ShippingHelper::calculateAverageWidth($packages);
             $order->height = ShippingHelper::calculateAverageHeight($packages);
-
-            $feeShip = $this->ghnService->calculateShippingFee($order)->total;
+            $order->service_type_id =ShippingHelper::determineServiceTypeId($order->weight, $order->length, $order->width, $order->height);
+            $feeResponse = $this->ghnService->calculateShippingFee($order, $ghnItems);
+            $feeShip = $feeResponse['total'];
             $order->total_fee_for_ship = $feeShip;
 
             $discountValue = 0;
             $voucher = null;
             if ($req->voucherId) {
+                if (!$currentUser) {
+                    throw new BusinessException(ErrorCode::BAD_REQUEST, 'Vui lòng đăng nhập để sử dụng voucher !');
+                }
                 $voucher = Voucher::where('id', $req->voucherId)
                     ->where('status', operator: VoucherStatus::ACTIVE)
                     ->first();
@@ -115,8 +131,8 @@ class OrderService
                 }
 
                 $this->voucherService->validateVoucherWithOrderAmount($voucher, $subTotal);
-                $this->voucherService->validateVoucherUsageUser($voucher,$currentUser);
-                
+                $this->voucherService->validateVoucherUsageUser($voucher, $currentUser);
+
                 if ($voucher->is_shipping) {
                     $discountValue = $this->voucherService->calculateDiscountValue($feeShip, $voucher);
                 } else {
@@ -124,8 +140,8 @@ class OrderService
                 }
 
                 $this->voucherService->decreaseVoucherQuantity($voucher);
-                
-                $order->voucher_snapshot = $voucher->toArray(); 
+
+                $order->voucher_snapshot = $voucher->toArray();
                 $order->voucher_discount_value = $discountValue;
             }
 
@@ -138,13 +154,13 @@ class OrderService
                 }
             }
 
-        
+
             $pointValue = $req->point ?? 0;
             $totalDiscount = $discountValue + $pointValue;
-            
+
             $order->original_order_amount = $subTotal;
             $order->total_amount = ($subTotal - $totalDiscount) + $feeShip;
-            $order->save(); 
+            $order->save();
 
             foreach ($orderItems as $item) {
                 $item->order_id = $order->id;

@@ -15,37 +15,37 @@ return new class extends Migration {
         Schema::create('orders', function (Blueprint $table) {
             $table->id();
 
-            $table->string('customerName');
-            $table->string('customerPhone');
-            $table->string('deliveryWardName');
-            $table->string('deliveryWardCode');
-            $table->string('deliveryDistrictId');
-            $table->string('deliveryProvinceId');
-            $table->string('deliveryDistrictName');
-            $table->string('deliveryProvinceName');
-            $table->string('deliveryAddress');
-            $table->string('serviceTypeId');
-            $table->string('originalOrderAmount');
+            $table->string('customer_name');
+            $table->string('customer_phone');
+            $table->string('delivery_ward_name');
+            $table->string('delivery_ward_code');
+            $table->string('delivery_district_id');
+            $table->string('delivery_province_id');
+            $table->string('delivery_district_name');
+            $table->string('delivery_province_name');
+            $table->string('delivery_address');
+            $table->string('service_type_id');
+            $table->string('original_order_amount');
             $table->unsignedInteger('weight');
             $table->unsignedInteger('length');
             $table->unsignedInteger('width');
             $table->unsignedInteger('height');
-            $table->string('totalFeeForShip');
-            $table->string('orderTrackingCode');
-            $table->string('note');
-            $table->string('isPaidForShip');
-            $table->string('orderStatus')
+            $table->string('total_fee_for_ship');
+            $table->string('order_tracking_code')->nullable();
+            $table->string('note')->nullable();
+            $table->decimal('total_amount',15,2);
+            $table->string('order_status')
                 ->default(DeliveryStatus::PENDING->value);
-            $table->string(column: 'paymentType');
-            $table->string('paymentStatus')
+            $table->string(column: 'payment_type');
+            $table->string('payment_status')
                 ->default(PaymentStatus::UNPAID->value);
-            $table->string('deliveredAt');
-            $table->string('completedAt');
-            $table->string('paymentAt');
-            $table->boolean('isConfirmed');
+            $table->string('delivered_at')->nullable();
+            $table->string('completed_at')->nullable();
+            $table->string('payment_at')->nullable();
+            $table->boolean('is_confirmed')->default(false);
 
-            $table->foreignId('user_id')->constrained();
-            $table->json('voucher_snapshot');
+            $table->foreignId('user_id')->nullable()->constrained();
+            $table->json('voucher_snapshot')->nullable();
             $table->timestamps();
         });
     }

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\SupplierController;
 use App\Http\Middleware\JwtAuthenticate;
@@ -12,6 +13,7 @@ use Illuminate\Support\Facades\Route;
 Route::post('/auth/login', [AuthController::class, 'login']);
 Route::get('/product/list', [ProductController::class, 'findAll']);
 Route::get('/product/detail/{productId}', [ProductController::class, 'getProductById']);
+ Route::post('/order/add', [OrderController::class, 'store']);
 
 // Route bảo vệ bởi JWT
 Route::middleware('auth')->group(function () {
@@ -38,9 +40,6 @@ Route::middleware('auth')->group(function () {
     Route::delete('/product/{productId}/delete', [ProductController::class, 'destroy']);
     Route::delete('/product/{id}/attribute/delete', [ProductController::class, 'deleteAttribute']);
     Route::delete('/product/{id}/attributeValue/delete', [ProductController::class, 'deleteAttributeValues']);
-
-
-
 
 
     //Supplier

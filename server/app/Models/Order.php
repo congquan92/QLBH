@@ -36,7 +36,6 @@ class Order extends Model
         'total_fee_for_ship',
         'order_tracking_code',
         'note',
-        'is_paid_for_ship',
         'total_amount',
         'order_status',
         'payment_type',
@@ -49,9 +48,9 @@ class Order extends Model
     ];
 
     protected $casts = [
-        'orderStatus' => DeliveryStatus::class,
-        'paymentType' => PaymentType::class,
-        'paymentStatus' => PaymentStatus::class,
+        'order_status' => DeliveryStatus::class,
+        'payment_type' => PaymentType::class,
+        'payment_status' => PaymentStatus::class,
     ];
 
     public function user(){

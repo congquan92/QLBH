@@ -4,3 +4,4 @@ php artisan migrate // Cập nhật db từ các file migrate
 php artisan migrate:fresh --seed // Drop tất cả các bảng và chạy lại seed khởi tạo dữ liệu mặc định 
 php artisan make:migration nameFile // Tạo file migration
 php artisan serve  // chay du an
+tail -f storage/logs/laravel.log //xem log

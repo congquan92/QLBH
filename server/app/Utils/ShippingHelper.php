@@ -1,5 +1,5 @@
 <?php
-namespace Server\App\Utils;
+namespace App\Utils;
 
 class ShippingHelper
 {

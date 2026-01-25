@@ -1,5 +1,5 @@
 <?php
-namespace Server\App\Http\Service;
+namespace App\Http\Service;
 
 use App\Enums\VoucherType;
 use App\Exceptions\BusinessException;

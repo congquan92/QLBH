@@ -14,12 +14,12 @@ return new class extends Migration {
             $table->id();
 
             $table->unsignedBigInteger('quantity');
-            $table->boolean('isReviewed')->default(false);
-            $table->decimal('finalPrice', 15, 2);
-            $table->decimal('listPriceSnapShot', 15, 2);
-            $table->string('nameProductSnapShot');
-            $table->string('urlImageSnapShot');
-            $table->json('variantAttributesSnapshot');
+            $table->boolean('is_reviewed')->default(false);
+            $table->decimal('final_price', 15, 2);
+            $table->decimal('list_price_snapShot', 15, 2);
+            $table->string('name_product_snapshot');
+            $table->string('url_image_snapShot');
+            $table->json('variant_attributes_snapshot');
             $table->foreignId('order_id')->constrained();
             $table->foreignId('product_id')->constrained();
             $table->timestamps();

@@ -35,4 +35,21 @@ return [
         ],
     ],
 
+    'ghn' => [
+        'token' => env('GHN_TOKEN'),
+        'shop_id' => env('GHN_SHOP_ID'),
+        'base_url' => env('GHN_BASE_URL'),
+        'from' => [
+            'name' => env('GHN_FROM_NAME'),
+            'phone' => env('GHN_FROM_PHONE'),
+            'address' => env('GHN_FROM_ADDRESS'),
+            'ward_code' => env('GHN_FROM_WARD'),
+            'district_id' => env('GHN_FROM_DISTRICT'),
+            'district_name' => env('FROM_DISTRICT_NAME'),
+            'province_name' => env('FROM_PROVINCE_NAME'),
+            'ward_name' => env('FROM_WARD_NAME'),
+
+        ]
+    ],
+
 ];

@@ -2,11 +2,19 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\orders\OrderCreationRequest;
+use App\Http\Service\OrderService;
 use App\Models\Order;
 use Illuminate\Http\Request;
 
 class OrderController extends Controller
 {
+     protected OrderService $orderService;
+
+     public function __construct(OrderService $orderService)
+    {
+        $this->orderService = $orderService;
+    }
     /**
      * Display a listing of the resource.
      */
@@ -26,9 +34,9 @@ class OrderController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(OrderCreationRequest $request)
     {
-        //
+        $this->orderService->create($request);
     }
 
     /**
