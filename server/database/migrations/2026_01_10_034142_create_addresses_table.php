@@ -33,7 +33,7 @@ return new class extends Migration {
             $table->decimal('longitude', 10, 7)->nullable();
 
         
-          $table->string('addressType')
+          $table->string('address_type')
                   ->default(AddressType::HOME->value);
 
             $table->boolean('is_default')->default(false);

@@ -13,12 +13,12 @@ return new class extends Migration {
 
             // ===== Core identity =====
             $table->string('username', 100)->unique();
-            $table->string('email', 100)->unique()->nullable();
-            $table->string('phone', 100)->nullable();
+            $table->string('email', 100);
+            $table->string('phone', 100);
             $table->string('password');
 
             // ===== Profile =====
-            $table->string('full_name')->nullable();
+            $table->string('full_name');
             $table->string('avatar_image')->nullable();
 
             // ===== Provider (OAuth) =====

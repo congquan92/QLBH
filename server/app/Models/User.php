@@ -38,10 +38,9 @@ class User extends Authenticatable implements JWTSubject
 
     protected $hidden = ['password'];
 
-    // JWT
     public function getJWTIdentifier()
     {
-        return $this->getKey(); // int ID
+        return $this->getKey();
     }
 
     public function getJWTCustomClaims()

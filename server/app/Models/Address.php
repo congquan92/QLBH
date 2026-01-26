@@ -27,7 +27,7 @@ class Address extends Model
         'postal_code',
         'latitude',
         'longitude',
-        'addressType',
+        'address_type',
         'isDefault'
     ];
 
