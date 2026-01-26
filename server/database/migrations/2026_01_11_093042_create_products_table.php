@@ -20,9 +20,8 @@ return new class extends Migration {
             $table->string('url_image_cover');
             $table->decimal('list_price',15,2)->default(0);
             $table->decimal('sale_price',15,2)->default(0);
-            $table->string('sold_quantity');
-            $table->string('avg_rating');
-            $table->string('out_standing')->nullable();
+            $table->unsignedBigInteger('sold_quantity');
+            $table->double('avg_rating');
             $table->string('status')->default(Status::ACTIVE);
             $table->foreignId('supplier_id')->constrained();
             $table->foreignId('category_id')->constrained();
