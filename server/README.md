@@ -10,7 +10,7 @@ composer install
 - **Chạy dự án:**
 
 ```bash
-php artisan server
+php artisan serve
 
 ```
 
@@ -68,7 +68,7 @@ php artisan db:seed
 
 ### Các lệnh hữu ích khác:
 
-- **Clear Cache:** Nếu sửa code/config mãi không nhận, "vả" ngay combo:
+- **Clear Cache:** Nếu sửa code/config mãi không nhận
 
 ```bash
 php artisan optimize:clear
