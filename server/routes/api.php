@@ -5,8 +5,10 @@ use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\SupplierController;
+use App\Http\Controllers\WebAuthnController;
 use App\Http\Middleware\JwtAuthenticate;
 use Illuminate\Support\Facades\Route;
+use Laragear\WebAuthn\Http\Routes as WebAuthnRoutes;
 
 
 // Route public
@@ -45,4 +47,23 @@ Route::middleware('auth')->group(function () {
     //Supplier
     Route::post('/supplier/add', [SupplierController::class, 'store']);
 
+    
+    Route::post('/webauthn/register/options', [WebAuthnRegisterController::class, 'options']);
+    Route::post('/webauthn/register', [WebAuthnRegisterController::class, 'register']);
+
+    // --- NHÓM XÁC THỰC (Login để điểm danh) ---
+    // Bước 1: Lấy challenge
+    Route::post('/webauthn/login/options', [WebAuthnLoginController::class, 'options']);
+    // Bước 2: Xác thực chữ ký từ vân tay
+    Route::post('/webauthn/login', [WebAuthnLoginController::class, 'login']);
+
+    // --- NHÓM QUẢN LÝ KHÓA (Dùng cho Admin/User) ---
+    Route::post('/webauthn/list', [MyWebAuthnController::class, 'WebAuthnList']);
+    Route::post('/webauthn/delete', [MyWebAuthnController::class, 'delete']);
+    Route::post('/webauthn/rename', [MyWebAuthnController::class, 'rename']);
+
+    // --- LOGIC ĐIỂM DANH (Quan trọng nhất) ---
+    // Route này chỉ chạy được SAU KHI webauthn/login thành công
+    Route::middleware(['webauthn.confirm'])
+         ->post('/attendance/record', [AttendanceController::class, 'recordAttendance']);
 });

@@ -4,15 +4,20 @@ namespace App\Models;
 
 use App\Enums\Gender;
 use App\Enums\UserStatus;
+use App\Models\Attendance;
+use App\Models\JobHistory;
 use Tymon\JWTAuth\Contracts\JWTSubject;
+
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Laragear\WebAuthn\Contracts\WebAuthnAuthenticatable;
+use Laragear\WebAuthn\WebAuthnAuthentication;
 
 /**
  * @property-read \Illuminate\Database\Eloquent\Collection|Role[] $roles
  */
-class User extends Authenticatable implements JWTSubject
+class User extends Authenticatable implements JWTSubject, WebAuthnAuthenticatable
 {
-
+    use WebAuthnAuthentication;
     protected $primaryKey = 'id';
     public $incrementing = true; // auto increment
     protected $keyType = 'int';
@@ -91,4 +96,13 @@ class User extends Authenticatable implements JWTSubject
         return $this->hasMany(VoucherUsage::class);
     }
 
+    public function jobHistories()
+    {
+        return $this->hasMany(JobHistory::class);
+    }
+
+    public function attendances()
+    {
+        return $this->hasMany(Attendance::class);
+    }
 }

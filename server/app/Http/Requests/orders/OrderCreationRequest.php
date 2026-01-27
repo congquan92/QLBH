@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Requests\orders;
+namespace App\Http\Requests\Orders;
 
 use App\Enums\PaymentType;
 use Illuminate\Foundation\Http\FormRequest;

@@ -1,5 +1,5 @@
 <?php
-namespace App\Http\Responses\productVariant;
+namespace App\Http\Responses\ProductVariant;
 class ProductVariantResponse {
     public function __construct(
         public int $id,

@@ -1,5 +1,5 @@
 <?php
-namespace App\Http\Responses\variantAttribute;
+namespace App\Http\Responses\VariantAttribute;
 class VariantAttributeResponse {
     public function __construct(
         public int $id,

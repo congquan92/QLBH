@@ -1,5 +1,5 @@
 <?php
-namespace App\Http\Responses\category;
+namespace App\Http\Responses\Category;
 
 use Carbon\Carbon;
 class CategoryResponse {

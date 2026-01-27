@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Responses\product;
+namespace App\Http\Responses\Product;
 
 use App\Enums\Status;
 use Illuminate\Contracts\Support\Arrayable;

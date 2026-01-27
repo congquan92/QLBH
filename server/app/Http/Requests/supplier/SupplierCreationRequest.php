@@ -1,5 +1,5 @@
 <?php
-namespace App\Http\Requests\supplier;
+namespace App\Http\Requests\Supplier;
 
 use Illuminate\Foundation\Http\FormRequest;
 
