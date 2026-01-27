@@ -66,7 +66,7 @@ php artisan db:seed
 
 ---
 
-### 💡 Tips thực tế cho Gen Z:
+### Các lệnh hữu ích khác:
 
 - **Clear Cache:** Nếu sửa code/config mãi không nhận, "vả" ngay combo:
 
