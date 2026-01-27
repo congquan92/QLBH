@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { FOOTER_DATA } from "@/lib/data/footer";
+import { FOOTER_DATA } from "@/data/footer";
 
 export default function Footer() {
     const { content, social, payments, shipping } = FOOTER_DATA;
@@ -90,7 +90,7 @@ export default function Footer() {
             {/* Copyright */}
             <div className="border-t border-border">
                 <div className="mx-auto px-4 lg:px-6 py-4">
-                    <p className="text-sm text-center text-gray-600">© 2024 TORANO. All rights reserved.</p>
+                    <p className="text-sm text-center text-gray-600">© 2024 ARES CLUB. All rights reserved.</p>
                 </div>
             </div>
         </footer>

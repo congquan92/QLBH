@@ -7,7 +7,14 @@ import Image from "next/image";
 
 export default function Topbar() {
     const [isVisible, setIsVisible] = useState(true);
-    if (!isVisible) return null;
+    if (!isVisible)
+        return (
+            <div className="bg-black">
+                <div className="hidden md:block relative h-20 overflow-hidden">
+                    <Image src="/topbar_img.jpg" alt="Sale banner" fill className="object-fill" priority />
+                </div>
+            </div>
+        );
     return (
         <div className="bg-black">
             <div className="hidden md:block relative h-20 overflow-hidden">
@@ -27,7 +34,7 @@ export default function Topbar() {
                         <Link href="/huong-dan" className="hover:text-yellow-300 hover:underline">
                             <span>Hướng dẫn cách đổi</span>
                         </Link>
-                        <button onClick={() => setIsVisible(false)} className="p-0.5 hover:bg-white/20 rounded" aria-label="Close banner">
+                        <button onClick={() => setIsVisible(false)} className="p-0.5 hover:bg-white/20 rounded cursor-pointer" aria-label="Close banner">
                             <X className="size-4" />
                         </button>
                     </div>

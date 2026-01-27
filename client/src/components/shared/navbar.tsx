@@ -5,7 +5,8 @@ import { useState } from "react";
 import { ChevronDown, Menu, Search, ShoppingCart, User, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { NAVBAR_DATA } from "@/lib/data/navbar";
+import { NAVBAR_DATA } from "@/data/navbar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export default function Navbar() {
     const [openDropdown, setOpenDropdown] = useState<string | null>(null);
@@ -17,12 +18,12 @@ export default function Navbar() {
         <nav className="bg-white border-b border-border sticky top-0 z-50">
             <div className="mx-auto px-4 lg:px-6">
                 <div className="flex items-center justify-between h-16">
-                    <div className="flex items-center justify-center gap-4">
-                        <Link href="/" className="flex items-center gap-2">
-                            <div className="text-2xl font-bold">
-                                <span className="text-black">✓</span>
-                                <span className="text-black">TORANO</span>
-                            </div>
+                    <div className="flex items-center justify-center gap-3">
+                        <Link href="/">
+                            <Avatar className="size-16 md:size-20 rounded-none">
+                                <AvatarImage alt="ARES CLUB" src="/ARES_CLUB.png" className="object-contain" />
+                                <AvatarFallback className="bg-transparent font-bold">ARES</AvatarFallback>
+                            </Avatar>
                         </Link>
 
                         <div className="hidden lg:flex items-center gap-1">
@@ -87,7 +88,7 @@ export default function Navbar() {
                                     <SheetTitle className="text-left">
                                         <div className="text-2xl font-bold">
                                             <span className="text-black">✓</span>
-                                            <span className="text-black">TORANO</span>
+                                            <span className="text-black">ARES CLUB</span>
                                         </div>
                                     </SheetTitle>
                                 </SheetHeader>

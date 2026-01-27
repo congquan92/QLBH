@@ -14,7 +14,7 @@ export const FOOTER_DATA: {
 } = {
     content: {
         about: {
-            title: "Thời trang nam TORANO",
+            title: "Thời trang nam ARES CLUB",
             description:
                 "Hệ thống thời trang cho phái mạnh hàng đầu Việt Nam, hướng tới sự phong cách, lịch lãm và trẻ trung.",
         },
@@ -27,7 +27,7 @@ export const FOOTER_DATA: {
                 },
                 { label: "Điện thoại", value: "0964247171" },
                 { label: "Fax", value: "0904534739" },
-                { label: "Email", value: "quan@torano.vn" },
+                { label: "Email", value: "quan@aresclub.vn" },
             ],
         },
         quickLinks: {
