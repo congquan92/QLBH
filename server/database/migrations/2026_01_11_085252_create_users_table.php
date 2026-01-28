@@ -38,12 +38,12 @@ return new class extends Migration {
             $table->decimal('total_spent', 15, 2)->default(0);
             $table->integer('point')->default(0);
 
-          
+
             $table->foreignId('user_rank_id')->constrained();
             $table->foreignId('role_id')->constrained('roles');
 
             $table->integer('token_version')->default(1);
-
+            $table->foreignId('position_id')->nullable()->constrained('positions');
             // ===== Laravel auth =====
             $table->rememberToken();
             $table->timestamps();

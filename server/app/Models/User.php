@@ -6,8 +6,9 @@ use App\Enums\Gender;
 use App\Enums\UserStatus;
 use App\Models\Attendance;
 use App\Models\JobHistory;
+use Illuminate\Support\Facades\Log;
 use Tymon\JWTAuth\Contracts\JWTSubject;
-
+use Laragear\WebAuthn\WebAuthnData;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Laragear\WebAuthn\Contracts\WebAuthnAuthenticatable;
 use Laragear\WebAuthn\WebAuthnAuthentication;
@@ -34,6 +35,7 @@ class User extends Authenticatable implements JWTSubject, WebAuthnAuthenticatabl
         'provider',
         'provider_id',
         'status',
+        'position_id'
     ];
 
     protected $casts = [
@@ -75,6 +77,10 @@ class User extends Authenticatable implements JWTSubject, WebAuthnAuthenticatabl
     {
         return $this->hasMany(Order::class);
     }
+    public function position()
+    {
+        return $this->belongsTo(Position::class);
+    }
 
     public function userRank()
     {
@@ -105,4 +111,24 @@ class User extends Authenticatable implements JWTSubject, WebAuthnAuthenticatabl
     {
         return $this->hasMany(Attendance::class);
     }
+
+    public function webAuthnData(): WebAuthnData
+    {
+        return new WebAuthnData(
+            (string) ($this->email ?? $this->username), // Argument #1: name/email
+            (string) ($this->full_name ?? $this->username ?? 'User') // Argument #2: displayName
+        );
+    }
+
+    // Giữ lại các hàm này để hỗ trợ các tính năng khác của package
+    public function webAuthnDisplayName(): string
+    {
+        return (string) ($this->full_name ?? $this->username ?? 'User');
+    }
+
+    public function webAuthnName(): string
+    {
+        return (string) ($this->email ?? $this->username);
+    }
+
 }
