@@ -2,17 +2,25 @@
 
 namespace App\Models;
 
+use App\Enums\EmploymentType;
 use App\Enums\Gender;
 use App\Enums\UserStatus;
+use App\Models\Attendance;
+use App\Models\JobHistory;
+use Illuminate\Support\Facades\Log;
 use Tymon\JWTAuth\Contracts\JWTSubject;
+use Laragear\WebAuthn\WebAuthnData;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Laragear\WebAuthn\Contracts\WebAuthnAuthenticatable;
+use Laragear\WebAuthn\WebAuthnAuthentication;
+
 
 /**
  * @property-read \Illuminate\Database\Eloquent\Collection|Role[] $roles
  */
-class User extends Authenticatable implements JWTSubject
+class User extends Authenticatable implements JWTSubject, WebAuthnAuthenticatable
 {
-
+    use WebAuthnAuthentication;
     protected $primaryKey = 'id';
     public $incrementing = true; // auto increment
     protected $keyType = 'int';
@@ -29,6 +37,7 @@ class User extends Authenticatable implements JWTSubject
         'provider',
         'provider_id',
         'status',
+        'position_id'
     ];
 
     protected $casts = [
@@ -38,10 +47,9 @@ class User extends Authenticatable implements JWTSubject
 
     protected $hidden = ['password'];
 
-    // JWT
     public function getJWTIdentifier()
     {
-        return $this->getKey(); // int ID
+        return $this->getKey();
     }
 
     public function getJWTCustomClaims()
@@ -71,6 +79,10 @@ class User extends Authenticatable implements JWTSubject
     {
         return $this->hasMany(Order::class);
     }
+    public function position()
+    {
+        return $this->belongsTo(Position::class);
+    }
 
     public function userRank()
     {
@@ -92,4 +104,59 @@ class User extends Authenticatable implements JWTSubject
         return $this->hasMany(VoucherUsage::class);
     }
 
+    public function jobHistories()
+    {
+        return $this->hasMany(JobHistory::class);
+    }
+
+    public function attendances()
+    {
+        return $this->hasMany(Attendance::class);
+    }
+
+    public function webAuthnData(): WebAuthnData
+    {
+        return new WebAuthnData(
+            (string) $this->id,
+            $this->email,
+            $this->full_name
+        );
+    }
+
+    // Giữ lại các hàm này để hỗ trợ các tính năng khác của package
+    public function webAuthnDisplayName(): string
+    {
+        return (string) ($this->full_name ?? $this->username ?? 'User');
+    }
+
+    public function webAuthnName(): string
+    {
+        return (string) ($this->id ?? $this->username);
+    }
+
+    public function currentJob()
+    {
+        return $this->hasOne(JobHistory::class)
+            ->whereNull('end_date')
+            ->orWhere('end_date', '>=', now())
+            ->latest('effective_date');
+    }
+    public function getEmploymentTypeAttribute()
+    {
+        return $this->currentJob?->employment_type;
+    }
+
+    public function getIsFullTimeAttribute(): bool
+    {
+        return $this->currentJob?->employment_type === EmploymentType::FULLTIME;
+    }
+    public function getCurrentSalaryAttribute()
+    {
+        return $this->currentJob?->current_salary ?? $this->position?->base_salary ?? 0;
+    }
+
+    public function getSalaryTypeAttribute()
+    {
+        return $this->position?->salary_type;
+    }
 }

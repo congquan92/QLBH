@@ -1,5 +1,5 @@
 <?php
-namespace App\Http\Responses\attribute;
+namespace App\Http\Responses\Attribute;
 
 class AttributeResponse {
     public function __construct(

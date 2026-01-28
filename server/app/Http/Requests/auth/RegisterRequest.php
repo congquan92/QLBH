@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Requests\auth;
+namespace App\Http\Requests\Auth;
 
 use App\Exceptions\MessageError;
 use Illuminate\Foundation\Http\FormRequest;

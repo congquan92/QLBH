@@ -1,5 +1,5 @@
 <?php
-namespace App\Http\Responses\attributeValue;
+namespace App\Http\Responses\AttributeValue;
 class AttributeValueResponse {
     public function __construct(
         public int $id,

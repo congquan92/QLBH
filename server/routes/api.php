@@ -7,13 +7,16 @@ use App\Http\Controllers\ProductController;
 use App\Http\Controllers\SupplierController;
 use App\Http\Middleware\JwtAuthenticate;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\WebAuthn\WebAuthnLoginController;
+use App\Http\Controllers\WebAuthn\WebAuthnRegisterController;
+use App\Http\Controllers\WebAuthn\WebAuthnController;
 
 
 // Route public
 Route::post('/auth/login', [AuthController::class, 'login']);
 Route::get('/product/list', [ProductController::class, 'findAll']);
 Route::get('/product/detail/{productId}', [ProductController::class, 'getProductById']);
- Route::post('/order/add', [OrderController::class, 'store']);
+Route::post('/order/add', [OrderController::class, 'store']);
 
 // Route bảo vệ bởi JWT
 Route::middleware('auth')->group(function () {
@@ -45,4 +48,13 @@ Route::middleware('auth')->group(function () {
     //Supplier
     Route::post('/supplier/add', [SupplierController::class, 'store']);
 
+
+    Route::post('/webauthn/register/options', [WebAuthnRegisterController::class, 'options']);
+    Route::post('/webauthn/register', [WebAuthnRegisterController::class, 'register']);
+
+    // Lấy challenge để login/xác thực điểm danh
+    Route::post('/webauthn/login/options', [WebAuthnLoginController::class, 'options']);
+    Route::post('/webauthn/login', [WebAuthnController::class, 'recordAttendance']);
+    Route::get('/webauthn/list', [WebAuthnController::class, 'WebAuthnList']);
+    Route::post('/webauthn/delete/{id}', [WebAuthnController::class, 'delete']);
 });

@@ -1,7 +1,8 @@
 <?php
 namespace App\Http\Mapper;
 
-use App\Http\Responses\attributeValue\AttributeValueResponse;
+
+use App\Http\Responses\AttributeValue\AttributeValueResponse;
 use App\Models\ProductAttributeValue;
 
 class AttributeValueMapper{

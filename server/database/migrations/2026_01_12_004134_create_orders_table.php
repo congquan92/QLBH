@@ -19,18 +19,18 @@ return new class extends Migration {
             $table->string('customer_phone');
             $table->string('delivery_ward_name');
             $table->string('delivery_ward_code');
-            $table->string('delivery_district_id');
-            $table->string('delivery_province_id');
+            $table->unsignedInteger('delivery_district_id');
+            $table->unsignedInteger('delivery_province_id');
             $table->string('delivery_district_name');
             $table->string('delivery_province_name');
             $table->string('delivery_address');
-            $table->string('service_type_id');
-            $table->string('original_order_amount');
+            $table->unsignedInteger('service_type_id');
+            $table->decimal('original_order_amount',15,2);
             $table->unsignedInteger('weight');
             $table->unsignedInteger('length');
             $table->unsignedInteger('width');
             $table->unsignedInteger('height');
-            $table->string('total_fee_for_ship');
+            $table->decimal('total_fee_for_ship',15,2);
             $table->string('order_tracking_code')->nullable();
             $table->string('note')->nullable();
             $table->decimal('total_amount',15,2);
@@ -39,9 +39,9 @@ return new class extends Migration {
             $table->string(column: 'payment_type');
             $table->string('payment_status')
                 ->default(PaymentStatus::UNPAID->value);
-            $table->string('delivered_at')->nullable();
-            $table->string('completed_at')->nullable();
-            $table->string('payment_at')->nullable();
+            $table->dateTime('delivered_at')->nullable();
+            $table->dateTime('completed_at')->nullable();
+            $table->dateTime('payment_at')->nullable();
             $table->boolean('is_confirmed')->default(false);
 
             $table->foreignId('user_id')->nullable()->constrained();

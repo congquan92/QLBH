@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Responses\auth;
+namespace App\Http\Responses\Auth;
 
 use App\Enums\Gender;
 use App\Enums\UserStatus;

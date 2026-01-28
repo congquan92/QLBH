@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Responses\auth;
+namespace App\Http\Responses\Auth;
 
 use Carbon\Carbon;
 
