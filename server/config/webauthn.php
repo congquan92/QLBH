@@ -45,14 +45,14 @@ return [
     |
     */
 
-    'challenge' => [
-        'bytes' => 16,
-        'timeout' => 120,
-        'key' => '_webauthn',
+    'database' => [
+        'model' => Laragear\WebAuthn\Models\WebAuthnCredential::class,
+        'table' => 'webauthn_credentials', // Tên bảng lưu khóa công khai
     ],
+
     'cache' => [
         'config' => [
-            'store' => 'database', // Ép dùng database cache mà bạn đã cấu hình trong .env
+            'store' => 'database',
             'prefix' => 'webauthn',
         ],
     ],

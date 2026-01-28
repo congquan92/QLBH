@@ -6,4 +6,5 @@ enum EmploymentType: string
 {
     case FULLTIME = 'FULLTIME';
     case PARTTIME = 'PARTTIME';
+    case ALL = 'ALL';
 }

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\EmploymentType;
 use App\Enums\Gender;
 use App\Enums\UserStatus;
 use App\Models\Attendance;
@@ -12,6 +13,7 @@ use Laragear\WebAuthn\WebAuthnData;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Laragear\WebAuthn\Contracts\WebAuthnAuthenticatable;
 use Laragear\WebAuthn\WebAuthnAuthentication;
+
 
 /**
  * @property-read \Illuminate\Database\Eloquent\Collection|Role[] $roles
@@ -115,8 +117,9 @@ class User extends Authenticatable implements JWTSubject, WebAuthnAuthenticatabl
     public function webAuthnData(): WebAuthnData
     {
         return new WebAuthnData(
-            (string) ($this->email ?? $this->username), // Argument #1: name/email
-            (string) ($this->full_name ?? $this->username ?? 'User') // Argument #2: displayName
+            (string) $this->id,
+            $this->email,
+            $this->full_name
         );
     }
 
@@ -128,7 +131,32 @@ class User extends Authenticatable implements JWTSubject, WebAuthnAuthenticatabl
 
     public function webAuthnName(): string
     {
-        return (string) ($this->email ?? $this->username);
+        return (string) ($this->id ?? $this->username);
     }
 
+    public function currentJob()
+    {
+        return $this->hasOne(JobHistory::class)
+            ->whereNull('end_date')
+            ->orWhere('end_date', '>=', now())
+            ->latest('effective_date');
+    }
+    public function getEmploymentTypeAttribute()
+    {
+        return $this->currentJob?->employment_type;
+    }
+
+    public function getIsFullTimeAttribute(): bool
+    {
+        return $this->currentJob?->employment_type === EmploymentType::FULLTIME;
+    }
+    public function getCurrentSalaryAttribute()
+    {
+        return $this->currentJob?->current_salary ?? $this->position?->base_salary ?? 0;
+    }
+
+    public function getSalaryTypeAttribute()
+    {
+        return $this->position?->salary_type;
+    }
 }

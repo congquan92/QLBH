@@ -1,15 +1,15 @@
 <?php
 namespace App\Http\Service;
 
+use App\Enums\CheckInStatus;
+use App\Enums\EmploymentType;
 use App\Models\Attendance;
+use App\Models\Holiday;
+use App\Models\ShiftAssignment;
 use App\Models\User;
 use Carbon\Carbon;
-class WebAuthnService{
-    public function registerDevice(User $user, $request)
-    {
-        // Laragear tự động xử lý request để lưu vào bảng webauthn_credentials
-        return $user->addWebAuthnCredential($request);
-    }
+class WebAuthnService
+{
 
     public function listCredentials(User $user)
     {
@@ -23,33 +23,62 @@ class WebAuthnService{
     {
         return $user->webAuthnCredentials()->delete();
     }
-    public function recordAttendance(User $user):Attendance{
-       $today = Carbon::today()->toDateString();
+  public function recordAttendance(User $user): Attendance
+    {
         $now = Carbon::now();
+        $today = $now->toDateString();
+
+        $assignment = ShiftAssignment::with('shift')
+            ->where('user_id', $user->id)
+            ->where('date', $today)
+            ->first();
 
         $attendance = Attendance::where('user_id', $user->id)
             ->whereDate('date', $today)
+            ->whereNull('check_out')
             ->first();
 
         if (!$attendance) {
-            // Lần đầu quét trong ngày -> Check-in
+      
+            $status = CheckInStatus::PRESENT;
+            if ($assignment && $assignment->shift) {
+                
+                $startTime = Carbon::parse($today . ' ' . $assignment->shift->start_time);
+                $graceTime = $startTime->addMinutes($assignment->shift->grace_period);
+
+                if ($now->greaterThan($graceTime)) {
+                    $status = CheckInStatus::LATE;
+                }
+            } else {
+                $status = ($user->employment_type === EmploymentType::FULLTIME) 
+                    ? CheckInStatus::OT 
+                    : CheckInStatus::PRESENT;
+            }
+
             return Attendance::create([
-                'user_id' => $user->id,
-                'date' => $today,
+                'user_id'  => $user->id,
+                'shift_id' => $assignment ? $assignment->shift_id : null,
+                'date'     => $today,
                 'check_in' => $now,
-                'status' => 'present'
+                'status'   => $status 
             ]);
         }
 
-        // Lần thứ 2 quét trong ngày -> Check-out
+
         $checkIn = Carbon::parse($attendance->check_in);
-        // Tính tổng số giờ (ví dụ: 8.5 giờ)
-        $totalHours = $checkIn->diffInMinutes($now) / 60;
+        
+       
+        $totalHours = round($checkIn->diffInMinutes($now) / 60, 2);
+
+    
+        $isHoliday = Holiday::where('holiday_date', $today)->exists();
 
         $attendance->update([
-            'check_out' => $now,
-            'total_hours' => round($totalHours, 2)
+            'check_out'   => $now,
+            'total_hours' => $totalHours,
+            'is_holiday'  => $isHoliday
         ]);
+
         return $attendance;
     }
 }

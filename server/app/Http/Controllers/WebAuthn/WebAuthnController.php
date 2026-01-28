@@ -4,6 +4,7 @@ namespace App\Http\Controllers\WebAuthn;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Http\Service\WebAuthnService;
+use Laragear\WebAuthn\Http\Requests\AssertedRequest;
 
 
 class WebAuthnController extends Controller
@@ -16,38 +17,50 @@ class WebAuthnController extends Controller
     }
 
     /**
-     * API: Đăng ký thiết bị (vân tay) mới
-     * React gọi tới đây sau khi WebAuthn.register() thành công
-     */
-    public function register(Request $request)
-    {
-        $user = $request->user();
-        
-        try {
-            $this->webAuthnService->registerDevice($user, $request);
-            return response()->json(['message' => 'Đăng ký vân tay thành công!']);
-        } catch (\Exception $e) {
-            return response()->json(['error' => 'Lỗi lưu vân tay: ' . $e->getMessage()], 400);
-        }
-    }
-
-    /**
      * API: Điểm danh bằng vân tay
      * Middleware 'webauthn.confirm' sẽ đảm bảo vân tay đã được quét trước khi vào hàm này
      */
-    public function recordAttendance(Request $request)
+    public function recordAttendance(AssertedRequest $request)
     {
-        $user = $request->user();
+        // 1. Lấy User từ JWT
+        $user = auth('api')->user();
+
+        if (!$user) {
+            return response()->json(['error' => 'Vui lòng đăng nhập trước'], 401);
+        }
+        \Log::info('WebAuthn Login Request Data:', $request->all());
+
+        // Log các thông tin quan trọng mà Package đã parse được
+        \Log::info('Parsed WebAuthn Data:', [
+            'id' => $request->id,              // Credential ID (Base64)
+            'rawId' => $request->rawId,        // ID dạng nhị phân
+            'clientDataJSON' => $request->clientDataJSON,
+            'authenticatorData' => $request->authenticatorData,
+            'signature' => $request->signature,
+            'userHandle' => $request->userHandle,
+        ]);
+        $credential = $user->webAuthnCredentials()
+            ->where('id', $request->id)
+            ->first();
+
+        if (!$credential) {
+            return response()->json(['error' => 'Không tìm thấy vân tay này'], 404);
+        }
 
         try {
+            // 3. Điểm danh
             $attendance = $this->webAuthnService->recordAttendance($user);
-            
+
             return response()->json([
                 'message' => 'Điểm danh thành công!',
-                'data' => $attendance
+                'data' => $attendance,
+                'user' => [
+                    'id' => $user->id,
+                    'full_name' => $user->full_name
+                ]
             ]);
         } catch (\Exception $e) {
-            return response()->json(['error' => 'Lỗi điểm danh: ' . $e->getMessage()], 500);
+            return response()->json(['error' => 'Lỗi nghiệp vụ: ' . $e->getMessage()], 500);
         }
     }
 

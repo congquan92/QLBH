@@ -16,8 +16,10 @@ return new class extends Migration {
             $table->date('date');
             $table->timestamp('check_in')->nullable();
             $table->timestamp('check_out')->nullable();
+            $table->boolean('is_holiday')->default(false);
             $table->decimal('total_hours', 5, 2)->default(0);
             $table->string('status')->default('PRESENT');
+            $table->foreignId('shift_id')->nullable()->constrained();
             $table->timestamps();
         });
     }

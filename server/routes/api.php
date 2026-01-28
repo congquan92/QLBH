@@ -54,9 +54,7 @@ Route::middleware('auth')->group(function () {
 
     // Lấy challenge để login/xác thực điểm danh
     Route::post('/webauthn/login/options', [WebAuthnLoginController::class, 'options']);
-    Route::post('/webauthn/login', [WebAuthnLoginController::class, 'login']);
-
-    // Quản lý danh sách thiết bị
+    Route::post('/webauthn/login', [WebAuthnController::class, 'recordAttendance']);
     Route::get('/webauthn/list', [WebAuthnController::class, 'WebAuthnList']);
     Route::post('/webauthn/delete/{id}', [WebAuthnController::class, 'delete']);
 });

@@ -12,7 +12,7 @@ return new class extends Migration {
             $table->id(); // BIGINT auto-increment
 
             // ===== Core identity =====
-            $table->string('username', 100)->unique();
+            $table->string('username', 100)->nullable()->unique();
             $table->string('email', 100);
             $table->string('phone', 100);
             $table->string('password');
