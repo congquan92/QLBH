@@ -33,10 +33,13 @@ class User extends Authenticatable implements JWTSubject, WebAuthnAuthenticatabl
         'phone',
         'gender',
         'point',
+        'total_spent',
         'token_version',
         'provider',
         'provider_id',
         'status',
+        'role_id',
+        'user_rank_id',
         'position_id'
     ];
 
@@ -118,7 +121,6 @@ class User extends Authenticatable implements JWTSubject, WebAuthnAuthenticatabl
     {
         return new WebAuthnData(
             (string) $this->id,
-            $this->email,
             $this->full_name
         );
     }
