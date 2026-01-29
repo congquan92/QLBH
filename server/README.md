@@ -14,8 +14,11 @@ php artisan serve
 
 ```
 
-- **Van tay:**
+- **Vân tay:**
+
+```bash
 composer require laragear/webauthn
+```
 
 - **Xem log hệ thống (Real-time):**
 
