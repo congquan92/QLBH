@@ -2,6 +2,8 @@
 
 namespace App\Http\Service\auth;
 
+use App\Enums\Rank;
+use App\Enums\RoleType;
 use App\Enums\UserStatus;
 use App\Exceptions\BusinessException;
 use App\Exceptions\ErrorCode;
@@ -11,6 +13,8 @@ use App\Http\Requests\IntrospectRequest;
 
 use App\Http\Requests\RegisterRequest;
 use App\Http\Responses\Auth\AuthenticationResponse;
+use App\Models\Role;
+use App\Models\UserRank;
 use Carbon\Carbon;
 use Hash;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -75,24 +79,29 @@ class AuthService
     /**
      * Đăng kí người dùng
      */
-    // public function register(RegisterRequest $request): string
-    // {
-    //     if (User::where('username', $request['username'])->exists()) {
-    //         throw new BusinessException(
-    //             ErrorCode::EXISTED,
-    //             MessageError::USERNAME_EXISTED
-    //         );
-    //     }
-    //     $user = User::create([
-    //     'username' => $request['username'],
-    //     'email' => $request['email'],
-    //     'password' => bcrypt($request['password']),
-    //     'full_name' => $request['full_name'],
-    //     'gender' => $request['gender'],
-    //     'date_of_birth' => $request['date_of_birth'],
-    // ]);
+    public function register(RegisterRequest $request): string
+    {
+        if (User::where('username', $request['username'])->exists()) {
+            throw new BusinessException(
+                ErrorCode::EXISTED,
+                MessageError::USERNAME_EXISTED
+            );
+        }
+        $userRank = UserRank::where('name', Rank::BRONZE->value)->firstOrFail();
+        $role = Role::where('name', RoleType::USER->value)->firstOrFail();
+        $user = User::create([
+        'username' => $request['username'],
+        'email' => $request['email'],
+        'password' => bcrypt($request['password']),
+        'full_name' => $request['full_name'],
+        'gender' => $request['gender'],
+        'date_of_birth' => $request['date_of_birth'],
+        'status' => UserStatus::NONE,
+        'user_rank_id' => $userRank->id,
+        'role_id'=> $role->id
+    ]);
 
-    // }
+    }
 
     /**
      * Refresh token
