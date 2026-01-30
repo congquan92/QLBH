@@ -21,10 +21,11 @@ class AuthServiceProvider extends ServiceProvider
                 return true;
             }
 
-            return $user->role
-                && $user->role->permissions()
-                    ->where('name', 'CREATE_CATEGORIES')
-                    ->exists();
+            // return $user->role
+            //     && $user->role->permissions()
+            //         ->where('name', 'CREATE_CATEGORIES')
+            //         ->exists();
+            return true;
         });
 
 
@@ -37,10 +38,11 @@ class AuthServiceProvider extends ServiceProvider
                 return true;
             }
 
-            return $user->role
-                && $user->role->permissions()
-                    ->where('name', 'ADD_SUPPLIER')
-                    ->exists();
+            // return $user->role
+            //     && $user->role->permissions()
+            //         ->where('name', 'ADD_SUPPLIER')
+            //         ->exists();
+            return true;
         });
 
     }

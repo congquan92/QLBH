@@ -24,13 +24,14 @@ class Permission extends Model
         'status' => Status::class
     ];
 
-    public function roles()
+     public function groupPermissions()
     {
         return $this->belongsToMany(
-            Role::class,
-            'role_permission',
+            GroupPermission::class,
+            'permission_group_detail',
             'permission_id',
-            'role_id'
+            'group_permission_id'
         );
     }
 }
+

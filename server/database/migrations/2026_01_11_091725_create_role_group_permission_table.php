@@ -7,11 +7,11 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
-        Schema::create('role_permission', function (Blueprint $table) {
+        Schema::create('role_group_permission', function (Blueprint $table) {
             $table->foreignId('role_id')->constrained('roles')->cascadeOnDelete();
-            $table->foreignId('permission_id')->constrained('permissions')->cascadeOnDelete();
+            $table->foreignId('group_permission_id')->cascadeOnDelete();
 
-            $table->primary(['role_id', 'permission_id']);
+            $table->primary(['role_id', 'group_permission_id']);
         });
 
 
