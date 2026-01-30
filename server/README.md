@@ -12,6 +12,7 @@ composer install
 ```bash
 php artisan serve
 
+php artisan serve --host=localhost
 ```
 
 - **Vân tay:**
