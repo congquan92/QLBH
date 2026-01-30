@@ -2,7 +2,7 @@ import { NavigationItem } from "@/types/navbar";
 
 export const NAVBAR_DATA: { items: NavigationItem[] } = {
     items: [
-        { label: "Sản phẩm mới", href: "/san-pham-moi" },
+        { label: "Sản phẩm", href: "/san-pham" },
         {
             label: "Áo nam",
             href: "/ao-nam",
