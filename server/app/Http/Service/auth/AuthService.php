@@ -100,6 +100,7 @@ class AuthService
         'user_rank_id' => $userRank->id,
         'role_id'=> $role->id
     ]);
+    return response()->json(['']);
 
     }
 
