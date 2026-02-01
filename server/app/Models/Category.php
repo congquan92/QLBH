@@ -26,14 +26,17 @@ class Category extends Model
     ];
     public function parent()
     {
-        return $this->belongsTo(Category::class, 'category_id');
+        return $this->belongsTo(Category::class, 'parent_id');
     }
 
     public function children()
     {
-        return $this->hasMany(Category::class, 'category_id');
+        return $this->hasMany(Category::class, 'parent_id');
     }
-
+    public function childrenRecursive()
+    {
+        return $this->children()->with('childrenRecursive');
+    }
     public function getAllChildIds()
     {
         $ids = [$this->id];

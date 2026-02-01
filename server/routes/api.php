@@ -29,7 +29,7 @@ Route::middleware('auth')->group(function () {
 
     // Category
     Route::post('/category/add', [CategoryController::class, 'store']);
-
+    // Route::get
     //Product
     Route::get('/product/list/sale', [ProductController::class, 'findAllForAdmin']);
     Route::get('/product/category/{id}', [ProductController::class, 'findAllByCategory']);
