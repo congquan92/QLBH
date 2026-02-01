@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\auth\LoginRequest;
+use App\Http\Requests\Auth\RegisterRequest;
 use App\Http\Service\auth\AuthService;
 use Illuminate\Http\Request;
 
@@ -20,6 +21,9 @@ class AuthController extends Controller
         $response = $this->authService->login($req);
 
         return response()->json($response->toArray());
+    }
+    public function register(RegisterRequest $req){
+        $this->authService->register($req);
     }
 
     public function logout()

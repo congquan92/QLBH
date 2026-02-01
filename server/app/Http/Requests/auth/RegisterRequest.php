@@ -18,9 +18,9 @@ class RegisterRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'full_name' => 'required|string|max:255',
+            'fullName' => 'required|string|max:255',
             'gender' => 'required|in:MALE,FEMALE,OTHER',
-            'date_of_birth' => 'required|date',
+            'dateOfBirth' => 'required|date',
             'email' => 'required|email',
             'phone' => 'required|string|max:20',
             'username' => 'required|string|max:100|unique:users,username',
@@ -31,10 +31,10 @@ class RegisterRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'full_name.required' => MessageError::FULLNAME_NOT_BLANK,
+            'fullName.required' => MessageError::FULLNAME_NOT_BLANK,
             'gender.required' => MessageError::GENDER_NOT_BLANK,
             'gender.in' => 'Gender must be MALE, FEMALE, or OTHER',
-            'date_of_birth.required' => 'Date of birth must be not blank',
+            'dateOfBirth.required' => 'Date of birth must be not blank',
             'email.required' => MessageError::EMAIL_NOT_BLANK,
             'email.email' => 'Invalid email',
             'email.unique' => 'Email already exists',

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\BrevoController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ProductController;
@@ -15,6 +16,7 @@ use App\Http\Controllers\WebAuthn\WebAuthnController;
 // Route public
 Route::post('/auth/login', [AuthController::class, 'login']);
 Route::get('/product/list', [ProductController::class, 'findAll']);
+    Route::post('/auth/register', [AuthController::class,'register']);
 Route::get('/product/detail/{productId}', [ProductController::class, 'getProductById']);
 Route::post('/order/add', [OrderController::class, 'store']);
 
@@ -57,4 +59,6 @@ Route::middleware('auth')->group(function () {
     Route::post('/webauthn/login', [WebAuthnController::class, 'recordAttendance']);
     Route::get('/webauthn/list', [WebAuthnController::class, 'WebAuthnList']);
     Route::post('/webauthn/delete/{id}', [WebAuthnController::class, 'delete']);
+
+    Route::post('/notifications/send/mail',[BrevoController::class,'sendOTP']);
 });

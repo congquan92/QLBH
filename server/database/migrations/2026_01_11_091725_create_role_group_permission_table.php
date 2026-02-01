@@ -9,7 +9,7 @@ return new class extends Migration {
     {
         Schema::create('role_group_permission', function (Blueprint $table) {
             $table->foreignId('role_id')->constrained('roles')->cascadeOnDelete();
-            $table->foreignId('group_permission_id')->cascadeOnDelete();
+            $table->foreignId('group_permission_id')->constrained()->cascadeOnDelete();
 
             $table->primary(['role_id', 'group_permission_id']);
         });

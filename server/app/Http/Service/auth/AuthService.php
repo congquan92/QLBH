@@ -2,6 +2,7 @@
 
 namespace App\Http\Service\auth;
 
+use App\Enums\OTPType;
 use App\Enums\Rank;
 use App\Enums\RoleType;
 use App\Enums\UserStatus;
@@ -9,13 +10,16 @@ use App\Exceptions\BusinessException;
 use App\Exceptions\ErrorCode;
 use App\Exceptions\MessageError;
 use App\Http\Requests\auth\LoginRequest;
+use App\Http\Requests\Auth\RegisterRequest;
 use App\Http\Requests\IntrospectRequest;
 
-use App\Http\Requests\RegisterRequest;
 use App\Http\Responses\Auth\AuthenticationResponse;
+use App\Http\Service\BrevoService;
+use App\Jobs\SendOtpJob;
 use App\Models\Role;
 use App\Models\UserRank;
 use Carbon\Carbon;
+use DB;
 use Hash;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Redis;
@@ -24,10 +28,17 @@ use App\Models\User;
 
 class AuthService
 {
+    protected $brevoService;
+
+    public function __construct(BrevoService $brevoService)
+    {
+        $this->brevoService = $brevoService;
+    }
     /**
      * @param array $credentials
      * @return string
      */
+
     public function login(LoginRequest $request): AuthenticationResponse
     {
         /** @var JWTGuard $guard */
@@ -81,6 +92,7 @@ class AuthService
      */
     public function register(RegisterRequest $request): string
     {
+
         if (User::where('username', $request['username'])->exists()) {
             throw new BusinessException(
                 ErrorCode::EXISTED,
@@ -90,18 +102,21 @@ class AuthService
         $userRank = UserRank::where('name', Rank::BRONZE->value)->firstOrFail();
         $role = Role::where('name', RoleType::USER->value)->firstOrFail();
         $user = User::create([
-        'username' => $request['username'],
-        'email' => $request['email'],
-        'password' => bcrypt($request['password']),
-        'full_name' => $request['full_name'],
-        'gender' => $request['gender'],
-        'date_of_birth' => $request['date_of_birth'],
-        'status' => UserStatus::NONE,
-        'user_rank_id' => $userRank->id,
-        'role_id'=> $role->id
-    ]);
-    return response()->json(['']);
+            'username' => $request['username'],
+            'email' => $request['email'],
+            'password' => bcrypt($request['password']),
+            'full_name' => $request['fullName'],
+            'phone' => $request['phone'],
+            'gender' => $request['gender'],
+            'date_of_birth' => $request['dateOfBirth'],
+            'status' => UserStatus::NONE,
+            'user_rank_id' => $userRank->id,
+            'role_id' => $role->id
+        ]);
 
+        SendOtpJob::dispatch($user, OTPType::VERIFICATION, true);
+
+        return "Đăng ký thành công, OTP đã được gửi!";
     }
 
     /**
@@ -130,5 +145,4 @@ class AuthService
             "roles" => $user->role ? [$user->role->name] : []
         ];
     }
-
 }

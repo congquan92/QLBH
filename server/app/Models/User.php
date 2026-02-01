@@ -32,7 +32,11 @@ class User extends Authenticatable implements JWTSubject, WebAuthnAuthenticatabl
         'username',
         'phone',
         'gender',
+        'avatar',
+        'date_of_birth',
         'point',
+        'email_verified',
+        'phone_verified',
         'total_spent',
         'token_version',
         'provider',
@@ -44,6 +48,7 @@ class User extends Authenticatable implements JWTSubject, WebAuthnAuthenticatabl
     ];
 
     protected $casts = [
+        'date_of_birth' => 'date',
         'gender' => Gender::class,
         'status' => UserStatus::class
     ];

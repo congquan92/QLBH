@@ -34,6 +34,12 @@ return [
             'channel' => env('SLACK_BOT_USER_DEFAULT_CHANNEL'),
         ],
     ],
+    'brevo' => [
+        'api_key' => env('BREVO_API_KEY'),
+        'sender_name' => env('BREVO_SENDER_NAME'),
+        'sender_email' => env('BREVO_SENDER_EMAIL'),
+        'otp_valid_minutes' => env('OTP_VALID_MINUTES')
+    ],
 
     'ghn' => [
         'token' => env('GHN_TOKEN'),
