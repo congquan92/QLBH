@@ -6,7 +6,10 @@ use Illuminate\Http\Request;
 
 class UserController extends Controller
 {
-    public function index(){
-        return 'Users';
+    protected User $authService;
+
+    public function __construct(AuthService $authService)
+    {
+        $this->authService = $authService;
     }
 }
