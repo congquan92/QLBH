@@ -24,11 +24,9 @@ class Address extends Model
         'province_id',
         'district_id',
         'ward_id',
-        'postal_code',
-        'latitude',
-        'longitude',
         'address_type',
-        'isDefault'
+        'isDefault',
+        'user_id'
     ];
 
     protected $casts = [

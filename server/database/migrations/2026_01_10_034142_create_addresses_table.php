@@ -26,11 +26,6 @@ return new class extends Migration {
             $table->unsignedInteger('district_id');
             $table->unsignedInteger('ward_id');
 
-            $table->string('postal_code')->nullable();
-
-    
-            $table->decimal('latitude', 10, 7)->nullable();
-            $table->decimal('longitude', 10, 7)->nullable();
 
         
           $table->string('address_type')

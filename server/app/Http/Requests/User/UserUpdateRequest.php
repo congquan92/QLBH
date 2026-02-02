@@ -23,6 +23,7 @@ class UserUpdateRequest extends FormRequest
             'dateOfBirth' => 'required|date',
             'email' => 'required|email',
             'avatar' => 'required|string',
+            'status'=>'nullable|string',
         ];
     }
 

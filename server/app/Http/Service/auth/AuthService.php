@@ -93,30 +93,31 @@ class AuthService
     public function register(RegisterRequest $request): string
     {
 
-        if (User::where('username', $request['username'])->exists()) {
-            throw new BusinessException(
-                ErrorCode::EXISTED,
-                MessageError::USERNAME_EXISTED
-            );
-        }
-        $userRank = UserRank::where('name', Rank::BRONZE->value)->firstOrFail();
-        $role = Role::where('name', RoleType::USER->value)->firstOrFail();
-        $user = User::create([
-            'username' => $request['username'],
-            'email' => $request['email'],
-            'password' => bcrypt($request['password']),
-            'full_name' => $request['fullName'],
-            'phone' => $request['phone'],
-            'gender' => $request['gender'],
-            'date_of_birth' => $request['dateOfBirth'],
-            'status' => UserStatus::NONE,
-            'user_rank_id' => $userRank->id,
-            'role_id' => $role->id
-        ]);
+        return DB::transaction(function () use ($request) {
+            if (User::where('username', $request['username'])->exists()) {
+                throw new BusinessException(
+                    ErrorCode::EXISTED,
+                    MessageError::USERNAME_EXISTED
+                );
+            }
+            $userRank = UserRank::where('name', Rank::BRONZE->value)->firstOrFail();
+            $role = Role::where('name', RoleType::USER->value)->firstOrFail();
+            $user = User::create([
+                'username' => $request['username'],
+                'email' => $request['email'],
+                'password' => bcrypt($request['password']),
+                'full_name' => $request['fullName'],
+                'phone' => $request['phone'],
+                'gender' => $request['gender'],
+                'date_of_birth' => $request['dateOfBirth'],
+                'status' => UserStatus::NONE,
+                'user_rank_id' => $userRank->id,
+                'role_id' => $role->id
+            ]);
 
-        SendOtpJob::dispatch($user, OTPType::VERIFICATION, true);
-
-        return "Đăng ký thành công, OTP đã được gửi!";
+            $this->brevoService->sendTransacNotifications($user, OTPType::VERIFICATION, true);
+            return "Đăng ký thành công, OTP đã được gửi!";
+        });
     }
 
     /**

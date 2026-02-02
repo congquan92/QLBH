@@ -7,11 +7,13 @@ use App\Enums\UserStatus;
 use App\Exceptions\BusinessException;
 use App\Exceptions\ErrorCode;
 use App\Http\Mapper\UserMapper;
+use App\Http\Requests\Address\UserCreationAddressRequest;
 use App\Http\Requests\User\ForgotPasswordRequest;
 use App\Http\Requests\User\UserCreationRequest;
 use App\Http\Requests\User\UserPasswordRequest;
 use App\Http\Requests\User\UserUpdateRequest;
 use App\Http\Responses\PageResponse;
+use App\Models\Address;
 use App\Models\Role;
 use App\Models\User;
 use App\Models\UserRank;
@@ -108,6 +110,7 @@ class UserService
             'dateOfBirth' => 'date_of_birth',
             'phone' => 'phone',
             'avatar' => 'avatar',
+            'status' => 'status'
         ];
 
         foreach ($map as $reqKey => $dbColumn) {
@@ -160,15 +163,83 @@ class UserService
         });
     }
 
-    public function findByUserName($userName){
+    public function findByUserName($userName)
+    {
         $user = User::where('id', $userName)
             ->where('status', UserStatus::ACTIVE)
             ->firstOrFail();
         return UserMapper::toUserResponse($user);
     }
 
-    // public function verifyAccount($userId, $otp){
+    public function verifyAccount($userId, $otp, $isEmail)
+    {
+        $user = User::where('id', $userId)
+            ->where('status', UserStatus::ACTIVE)
+            ->firstOrFail();
+        $verifyOTP = $this->brevoService->verifyOTP($user, OTPType::VERIFICATION, $otp);
+        if (!$verifyOTP) {
+            throw new BusinessException(ErrorCode::NOT_VERIFY, 'Xác thực OTP thất bại!');
+        } else {
+            if ($isEmail) {
+                $user->email_verified = true;
+            } else {
+                $user->phone_verified = true;
+            }
+        }
+    }
 
-    // }
+    public function getAllUserByEmail($email)
+    {
+        $users = User::where('email', $email);
+        if ($users->count() <= 0) {
+            throw new BusinessException(ErrorCode::NOT_FOUND, 'Không tìm thấy người dùng !');
+        }
+        return $users->map(function ($user) {
+            return UserMapper::toUserResponse($user);
+        })->toArray();
+
+    }
+
+    public function changeEmail($newEmail, $otp)
+    {
+        $currentUser = auth()->user();
+        $verifyOTP = $this->brevoService->verifyOTP($currentUser, OTPType::EMAIL_RESET, $otp);
+        if (!$verifyOTP) {
+            throw new BusinessException(ErrorCode::NOT_VERIFY, 'Xác thực thất bại!');
+        }
+        $currentUser->emai = $newEmail;
+    }
+
+    public function findUserById9($id)
+    {
+        $user = User::where('id', $id)->firstOrFail();
+        return UserMapper::toUserResponse($user);
+    }
+
+    public function getMyInfo()
+    {
+        $currentUser = auth()->user();
+        return UserMapper::toUserResponse($currentUser);
+    }
+
+    public function addAddress(UserCreationAddressRequest $req)
+    {
+        $currentUser = auth()->user();
+        $newAddress = new Address();
+        $newAddress->user_id = $currentUser->id;
+        $newAddress->address = $req->address;
+        $newAddress->phone_number = $req->phone;
+        $newAddress->province = $req->province;
+        $newAddress->district = $req->district;
+        $newAddress->ward = $req->ward;
+        $newAddress->province_id = $req->province_id;
+        $newAddress->district_id = $req->district_id;
+        $newAddress->ward_id = $req->ward_id;
+        $newAddress->address_type = $req->address_type;
+        $newAddress->isDefault = true;
+
+        Address::where('user_id', $currentUser->id)->update(['isDefault' => false]);
+        $newAddress->save();
+    }
 
 }
