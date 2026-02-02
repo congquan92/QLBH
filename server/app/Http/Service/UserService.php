@@ -1,11 +1,30 @@
 <?php
 namespace App\Http\Service;
 
+use App\Enums\OTPType;
+use App\Enums\Rank;
+use App\Enums\UserStatus;
+use App\Exceptions\BusinessException;
+use App\Exceptions\ErrorCode;
 use App\Http\Mapper\UserMapper;
+use App\Http\Requests\User\ForgotPasswordRequest;
+use App\Http\Requests\User\UserCreationRequest;
+use App\Http\Requests\User\UserPasswordRequest;
+use App\Http\Requests\User\UserUpdateRequest;
 use App\Http\Responses\PageResponse;
+use App\Models\Role;
 use App\Models\User;
+use App\Models\UserRank;
+use Hash;
+use Illuminate\Support\Facades\DB;
 class UserService
 {
+    protected BrevoService $brevoService;
+
+    public function __construct(BrevoService $brevoService)
+    {
+        $this->brevoService = $brevoService;
+    }
     public function findAll(?string $keyword, ?string $sort, int $page, int $size, ?bool $hasUserRole): PageResponse
     {
         $currentUser = auth()->user();
@@ -22,7 +41,7 @@ class UserService
             });
         }
         if ($hasUserRole === true) {
-          $query->whereRelation('role', 'name', 'USER');
+            $query->whereRelation('role', 'name', 'USER');
         } elseif ($hasUserRole === false) {
             $query->whereRelation('role', 'name', '!=', 'USER');
         }
@@ -46,4 +65,110 @@ class UserService
 
         return PageResponse::fromLaravelPaginator($paginator);
     }
+    public function save(UserCreationRequest $req): int
+    {
+        if (User::where('username', $req['username'])->exists()) {
+            throw new BusinessException(ErrorCode::EXISTED, "Tên tài khoản đã tồn tại !");
+        }
+
+        return DB::transaction(function () use ($req) {
+
+            $userRank = UserRank::where('name', Rank::BRONZE->value)->first();
+            if (!$userRank) {
+                throw new BusinessException(ErrorCode::NOT_EXISTED, "Không tìm thấy mức hạng người dùng tương ứng !");
+            }
+
+            $user = new User();
+            $user->full_name = $req['fullName'];
+            $user->gender = $req['gender'];
+            $user->date_of_birth = $req['dateOfBirth'];
+            $user->email = $req['email'];
+            $user->phone = $req['phone'];
+            $user->username = $req['username'];
+            $user->total_spent = 0;
+            $user->password = Hash::make($req['password']);
+            $user->status = UserStatus::ACTIVE;
+
+            $role = Role::where('id', $req['roleId'])->first();
+            if (!$role) {
+                throw new BusinessException(ErrorCode::NOT_EXISTED, 'Vai trò không tồn tại !');
+            }
+            $user->userRank()->associate($userRank);
+            $user->role()->associate($role);
+            $user->save();
+            return $user->id;
+        });
+    }
+    public function update(UserUpdateRequest $req)
+    {
+        $currentUser = auth()->user();
+        $map = [
+            'fullName' => 'full_name',
+            'gender' => 'gender',
+            'dateOfBirth' => 'date_of_birth',
+            'phone' => 'phone',
+            'avatar' => 'avatar',
+        ];
+
+        foreach ($map as $reqKey => $dbColumn) {
+            if ($req->filled($reqKey)) {
+                $currentUser->{$dbColumn} = $req->input($reqKey);
+            }
+        }
+        $currentUser->save();
+    }
+    public function changePassword(UserPasswordRequest $data): void
+    {
+
+        $currentUser = auth()->user();
+        if (!Hash::check($data['oldPassword'], $currentUser->password)) {
+            throw new BusinessException(ErrorCode::NOT_VERIFY, "Mật khẩu cũ không đúng !");
+        }
+
+        if ($data['password'] !== $data['confirmPassword']) {
+            throw new BusinessException(ErrorCode::NOT_VERIFY, "Mật khẩu và Nhập lại mật khẩu không khớp !");
+        }
+
+        DB::transaction(function () use ($currentUser, $data) {
+            $currentUser->password = Hash::make($data['password']);
+            $currentUser->save();
+        });
+    }
+
+    public function forgotPassword(ForgotPasswordRequest $req, $otp)
+    {
+        $user = User::where('id', $req['userId'])
+            ->where('status', UserStatus::ACTIVE)
+            ->firstOrFail();
+        if ($req['sendEmail'] && !$user->email_verified) {
+            throw new BusinessException(ErrorCode::BAD_REQUEST, 'Email này chưua được xác thực !');
+        } else {
+            if (!$req['sendEmail'] && !$user->phone_verified) {
+                throw new BusinessException(ErrorCode::BAD_REQUEST, 'Số điện thoại này chưua được xác thực !');
+            }
+        }
+        $verifyOTP = $this->brevoService->verifyOTP($user, OTPType::PASSWORD_RESET, $otp);
+        if (!$verifyOTP) {
+            throw new BusinessException(ErrorCode::BAD_REQUEST, 'Xác thực OTP thất bại !');
+        }
+        if ($req['password'] !== $req['confirmPassword']) {
+            throw new BusinessException(ErrorCode::NOT_VERIFY, "Mật khẩu và Nhập lại mật khẩu không khớp !");
+        }
+        DB::transaction(function () use ($user, $req) {
+            $user->password = Hash::make($req['password']);
+            $user->save();
+        });
+    }
+
+    public function findByUserName($userName){
+        $user = User::where('id', $userName)
+            ->where('status', UserStatus::ACTIVE)
+            ->firstOrFail();
+        return UserMapper::toUserResponse($user);
+    }
+
+    // public function verifyAccount($userId, $otp){
+
+    // }
+
 }

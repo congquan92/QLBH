@@ -91,6 +91,7 @@ class BrevoService
             throw new BusinessException(ErrorCode::NOT_VERIFY, "Mã OTP không chính xác.");
         }
         Redis::del($redisKey);
+        return true;
     }
 
     private function generateCode()

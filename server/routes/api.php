@@ -16,9 +16,10 @@ use App\Http\Controllers\WebAuthn\WebAuthnController;
 // Route public
 Route::post('/auth/login', [AuthController::class, 'login']);
 Route::get('/product/list', [ProductController::class, 'findAll']);
-    Route::post('/auth/register', [AuthController::class,'register']);
+Route::post('/auth/register', [AuthController::class, 'register']);
 Route::get('/product/detail/{productId}', [ProductController::class, 'getProductById']);
 Route::post('/order/add', [OrderController::class, 'store']);
+Route::get('/category/all', [CategoryController::class, 'findAllWithouPagination']);
 
 // Route bảo vệ bởi JWT
 Route::middleware('auth')->group(function () {
@@ -29,7 +30,13 @@ Route::middleware('auth')->group(function () {
 
     // Category
     Route::post('/category/add', [CategoryController::class, 'store']);
-    // Route::get
+    Route::get('/category/list', [CategoryController::class, 'findAll']);
+    Route::post('/category/{categoryId}/restore', [CategoryController::class, 'restoreCategory']);
+    Route::post('/category/move', [CategoryController::class, 'moveCategory']);
+    Route::put('/category/update', [CategoryController::class, 'updateCategory']);
+    Route::delete('/category/{categoryId}/delete', [CategoryController::class, 'deleteCategory']);
+    Route::get('/category/{categoryId}', [CategoryController::class, 'getDetailCategory']);
+    Route::get('/category/{categoryId}/parents', [CategoryController::class, 'getParentCategory']);
     //Product
     Route::get('/product/list/sale', [ProductController::class, 'findAllForAdmin']);
     Route::get('/product/category/{id}', [ProductController::class, 'findAllByCategory']);
@@ -60,5 +67,5 @@ Route::middleware('auth')->group(function () {
     Route::get('/webauthn/list', [WebAuthnController::class, 'WebAuthnList']);
     Route::post('/webauthn/delete/{id}', [WebAuthnController::class, 'delete']);
 
-    Route::post('/notifications/send/mail',[BrevoController::class,'sendOTP']);
+    Route::post('/notifications/send/mail', [BrevoController::class, 'sendOTP']);
 });
