@@ -2,14 +2,15 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Service\UserService;
 use Illuminate\Http\Request;
 
 class UserController extends Controller
 {
-    protected User $authService;
+    protected UserService $userService;
 
-    public function __construct(AuthService $authService)
+    public function __construct(UserService $userService)
     {
-        $this->authService = $authService;
+        $this->userService = $userService;
     }
 }
