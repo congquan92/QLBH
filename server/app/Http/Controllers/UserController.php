@@ -122,5 +122,4 @@ class UserController extends Controller
         $result = $this->userService->findByUserName($username);
         return $this->success($result,'Get user by username');
     }
-
 }
