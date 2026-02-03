@@ -8,6 +8,7 @@ use App\Http\Controllers\OAuthController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\SupplierController;
+use App\Http\Controllers\UserController;
 use App\Http\Middleware\JwtAuthenticate;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\WebAuthn\WebAuthnLoginController;
@@ -23,7 +24,7 @@ Route::get('/product/detail/{productId}', [ProductController::class, 'getProduct
 Route::post('/order/add', [OrderController::class, 'store']);
 Route::get('/category/all', [CategoryController::class, 'findAllWithouPagination']);
 //google
-    Route::post('/auth/social/google', [OAuthController::class, 'googleLogin']);
+Route::post('/auth/social/google', [OAuthController::class, 'googleLogin']);
 // Route bảo vệ bởi JWT
 Route::middleware('auth')->group(function () {
     // Auth
@@ -31,6 +32,24 @@ Route::middleware('auth')->group(function () {
     Route::post('/auth/refresh', [AuthController::class, 'refresh']);
     Route::get('/auth/introspect', [AuthController::class, 'introspect']);
 
+    //User
+    Route::get('/user/list', [UserController::class, 'list']);
+    Route::get('/user/{userId}', [UserController::class, 'getDetailUser']);
+    Route::get('/user/me', [UserController::class, 'getMyInfo']);
+    Route::post('/user/add', [UserController::class, 'createUser']);
+    Route::put('/user/{userId}/update/role', [UserController::class, 'updateRoleUser']);
+    Route::post('/user/add/address', [UserController::class, 'createAddress']);
+    Route::get('/user/address/list', [UserController::class, 'getAllAddresses']);
+    Route::put('/user/address/default/{addressId}', [UserController::class, 'updateDefaultAddress']);
+    Route::put('/user/address/update/{addressId}', [UserController::class, 'updateAddress']);
+    Route::delete('/user/address/delete/{addressId}', [UserController::class,'deleteAddress']);
+    Route::post('/user/{userId}/verify-account', [UserController::class,'verifyAccount']);
+    Route::put('/user/change-email', [UserController::class,'changeEmail']);
+    Route::put('/user/change-phone', [UserController::class,'changePhone']);
+    Route::put('/user/change-password', [UserController::class,'changePassword']);
+    Route::get('/user/email', [UserController::class,'getUserByEmail']);
+    Route::post('/user/forgot-password', [UserController::class,'forgotPassword']);
+    Route::get('/user/username', [UserController::class,'findByUserName']);
     // Category
     Route::post('/category/add', [CategoryController::class, 'store']);
     Route::get('/category/list', [CategoryController::class, 'findAll']);
@@ -56,8 +75,8 @@ Route::middleware('auth')->group(function () {
     Route::delete('/product/{id}/attribute/delete', [ProductController::class, 'deleteAttribute']);
     Route::delete('/product/{id}/attributeValue/delete', [ProductController::class, 'deleteAttributeValues']);
 
-    Route::post('/file/upload', action: [UploadFileController::class,'upload']);
-    Route::delete('/file/delete', action: [UploadFileController::class,'delete']);
+    Route::post('/file/upload', action: [UploadFileController::class, 'upload']);
+    Route::delete('/file/delete', action: [UploadFileController::class, 'delete']);
     //Supplier
     Route::post('/supplier/add', [SupplierController::class, 'store']);
 
