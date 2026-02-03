@@ -3,12 +3,15 @@ namespace App\Http\Service;
 
 use App\Enums\OTPType;
 use App\Enums\Rank;
+use App\Enums\Status;
 use App\Enums\UserStatus;
 use App\Exceptions\BusinessException;
 use App\Exceptions\ErrorCode;
 use App\Http\Mapper\UserMapper;
 use App\Http\Requests\Address\UserCreationAddressRequest;
+use App\Http\Requests\Address\UserUpdateAddressRequest;
 use App\Http\Requests\User\ForgotPasswordRequest;
+use App\Http\Requests\User\UpdatePhoneRequest;
 use App\Http\Requests\User\UserCreationRequest;
 use App\Http\Requests\User\UserPasswordRequest;
 use App\Http\Requests\User\UserUpdateRequest;
@@ -91,7 +94,7 @@ class UserService
             $user->password = Hash::make($req['password']);
             $user->status = UserStatus::ACTIVE;
 
-            $role = Role::where('id', $req['roleId'])->first();
+            $role = Role::where('id', $req['roleId'])->where('status', Status::ACTIVE)->first();
             if (!$role) {
                 throw new BusinessException(ErrorCode::NOT_EXISTED, 'Vai trò không tồn tại !');
             }
@@ -108,7 +111,6 @@ class UserService
             'fullName' => 'full_name',
             'gender' => 'gender',
             'dateOfBirth' => 'date_of_birth',
-            'phone' => 'phone',
             'avatar' => 'avatar',
             'status' => 'status'
         ];
@@ -138,7 +140,7 @@ class UserService
         });
     }
 
-    public function forgotPassword(ForgotPasswordRequest $req, $otp)
+    public function forgotPassword(ForgotPasswordRequest $req)
     {
         $user = User::where('id', $req['userId'])
             ->where('status', UserStatus::ACTIVE)
@@ -150,7 +152,7 @@ class UserService
                 throw new BusinessException(ErrorCode::BAD_REQUEST, 'Số điện thoại này chưua được xác thực !');
             }
         }
-        $verifyOTP = $this->brevoService->verifyOTP($user, OTPType::PASSWORD_RESET, $otp);
+        $verifyOTP = $this->brevoService->verifyOTP($user, OTPType::PASSWORD_RESET, $req['otp']);
         if (!$verifyOTP) {
             throw new BusinessException(ErrorCode::BAD_REQUEST, 'Xác thực OTP thất bại !');
         }
@@ -209,8 +211,17 @@ class UserService
         }
         $currentUser->emai = $newEmail;
     }
+     public function changePhone(UpdatePhoneRequest $req)
+    {
+        $currentUser = auth()->user();
+        $verifyOTP = $this->brevoService->verifyOTP($currentUser, OTPType::PHONE_RESET, $req['otp']);
+        if (!$verifyOTP) {
+            throw new BusinessException(ErrorCode::NOT_VERIFY, 'Xác thực thất bại!');
+        }
+        $currentUser->phone = $req['new_phone'];
+    }
 
-    public function findUserById9($id)
+    public function findUserById($id)
     {
         $user = User::where('id', $id)->firstOrFail();
         return UserMapper::toUserResponse($user);
@@ -241,5 +252,62 @@ class UserService
         Address::where('user_id', $currentUser->id)->update(['isDefault' => false]);
         $newAddress->save();
     }
+    public function updateUserRole($userId, $roleId)
+    {
+        $user = User::where('id', $userId)
+            ->where('status', UserStatus::ACTIVE)
+            ->firstOrFail();
+        $role = Role::where('id', $roleId)
+            ->where('status', Status::ACTIVE)
+            ->firstOrFail();
+        $user->role()->associate($role);
+        $user->save();
+    }
+    public function updateAddress($addressId, UserUpdateAddressRequest $req)
+    {
+        $currentUser = auth()->user();
+        $address = Address::where('id', $addressId)->firstOrFail();
+        if ($address->user_id !== $currentUser->id) {
+            throw new BusinessException(ErrorCode::BAD_REQUEST, 'Không có quyền chỉnh sửa !');
+        }
+        $data = array_filter($req->validated(), fn($value) => $value !== null);
+        $address->update($data);
+    }
+    public function setDefaultAddress($addressId)
+    {
+        $currentUser = auth()->user();
+        $address = Address::where('id', $addressId)->firstOrFail();
+        if ($address->user_id !== $currentUser->id) {
+            throw new BusinessException(ErrorCode::BAD_REQUEST, 'Không có quyền chỉnh sửa !');
+        }
+        Address::where('user_id', $currentUser->id)->update(['isDefault' => false]);
+        $address->isDefault = true;
+        $address->save();
+    }
+    public function deleteAddress($addressId)
+    {
+        $currentUser = auth()->user();
+        $address = Address::where('id', $addressId)->firstOrFail();
+        if ($address->user_id !== $currentUser->id) {
+            throw new BusinessException(ErrorCode::BAD_REQUEST, 'Không có quyền chỉnh sửa !');
+        }
+        $address->delete();
+    }
+    public function findAllAddressUser(?string $sort, int $page, int $size): PageResponse
+    {
+        $user = auth()->user();
+        $query = $user->address();
+        $column = 'id';
+        $direction = 'asc';
 
+        if ($sort && str_contains($sort, ':')) {
+            [$partsColumn, $partsDirection] = explode(':', $sort);
+            $column = $partsColumn;
+            $direction = strtolower($partsDirection) === 'asc' ? 'asc' : 'desc';
+        }
+
+        $query->orderBy($column, $direction);
+        $paginator = $query->paginate($size, ['*'], 'page', $page);
+        return PageResponse::fromLaravelPaginator($paginator);
+    }
 }

@@ -33,11 +33,8 @@ class Address extends Model
         'addressType' => AddressType::class
     ];
 
-    /**
-     * Quan hệ Many to Many với User
-     */
-    public function users()
+    public function user()
     {
-        return $this->belongsToMany(User::class, 'user_address', 'address_id', 'user_id');
+        return $this->belongsTo(User::class);
     }
 }

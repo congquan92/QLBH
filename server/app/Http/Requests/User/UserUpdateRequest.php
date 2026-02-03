@@ -38,8 +38,6 @@ class UserUpdateRequest extends FormRequest
             'email.email' => 'Invalid email',
             'roleId.required' => 'Vai trò không được để trống !',
             'email.unique' => 'Email already exists',
-            'phone.required' => MessageError::PHONE_NOT_BLANK,
-            'phone.regex' => 'Phone number is invalid',
             'username.required' => MessageError::USERNAME_NOT_BLANK,
             'username.unique' => MessageError::USERNAME_EXISTED,
             'password.required' => MessageError::PASSWORD_NOT_BLANK,

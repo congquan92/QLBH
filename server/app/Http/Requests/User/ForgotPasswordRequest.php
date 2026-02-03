@@ -22,12 +22,14 @@ class ForgotPasswordRequest extends FormRequest
             'sendEmail' => 'required|boolean',
             'password' => ['required', 'string', 'min:8'],
             'confirmPassword' => ['required', 'string', 'min:8'],
+            'otp' => 'required|string|min:6|max:6',
         ];
     }
 
     public function messages(): array
     {
         return [
+            'otp' => 'required|string|min:6|max:6',
             'sendEmail.required' => 'Vui lòng chọn phương thức gửi OTP!',
             'password.min' => 'Mật khẩu phải ít nhất 8 kí tự !',
             'confirmPassword.min' => 'Mật khẩu phải ít nhất 8 kí tự !',
