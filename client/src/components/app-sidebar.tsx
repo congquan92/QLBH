@@ -18,15 +18,18 @@ import {
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ChevronRight, LogOut, Settings, ShoppingBagIcon, User2 } from "lucide-react";
+import { ChevronRight, LogOut, Settings, User2 } from "lucide-react";
 import { menuData } from "@/data/admin";
 
 export function AppSidebar() {
     return (
         <Sidebar collapsible="icon" suppressHydrationWarning>
             <SidebarHeader className="border-b border-sidebar-border">
-                <a href="/admin/dashboard" className="flex items-center space-x-2 px-4 py-3">
-                    <ShoppingBagIcon className="h-6 w-6" />
+                <a href="/admin/dashboard" className="flex items-center gap-2">
+                    <Avatar className="size-13 rounded-lg">
+                        <AvatarImage src="/ARES_CLUB.png" alt="AresClub" />
+                        <AvatarFallback className="rounded-lg bg-primary text-primary-foreground">ARES_CLUB</AvatarFallback>
+                    </Avatar>
                     <span className="text-lg font-semibold">AresClub</span>
                 </a>
             </SidebarHeader>
@@ -58,7 +61,7 @@ export function AppSidebar() {
                                     <CollapsibleTrigger asChild>
                                         <SidebarMenuButton tooltip={menuData.products.title}>
                                             <menuData.products.icon />
-                                            <span>{menuData.products.title}</span>
+                                            <span className="cursor-pointer">{menuData.products.title}</span>
                                             <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
                                         </SidebarMenuButton>
                                     </CollapsibleTrigger>
@@ -84,7 +87,7 @@ export function AppSidebar() {
                                     <CollapsibleTrigger asChild>
                                         <SidebarMenuButton tooltip={menuData.orders.title}>
                                             <menuData.orders.icon />
-                                            <span>{menuData.orders.title}</span>
+                                            <span className="cursor-pointer">{menuData.orders.title}</span>
                                             <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
                                         </SidebarMenuButton>
                                     </CollapsibleTrigger>
@@ -110,7 +113,7 @@ export function AppSidebar() {
                                     <CollapsibleTrigger asChild>
                                         <SidebarMenuButton tooltip={menuData.customers.title}>
                                             <menuData.customers.icon />
-                                            <span>{menuData.customers.title}</span>
+                                            <span className="cursor-pointer">{menuData.customers.title}</span>
                                             <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
                                         </SidebarMenuButton>
                                     </CollapsibleTrigger>
@@ -136,7 +139,7 @@ export function AppSidebar() {
                                     <CollapsibleTrigger asChild>
                                         <SidebarMenuButton tooltip={menuData.marketing.title}>
                                             <menuData.marketing.icon />
-                                            <span>{menuData.marketing.title}</span>
+                                            <span className="cursor-pointer">{menuData.marketing.title}</span>
                                             <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
                                         </SidebarMenuButton>
                                     </CollapsibleTrigger>
@@ -170,7 +173,7 @@ export function AppSidebar() {
                                     <CollapsibleTrigger asChild>
                                         <SidebarMenuButton tooltip={menuData.hrm.title}>
                                             <menuData.hrm.icon />
-                                            <span>{menuData.hrm.title}</span>
+                                            <span className="cursor-pointer">{menuData.hrm.title}</span>
                                             <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
                                         </SidebarMenuButton>
                                     </CollapsibleTrigger>
@@ -204,7 +207,7 @@ export function AppSidebar() {
                                     <CollapsibleTrigger asChild>
                                         <SidebarMenuButton tooltip={menuData.system.title}>
                                             <menuData.system.icon />
-                                            <span>{menuData.system.title}</span>
+                                            <span className="cursor-pointer">{menuData.system.title}</span>
                                             <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
                                         </SidebarMenuButton>
                                     </CollapsibleTrigger>
@@ -234,8 +237,8 @@ export function AppSidebar() {
                     <SidebarMenuItem>
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <SidebarMenuButton size="lg" className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground">
-                                    <Avatar className="h-8 w-8 rounded-lg">
+                                <SidebarMenuButton size="lg" className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground cursor-pointer">
+                                    <Avatar className="size-8 rounded-lg">
                                         <AvatarImage src="/avatars/admin.png" alt="Admin" />
                                         <AvatarFallback className="rounded-lg bg-primary text-primary-foreground">AD</AvatarFallback>
                                     </Avatar>
@@ -243,7 +246,6 @@ export function AppSidebar() {
                                         <span className="truncate font-semibold">Admin User</span>
                                         <span className="truncate text-xs text-muted-foreground">admin@aresclub.com</span>
                                     </div>
-                                    <ChevronRight className="ml-auto size-4 rotate-90" />
                                 </SidebarMenuButton>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-lg" side="bottom" align="end" sideOffset={4}>
