@@ -7,6 +7,7 @@
     "license": "MIT",
     "require": {
         "php": "^8.2",
+        "darkaonline/l5-swagger": "^10.1",
         "firebase/php-jwt": "^7.0",
         "getbrevo/brevo-php": "1.x.x",
         "laragear/webauthn": "*",

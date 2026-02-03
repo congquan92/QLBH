@@ -20,6 +20,9 @@ php artisan serve --host=localhost
 ```bash
 composer require laragear/webauthn
 ```
+- **Swagger:**
+```bash 
+php artisan l5-swagger:generate
 
 - **Xem log hệ thống (Real-time):**
 

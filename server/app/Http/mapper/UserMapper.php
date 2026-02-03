@@ -35,7 +35,7 @@ class UserMapper
             $user->email,
             $user->phone,
             $user->avatar,
-            $user->status,
+            $user->status->value,
             $user->point,
             $user->email_verified,
             $user->phone_verified,

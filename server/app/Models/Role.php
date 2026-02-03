@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\Status;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
@@ -18,6 +19,11 @@ class Role extends Model
         'description',
         'status',
     ];
+
+      protected $casts = [
+        'status' => Status::class
+    ];
+
 
     public function groupPermissions()
     {
