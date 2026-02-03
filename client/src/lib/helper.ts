@@ -5,4 +5,15 @@ export const Helper = {
             currency: "VND",
         }).format(parseFloat(price));
     },
+
+    generateSlug(name: string): string {
+        return name
+            .toLowerCase()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .replace(/đ/g, "d")
+            .replace(/Đ/g, "D")
+            .replace(/\s+/g, "-")
+            .replace(/[^\w-]+/g, "");
+    },
 };
