@@ -25,12 +25,12 @@ export function AppSidebar() {
     return (
         <Sidebar collapsible="icon" suppressHydrationWarning>
             <SidebarHeader className="border-b border-sidebar-border">
-                <a href="/admin/dashboard" className="flex items-center gap-2">
-                    <Avatar className="size-13 rounded-lg">
-                        <AvatarImage src="/ARES_CLUB.png" alt="AresClub" />
-                        <AvatarFallback className="rounded-lg bg-primary text-primary-foreground">ARES_CLUB</AvatarFallback>
+                <a href="/admin/dashboard" className="flex items-center gap-1">
+                    <Avatar className="size-16 rounded-none">
+                        <AvatarImage src="/ARES_CLUB.png" alt="AresClub" className="object-contain" />
+                        <AvatarFallback className="bg-transparent font-bold">ARES</AvatarFallback>
                     </Avatar>
-                    <span className="text-lg font-semibold">AresClub</span>
+                    <span className="text-lg font-semibold">Ares Club</span>
                 </a>
             </SidebarHeader>
 
