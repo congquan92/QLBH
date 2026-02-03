@@ -194,7 +194,7 @@ class UserService
     {
         $users = User::where('email', $email);
         if ($users->count() <= 0) {
-            throw new BusinessException(ErrorCode::NOT_FOUND, 'Không tìm thấy người dùng !');
+            throw new BusinessException(ErrorCode::NOT_EXISTED, 'Không tìm thấy người dùng !');
         }
         return $users->map(function ($user) {
             return UserMapper::toUserResponse($user);

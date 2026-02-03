@@ -1,8 +1,10 @@
 <?php
 
+use App\Http\Controllers\UploadFileController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BrevoController;
 use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\OAuthController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\SupplierController;
@@ -20,7 +22,8 @@ Route::post('/auth/register', [AuthController::class, 'register']);
 Route::get('/product/detail/{productId}', [ProductController::class, 'getProductById']);
 Route::post('/order/add', [OrderController::class, 'store']);
 Route::get('/category/all', [CategoryController::class, 'findAllWithouPagination']);
-
+//google
+    Route::post('/auth/social/google', [OAuthController::class, 'googleLogin']);
 // Route bảo vệ bởi JWT
 Route::middleware('auth')->group(function () {
     // Auth
@@ -53,7 +56,8 @@ Route::middleware('auth')->group(function () {
     Route::delete('/product/{id}/attribute/delete', [ProductController::class, 'deleteAttribute']);
     Route::delete('/product/{id}/attributeValue/delete', [ProductController::class, 'deleteAttributeValues']);
 
-
+    Route::post('/file/upload', action: [UploadFileController::class,'upload']);
+    Route::delete('/file/delete', action: [UploadFileController::class,'delete']);
     //Supplier
     Route::post('/supplier/add', [SupplierController::class, 'store']);
 

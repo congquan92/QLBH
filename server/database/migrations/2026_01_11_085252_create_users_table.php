@@ -12,12 +12,11 @@ return new class extends Migration {
             $table->id();
 
             $table->string('username', 100)->nullable()->unique();
-            $table->string('email', 100);
-            $table->string('phone', 100);
+            $table->string('email', 100)->nullable();
+            $table->string('phone', 100)->nullable();
             $table->string('password');
 
             $table->string('full_name');
-            $table->string('avatar_image')->nullable();
 
             $table->string('provider', 20)->nullable();
             $table->string('provider_id', 100)->nullable();
