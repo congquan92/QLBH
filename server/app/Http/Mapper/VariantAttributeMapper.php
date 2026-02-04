@@ -1,12 +1,12 @@
 <?php
 namespace App\Http\Mapper;
 
-use App\Http\Responses\variantAttribute\VariantAttributeResponse;
+use App\Http\Responses\VariantAttribute\VariantAttributeResponse;
 use App\Models\ProductAttributeValue;
 use App\Models\ProductVariant;
 use Illuminate\Support\Facades\Log;
 
-class variantAttributeMapper
+class VariantAttributeMapper
 {
     public static function toVariantResponse(ProductAttributeValue $productAttributeValue): VariantAttributeResponse
     {

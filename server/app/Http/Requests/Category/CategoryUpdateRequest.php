@@ -11,8 +11,8 @@ class CategoryUpdateRequest extends FormRequest
     {
         return [
             'id' => 'required|integer',
-            'name' => 'required|string|nullable',
-            'status' => 'required|string|nullable',
+            'name' => 'nullable|string|nullable',
+            'status' => 'nullable|string|nullable',
             'parentId' => 'nullable|exists:categories,id',
         ];
     }

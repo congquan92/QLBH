@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\Status;
 use App\Http\Requests\Product\ProductCreationRequest;
-use App\Http\Requests\product\UpdateProductRequest;
+use App\Http\Requests\Product\UpdateProductRequest;
 use App\Http\Responses\ApiResponse;
 use App\Http\Service\ProductService;
 use App\Models\Product;
@@ -128,7 +128,7 @@ class ProductController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(UpdateProductRequest $request)
+    public function updateProduct(UpdateProductRequest $request)
     {
         $this->productService->update($request);
     }

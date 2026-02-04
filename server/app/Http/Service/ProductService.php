@@ -5,10 +5,9 @@ use App\Exceptions\BusinessException;
 use App\Exceptions\ErrorCode;
 use App\Http\Mapper\ProductMapper;
 use App\Http\Requests\Product\ProductCreationRequest;
-use App\Http\Requests\product\UpdateProductRequest;
-use App\Http\Requests\productVariant\ProductVariantCreationRequest;
+use App\Http\Requests\Product\UpdateProductRequest;
 use App\Http\Responses\PageResponse;
-use App\Http\Responses\product\ProductResponse;
+use App\Http\Responses\Product\ProductResponse;
 use App\Models\Attribute;
 use App\Models\Category;
 use App\Models\ImageProduct;
@@ -19,7 +18,6 @@ use App\Models\ProductVariant;
 use App\Models\Supplier;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use PhpParser\Node\Expr\FuncCall;
 class ProductService
 {
 
@@ -188,31 +186,42 @@ class ProductService
 
     public function update(UpdateProductRequest $req)
     {
+        // 1. Tìm sản phẩm cần sửa
         $product = Product::where('id', $req->id)
             ->where('status', Status::ACTIVE)
             ->firstOrFail();
 
-        $category = Category::where('id', $req->categoryId)
-            ->where('status', Status::ACTIVE)
-            ->firstOrFail();
-
-        $supplier = Supplier::where('id', $req->supplierId)
-            ->where('status', Status::ACTIVE)
-            ->firstOrFail();
-
+        // 2. Chuẩn bị data update (chỉ lấy những gì được gửi lên)
         $data = [
-            'name' => $req->name,
-            'description' => $req->description,
-            'list_price' => $req->listPrice,
-            'sale_price' => $req->salePrice,
-            'category_id' => $category->id,
-            'out_standing' => $req->out_standing,
-            'supplier_id' => $supplier->id,
-            'url_video' => $req->removeVideo ? null : ($req->video ?? $product->url_video),
-            'url_image_cover' => $req->removeCoverImage ? null : ($req->coverImage ?? $product->url_image_cover),
+            'name' => $req->name ?? $product->name,
+            'description' => $req->description ?? $product->description,
+            'list_price' => $req->listPrice ?? $product->list_price,
+            'sale_price' => $req->salePrice ?? $product->sale_price,
         ];
 
-        $product->update(array_filter($data, fn($value) => !is_null($value)));
+        // 3. Xử lý Category (Chỉ query nếu có gửi categoryId mới)
+        if ($req->has('categoryId')) {
+            $category = Category::where('id', $req->categoryId)
+                ->where('status', Status::ACTIVE)
+                ->firstOrFail();
+            $data['category_id'] = $category->id;
+        }
+
+        // 4. Xử lý Supplier (Tương tự)
+        if ($req->has('supplierId')) {
+            $supplier = Supplier::where('id', $req->supplierId)
+                ->where('status', Status::ACTIVE)
+                ->firstOrFail();
+            $data['supplier_id'] = $supplier->id;
+        }
+
+        // 5. Media logic
+        $data['url_video'] = $req->removeVideo ? null : ($req->video ?? $product->url_video);
+        $data['url_image_cover'] = $req->removeCoverImage ? null : ($req->coverImage ?? $product->url_image_cover);
+
+        // 6. Update
+        $product->update($data);
+
         return $product;
     }
 
@@ -385,7 +394,7 @@ class ProductService
                 $value = ProductAttributeValue::create([
                     'product_attribute_id' => $productAttribute->id,
                     'value' => $valReq['value'],
-                    'url_image' => isset($valReq['image']) ? $valReq['image']: null,
+                    'url_image' => isset($valReq['image']) ? $valReq['image'] : null,
                 ]);
 
 
