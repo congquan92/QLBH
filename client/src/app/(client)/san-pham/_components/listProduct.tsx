@@ -1,6 +1,6 @@
 "use client";
 
-import { Product } from "@/types/product";
+import { Product, ProductListResponse } from "@/types/product";
 import Image from "next/image";
 import Link from "next/link";
 import { ShoppingCart, Eye } from "lucide-react";
@@ -8,8 +8,14 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Helper2 } from "@/lib/helper2";
 import { Helper } from "@/lib/helper";
+import ProductPagination from "./ProductPagination";
 
-export default function ListProduct({ products }: { products: Product[] }) {
+interface ListProductProps {
+    products: Product[];
+    data: ProductListResponse;
+}
+
+export default function ListProduct({ products, data }: ListProductProps) {
     if (!products || products.length === 0) {
         return (
             <div className="mx-auto px-4 py-16">
@@ -88,6 +94,9 @@ export default function ListProduct({ products }: { products: Product[] }) {
                     </div>
                 ))}
             </div>
+
+            {/* Pagination */}
+            <ProductPagination currentPage={data.data.pageNumber} totalPages={data.data.totalPages} />
         </div>
     );
 }

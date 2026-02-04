@@ -1,21 +1,30 @@
-export const revalidate = 3600; // Cache 1 tiếng (đơn vị: giây)
+export const revalidate = 0; // Tắt cache để luôn lấy dữ liệu mới khi chuyển trang
 import { ProductApi } from "@/api/product.api";
 import ListProduct from "@/app/(client)/san-pham/_components/listProduct";
-import { Product } from "@/types/product";
+import { ProductListResponse } from "@/types/product";
 import Link from "next/link";
 
-async function getAllProducts() {
+async function getAllProducts(page: number, pageSize: number) {
     try {
-        const res = await ProductApi.getAllProducts();
-        return res.data.data.data;
+        const res = await ProductApi.getAllProducts(page, pageSize);
+        return res.data;
     } catch (err) {
         console.log(err);
     }
 }
 
-export default async function ProductPage() {
-    const data: Product[] = await getAllProducts();
-    console.log("ProductPage data:", data);
+interface PageProps {
+    searchParams: Promise<{ page?: string; pageSize?: string }>;
+}
+
+export default async function ProductPage({ searchParams }: PageProps) {
+    const params = await searchParams;
+    const currentPage = Number(params.page) || 1;
+    const pageSize = Number(params.pageSize) || 10;
+
+    const data: ProductListResponse = await getAllProducts(currentPage, pageSize);
+    console.log(data);
+
     return (
         <div className="min-h-screen bg-white">
             {/* Breadcrumb */}
@@ -38,7 +47,7 @@ export default async function ProductPage() {
                 </div>
             </div>
 
-            <ListProduct products={data} />
+            <ListProduct products={data.data.data} data={data} />
         </div>
     );
 }
