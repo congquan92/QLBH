@@ -2,6 +2,7 @@ import { ProductApi } from "@/api/product.api";
 import ListProductDetail from "@/app/(client)/san-pham/_components/lisProductDetail";
 import { ProductDetail } from "@/types/product";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 
 interface ProductDetailProps {
     params: Promise<{ id: string[] }>;
@@ -19,6 +20,9 @@ export default async function ProductDetailPage({ params }: ProductDetailProps) 
     const data: ProductDetail = await getProductDetail(id[0]);
     console.log("ProductDetail data:", data);
 
+    if (!data) {
+        notFound();
+    }
     return (
         <div className="min-h-screen bg-white">
             {/* Breadcrumb */}

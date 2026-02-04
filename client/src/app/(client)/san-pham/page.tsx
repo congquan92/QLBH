@@ -23,7 +23,7 @@ export default async function ProductPage({ searchParams }: PageProps) {
     const pageSize = Number(params.pageSize) || 10;
 
     const data: ProductListResponse = await getAllProducts(currentPage, pageSize);
-    console.log(data);
+    // console.log(data);
 
     return (
         <div className="min-h-screen bg-white">
