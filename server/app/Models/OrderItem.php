@@ -23,6 +23,7 @@ class OrderItem extends Model
         'url_image_snapShot',
         'order_id',
         'product_id',
+        'product_variant_id',
         'variant_attributes_snapshot',
     ];
 
