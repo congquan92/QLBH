@@ -97,11 +97,13 @@ class ProductController extends Controller
         //
     }
 
-    public function deleteAttribute(int $id , array $attributeIds){
+    public function deleteAttribute(int $id , Request $request){
+        $attributeIds = $request->input('attributeIds');
         $this->productService->deleteAttribute($id, $attributeIds);
     }
 
-     public function deleteAttributeValue(int $id , array $attributeValueIds){
+     public function deleteAttributeValue(int $id , Request $request){
+        $attributeValueIds = $request->input('attributeValueIds');
         $this->productService->deleteAttributeValue($id, $attributeValueIds);
     }
 
@@ -130,6 +132,7 @@ class ProductController extends Controller
      */
     public function updateProduct(UpdateProductRequest $request)
     {
+        Log::info("KKKK");
         $this->productService->update($request);
     }
 

@@ -67,7 +67,7 @@ class GlobalException extends ExceptionHandler
                 'status' => 404,
                 'path' => $request->getRequestUri(),
                 'error' => 'Not Found',
-                'message' => 'Endpoint not found',
+                'message' => $exception->getMessage(),
             ], 404);
         }
 

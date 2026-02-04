@@ -72,7 +72,7 @@ Route::middleware('auth')->group(function () {
 
     Route::delete('/product/{productId}/delete', [ProductController::class, 'destroy']);
     Route::delete('/product/{id}/attribute/delete', [ProductController::class, 'deleteAttribute']);
-    Route::delete('/product/{id}/attributeValue/delete', [ProductController::class, 'deleteAttributeValues']);
+    Route::delete('/product/{id}/attributeValue/delete', [ProductController::class, 'deleteAttributeValue']);
 
     Route::post('/file/upload', action: [UploadFileController::class, 'upload']);
     Route::delete('/file/delete', action: [UploadFileController::class, 'delete']);

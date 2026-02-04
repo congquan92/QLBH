@@ -191,6 +191,7 @@ class ProductService
             ->where('status', Status::ACTIVE)
             ->firstOrFail();
 
+        Log::info("ABCCCC: ");
         // 2. Chuẩn bị data update (chỉ lấy những gì được gửi lên)
         $data = [
             'name' => $req->name ?? $product->name,
@@ -231,6 +232,14 @@ class ProductService
             $attribute = Attribute::where('id', $id)->firstOrFail();
             $productAttribute = ProductAttribute::where('product_id', $productId)
                 ->where('attribute_id', $attribute->id)->firstOrFail();
+            $attributeValues = ProductAttributeValue::where('product_attribute_id', $productAttribute->id)->get();
+            foreach ($attributeValues as $value) {
+                $valueModel = ProductAttributeValue::find($value->id);
+                if ($valueModel) {
+                    $valueModel->productVariants()->detach();
+                    $valueModel->delete();
+                }
+            }
             $productAttribute->delete();
         }
     }
@@ -239,10 +248,11 @@ class ProductService
     {
         foreach ($attributeValueIds as $id) {
             $attributeValue = ProductAttributeValue::where('id', $id)->firstOrFail();
-            $productAttribute = ProductAttribute::where('id', $attributeValue->productAttribute)->firstOrFail();
+            $productAttribute = $attributeValue->productAttribute;
             if ($productAttribute->product_id !== $productId) {
                 throw new BusinessException(ErrorCode::BAD_REQUEST, 'Thuộc tính không thuộc sản phẩm này!');
             }
+            $attributeValue->productVariants()->detach();
             $attributeValue->delete();
         }
     }

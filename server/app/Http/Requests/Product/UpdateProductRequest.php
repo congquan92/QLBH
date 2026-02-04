@@ -61,6 +61,7 @@ class   UpdateProductRequest extends FormRequest
     public function messages(): array
     {
         return [
+            'id.required' => 'Id not blank',
             'listPrice.gt' => 'Origin price must be greater than 0',
             'salePrice.gt' => 'Sale price must be greater than 0',
             'categoryId.exists' => 'Category not found',

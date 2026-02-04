@@ -2,7 +2,7 @@
 namespace App\Http\Mapper;
 
 use App\Http\Responses\GroupPermission\GroupPermissionResponse;
-use App\Http\Responses\PermissionPermission\PermissionResponse;
+use App\Http\Responses\Permission\PermissionResponse;
 use App\Models\GroupPermission;
 
 
