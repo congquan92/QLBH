@@ -186,13 +186,12 @@ class ProductService
 
     public function update(UpdateProductRequest $req)
     {
-        // 1. Tìm sản phẩm cần sửa
         $product = Product::where('id', $req->id)
             ->where('status', Status::ACTIVE)
             ->firstOrFail();
 
         Log::info("ABCCCC: ");
-        // 2. Chuẩn bị data update (chỉ lấy những gì được gửi lên)
+    
         $data = [
             'name' => $req->name ?? $product->name,
             'description' => $req->description ?? $product->description,
@@ -200,7 +199,6 @@ class ProductService
             'sale_price' => $req->salePrice ?? $product->sale_price,
         ];
 
-        // 3. Xử lý Category (Chỉ query nếu có gửi categoryId mới)
         if ($req->has('categoryId')) {
             $category = Category::where('id', $req->categoryId)
                 ->where('status', Status::ACTIVE)
@@ -216,11 +214,9 @@ class ProductService
             $data['supplier_id'] = $supplier->id;
         }
 
-        // 5. Media logic
         $data['url_video'] = $req->removeVideo ? null : ($req->video ?? $product->url_video);
         $data['url_image_cover'] = $req->removeCoverImage ? null : ($req->coverImage ?? $product->url_image_cover);
 
-        // 6. Update
         $product->update($data);
 
         return $product;

@@ -23,6 +23,7 @@ Route::post('/auth/register', [AuthController::class, 'register']);
 Route::get('/product/detail/{productId}', [ProductController::class, 'getProductById']);
 Route::post('/order/add', [OrderController::class, 'store']);
 Route::get('/category/all', [CategoryController::class, 'findAllWithouPagination']);
+Route::get('/product/category/{id}', [ProductController::class, 'findAllByCategory']);
 //google
 Route::post('/auth/social/google', [OAuthController::class, 'googleLogin']);
 // Route bảo vệ bởi JWT
@@ -42,14 +43,14 @@ Route::middleware('auth')->group(function () {
     Route::get('/user/address/list', [UserController::class, 'getAllAddresses']);
     Route::put('/user/address/default/{addressId}', [UserController::class, 'updateDefaultAddress']);
     Route::put('/user/address/update/{addressId}', [UserController::class, 'updateAddress']);
-    Route::delete('/user/address/delete/{addressId}', [UserController::class,'deleteAddress']);
-    Route::post('/user/{userId}/verify-account', [UserController::class,'verifyAccount']);
-    Route::put('/user/change-email', [UserController::class,'changeEmail']);
-    Route::put('/user/change-phone', [UserController::class,'changePhone']);
-    Route::put('/user/change-password', [UserController::class,'changePassword']);
-    Route::get('/user/email', [UserController::class,'getUserByEmail']);
-    Route::post('/user/forgot-password', [UserController::class,'forgotPassword']);
-    Route::get('/user/username', [UserController::class,'findByUserName']);
+    Route::delete('/user/address/delete/{addressId}', [UserController::class, 'deleteAddress']);
+    Route::post('/user/{userId}/verify-account', [UserController::class, 'verifyAccount']);
+    Route::put('/user/change-email', [UserController::class, 'changeEmail']);
+    Route::put('/user/change-phone', [UserController::class, 'changePhone']);
+    Route::put('/user/change-password', [UserController::class, 'changePassword']);
+    Route::get('/user/email', [UserController::class, 'getUserByEmail']);
+    Route::post('/user/forgot-password', [UserController::class, 'forgotPassword']);
+    Route::get('/user/username', [UserController::class, 'findByUserName']);
     // Category
     Route::post('/category/add', [CategoryController::class, 'store']);
     Route::get('/category/list', [CategoryController::class, 'findAll']);
@@ -61,8 +62,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/category/{categoryId}/parents', [CategoryController::class, 'getParentCategory']);
     //Product
     Route::get('/product/list/sale', [ProductController::class, 'findAllForAdmin']);
-    Route::put('/product/update', [ProductController::class,'updateProduct']);
-    Route::get('/product/category/{id}', [ProductController::class, 'findAllByCategory']);
+    Route::put('/product/update', [ProductController::class, 'updateProduct']);
     Route::get('/product/admin/detail/{productId}', [ProductController::class, 'getProductByIdForAdmin']);
     Route::post('/product/{productId}/restore', [ProductController::class, 'restoreProduct']);
     Route::post('/product/{productId}/variants/add', [ProductController::class, 'addVariants']);
