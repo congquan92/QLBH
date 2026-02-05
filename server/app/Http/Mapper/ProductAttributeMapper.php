@@ -1,7 +1,7 @@
 <?php
 namespace App\Http\Mapper;
 
-use App\Http\Responses\attribute\AttributeResponse;
+use App\Http\Responses\Attribute\AttributeResponse;
 use App\Models\Attribute;
 use App\Models\ProductAttribute;
 use Illuminate\Support\Facades\Log;

@@ -15,8 +15,8 @@ return new class extends Migration {
             $table->id();
 
             $table->string('name');
-            $table->string('url_video');
-            $table->longText('description');
+            $table->string('url_video')->nullable();
+            $table->longText('description')->nullable();
             $table->string('url_image_cover');
             $table->decimal('list_price',15,2)->default(0);
             $table->decimal('sale_price',15,2)->default(0);

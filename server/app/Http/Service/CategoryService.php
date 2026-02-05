@@ -2,8 +2,10 @@
 
 namespace App\Http\Service;
 use App\Enums\Status;
+use App\Exceptions\BusinessException;
+use App\Exceptions\ErrorCode;
 use App\Http\Mapper\CategoryMapper;
-use App\Http\Requests\category\CategoryCreationRequest;
+use App\Http\Requests\Category\CategoryCreationRequest;
 use App\Http\Requests\Category\CategoryUpdateRequest;
 use App\Http\Requests\Category\MoveCategoryRequest;
 use App\Http\Responses\PageResponse;
@@ -42,20 +44,35 @@ class CategoryService
     }
     public function update(CategoryUpdateRequest $req)
     {
-        Gate::authorize('UPDATE_CATEGORIES');
-        $category = Category::where('id', $req['id'])->where('status', Status::ACTIVE)->firstOrFail();
+        $category = Category::where('id', $req->id)
+            ->where('status', Status::ACTIVE)
+            ->firstOrFail();
 
-        if (!empty($req['parentId'])) {
-            Category::where('id', $req['parent_id'])->where('status', Status::ACTIVE)->firstOrFail();
-            $category->parent_id = $req['parentId'];
+        $input = $req->validated();
+
+        $data = [];
+
+        if ($req->has('name'))
+            $data['name'] = $input['name'];
+        if ($req->has('status'))
+            $data['status'] = $input['status'];
+
+        if ($req->has('parentId')) {
+            $parentId = $input['parentId']; 
+
+            if ($parentId == $category->id) {
+                throw new BusinessException(ErrorCode::BAD_REQUEST,"Danh mục không thể làm con của chính nó.");
+            }
+
+            $data['parent_id'] = $parentId;
         }
 
-        $category->name = $req['name'];
-        $category->save();
+        $category->update($data);
+
+        return $category;
     }
     public function delete(int $id)
     {
-        Gate::authorize('DELETE_CATEGORIES');
         DB::transaction(function () use ($id) {
             $category = Category::findOrFail($id);
             $this->updateChildrenStatus($category, Status::INACTIVE);
@@ -73,7 +90,6 @@ class CategoryService
     }
     public function restore(int $id)
     {
-        Gate::authorize('RESTORE_CATEGORIES');
         $category = Category::findOrFail($id);
 
         if ($category->status === Status::ACTIVE) {
@@ -85,7 +101,6 @@ class CategoryService
 
     private function restoreRecursively(Category $category)
     {
-        // Nếu cha tồn tại và đang bị ẩn -> restore cha trước
         if ($category->parent_id && $category->parent->status === Status::INACTIVE) {
             $this->restoreRecursively($category->parent);
         }

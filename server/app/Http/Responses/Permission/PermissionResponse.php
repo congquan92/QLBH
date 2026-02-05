@@ -1,5 +1,5 @@
 <?php
-namespace App\Http\Responses\PermissionPermission;
+namespace App\Http\Responses\Permission;
 class PermissionResponse {
     public function __construct(
         public int $id,

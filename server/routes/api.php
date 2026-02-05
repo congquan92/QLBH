@@ -61,6 +61,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/category/{categoryId}/parents', [CategoryController::class, 'getParentCategory']);
     //Product
     Route::get('/product/list/sale', [ProductController::class, 'findAllForAdmin']);
+    Route::put('/product/update', [ProductController::class,'updateProduct']);
     Route::get('/product/category/{id}', [ProductController::class, 'findAllByCategory']);
     Route::get('/product/admin/detail/{productId}', [ProductController::class, 'getProductByIdForAdmin']);
     Route::post('/product/{productId}/restore', [ProductController::class, 'restoreProduct']);
@@ -69,11 +70,9 @@ Route::middleware('auth')->group(function () {
 
     Route::post('/product/add', [ProductController::class, 'store']);
 
-    Route::put('/product/update', [ProductController::class, 'update']);
-
     Route::delete('/product/{productId}/delete', [ProductController::class, 'destroy']);
     Route::delete('/product/{id}/attribute/delete', [ProductController::class, 'deleteAttribute']);
-    Route::delete('/product/{id}/attributeValue/delete', [ProductController::class, 'deleteAttributeValues']);
+    Route::delete('/product/{id}/attributeValue/delete', [ProductController::class, 'deleteAttributeValue']);
 
     Route::post('/file/upload', action: [UploadFileController::class, 'upload']);
     Route::delete('/file/delete', action: [UploadFileController::class, 'delete']);

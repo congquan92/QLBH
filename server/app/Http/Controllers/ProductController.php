@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\Status;
 use App\Http\Requests\Product\ProductCreationRequest;
-use App\Http\Requests\product\UpdateProductRequest;
+use App\Http\Requests\Product\UpdateProductRequest;
 use App\Http\Responses\ApiResponse;
 use App\Http\Service\ProductService;
 use App\Models\Product;
@@ -97,11 +97,13 @@ class ProductController extends Controller
         //
     }
 
-    public function deleteAttribute(int $id , array $attributeIds){
+    public function deleteAttribute(int $id , Request $request){
+        $attributeIds = $request->input('attributeIds');
         $this->productService->deleteAttribute($id, $attributeIds);
     }
 
-     public function deleteAttributeValue(int $id , array $attributeValueIds){
+     public function deleteAttributeValue(int $id , Request $request){
+        $attributeValueIds = $request->input('attributeValueIds');
         $this->productService->deleteAttributeValue($id, $attributeValueIds);
     }
 
@@ -128,8 +130,9 @@ class ProductController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(UpdateProductRequest $request)
+    public function updateProduct(UpdateProductRequest $request)
     {
+        Log::info("KKKK");
         $this->productService->update($request);
     }
 

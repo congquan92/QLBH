@@ -5,7 +5,7 @@ namespace App\Http\Requests\Product;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
 
-class UpdateProductRequest extends FormRequest
+class   UpdateProductRequest extends FormRequest
 {
     public function authorize(): bool
     {
@@ -19,7 +19,6 @@ class UpdateProductRequest extends FormRequest
             'id' => 'required|integer',
             'name' => 'nullable|string|max:255',
             'description' => 'nullable|string',
-            'out_standing' => 'nullable|boolean',
 
             'supplierId' => 'nullable|integer|exists:suppliers,id',
 
@@ -62,6 +61,7 @@ class UpdateProductRequest extends FormRequest
     public function messages(): array
     {
         return [
+            'id.required' => 'Id not blank',
             'listPrice.gt' => 'Origin price must be greater than 0',
             'salePrice.gt' => 'Sale price must be greater than 0',
             'categoryId.exists' => 'Category not found',

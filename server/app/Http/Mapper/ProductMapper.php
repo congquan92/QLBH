@@ -3,7 +3,7 @@
 namespace App\Http\Mapper;
 
 use App\Http\Responses\Product\ProductBaseResponse;
-use App\Http\Responses\product\ProductResponse;
+use App\Http\Responses\Product\ProductResponse;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductAttribute;

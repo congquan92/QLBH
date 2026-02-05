@@ -1,12 +1,12 @@
 <?php
 namespace App\Http\Mapper;
 
-use App\Http\Responses\productVariant\ProductVariantResponse;
+use App\Http\Responses\ProductVariant\ProductVariantResponse;
 use App\Models\ProductVariant;
 use Illuminate\Support\Facades\Log;
-use JsonSerializable;
 
-class ProductVariantMapper implements JsonSerializable
+
+class ProductVariantMapper
 {
     public static function toVariantResponse(ProductVariant $variant): ProductVariantResponse
     {

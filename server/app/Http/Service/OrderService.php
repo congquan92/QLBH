@@ -6,7 +6,9 @@ use App\Enums\Status;
 use App\Enums\VoucherStatus;
 use App\Exceptions\BusinessException;
 use App\Exceptions\ErrorCode;
+use App\Http\Mapper\OrderMapper;
 use App\Http\Mapper\ProductVariantMapper;
+use App\Http\Responses\PageResponse;
 use App\Http\Service\GhnService;
 use App\Http\Service\VoucherService;
 use App\Models\Order;
@@ -28,6 +30,81 @@ class OrderService
         $this->ghnService = $ghnService;
     }
 
+    public function findAllByUser(?string $keyword, ?string $sort, int $page, int $size, ?string $orderStatus): PageResponse
+    {
+        $user = auth()->user();
+        $query = Order::where('user_id', $user->id);
+
+        $column = 'id';
+        $direction = 'asc';
+        if ($sort && str_contains($sort, ':')) {
+            $parts = explode(':', $sort);
+            $column = $parts[0];
+            $direction = strtolower($parts[1]) === 'asc' ? 'asc' : 'desc';
+        }
+        $query->orderBy($column, $direction);
+
+        if ($orderStatus) {
+            $query->where('order_status', $orderStatus);
+        }
+        if (!empty($keyword)) {
+            $query->where(function ($q) use ($keyword) {
+                $q->orWhereHas('orderItems', function ($oi) use ($keyword) {
+                    $oi->where('name_product_snapshot', 'like', "%{$keyword}%");
+                });
+            });
+        }
+
+        $paginator = $query->paginate($size, ['*'], 'page', $page);
+        $dtoItems = $paginator->getCollection()->map(function ($order) {
+            return OrderMapper::toOrderResponse($order);
+        });
+        $paginator->setCollection($dtoItems);
+
+        return PageResponse::fromLaravelPaginator($paginator);
+    }
+
+    public function findAllByAdmin(?string $keyword, bool $isAll, ?string $orderStatus, ?string $sort, int $page, int $size, ?string $startDate, ?string $endDate): PageResponse
+    {
+        $query = Order::query();
+
+        $column = 'id';
+        $direction = 'asc';
+        if ($sort && str_contains($sort, ':')) {
+            $parts = explode(':', $sort);
+            $column = $parts[0];
+            $direction = strtolower($parts[1]) === 'asc' ? 'asc' : 'desc';
+        }
+        $query->orderBy($column, $direction);
+
+
+        if ($orderStatus) {
+            $query->where('order_status', $orderStatus);
+        }
+
+        if ($startDate && $endDate) {
+            $query->whereBetween('created_at', [$startDate, $endDate]);
+        }
+
+        if (!empty($keyword)) {
+            $query->where(function ($q) use ($keyword) {
+                $q->where('order_tracking_code', 'like', "%{$keyword}%")
+                    ->orWhere('customer_name', 'like', "%{$keyword}%")
+                    ->orWhereHas('user', function ($u) use ($keyword) {
+                        $u->where('full_name', 'like', "%{$keyword}%");
+                    });
+            });
+        }
+
+        $paginator = $query->paginate($size, ['*'], 'page', $page);
+
+        $dtoItems = $paginator->getCollection()->map(function ($order) {
+            return OrderMapper::toOrderResponse($order);
+        });
+        $paginator->setCollection($dtoItems);
+
+        return PageResponse::fromLaravelPaginator($paginator);
+    }
     public function create(OrderCreationRequest $req)
     {
         return DB::transaction(function () use ($req) {
@@ -111,7 +188,7 @@ class OrderService
             $order->length = ShippingHelper::calculateAverageLength($packages);
             $order->width = ShippingHelper::calculateAverageWidth($packages);
             $order->height = ShippingHelper::calculateAverageHeight($packages);
-            $order->service_type_id =ShippingHelper::determineServiceTypeId($order->weight, $order->length, $order->width, $order->height);
+            $order->service_type_id = ShippingHelper::determineServiceTypeId($order->weight, $order->length, $order->width, $order->height);
             $feeResponse = $this->ghnService->calculateShippingFee($order, $ghnItems);
             $feeShip = $feeResponse['total'];
             $order->total_fee_for_ship = $feeShip;
