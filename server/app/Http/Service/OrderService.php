@@ -2,6 +2,7 @@
 namespace App\Http\Service;
 use App\Enums\DeliveryStatus;
 use App\Enums\PaymentStatus;
+use App\Enums\PaymentType;
 use App\Enums\Status;
 use App\Enums\VoucherStatus;
 use App\Exceptions\BusinessException;
@@ -14,8 +15,11 @@ use App\Http\Service\VoucherService;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\ProductVariant;
+use App\Models\User;
 use App\Models\Voucher;
 use App\Models\VoucherUsage;
+use App\State\OrderStateFactory;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use App\Http\Requests\orders\OrderCreationRequest;
 use Illuminate\Support\Facades\Log;
@@ -24,10 +28,12 @@ class OrderService
 {
     protected $voucherService;
     protected $ghnService;
-    public function __construct(VoucherService $voucherService, GhnService $ghnService)
+    protected $userSerive;
+    public function __construct(VoucherService $voucherService, GhnService $ghnService, UserService $userSerive)
     {
         $this->voucherService = $voucherService;
         $this->ghnService = $ghnService;
+        $this->userSerive = $userSerive;
     }
 
     public function findAllByUser(?string $keyword, ?string $sort, int $page, int $size, ?string $orderStatus): PageResponse
@@ -105,6 +111,62 @@ class OrderService
 
         return PageResponse::fromLaravelPaginator($paginator);
     }
+    public function changeStatus($orderId, DeliveryStatus $status)
+    {
+        $order = Order::where('id', $orderId)
+            ->firstOrFail();
+        if ($order->payment_type = PaymentType::BANK_TRANSFER && $order->payment_status == PaymentStatus::UNPAID) {
+            throw new BusinessException(ErrorCode::BAD_REQUEST, 'Không thể chuyển trạng thái cho đơn chưa thanh toán !');
+        }
+        $currentState = OrderStateFactory::getState($order->order_status);
+        $currentState->changeState($order, $status);
+        $order->save();
+    }
+    public function completeOrder($orderId)
+    {
+        $currentUser = auth()->user();
+        $order = Order::where('id', $orderId)
+            ->firstOrFail();
+        if ($order->user_id !== $currentUser->id) {
+            throw new BusinessException(ErrorCode::BAD_REQUEST, 'Đơn này không thuộc về bạn !');
+        }
+        if ($order->order_status == DeliveryStatus::CANCELLED) {
+            throw new BusinessException(ErrorCode::BAD_REQUEST, 'Không thể xác nhận cho đơn bị huỷ !');
+        }
+        if ($order->order_status == DeliveryStatus::COMPLETED) {
+            throw new BusinessException(ErrorCode::BAD_REQUEST, 'Đơn chưa hoàn thành !');
+        }
+        if ($order->payment_status == PaymentStatus::UNPAID) {
+            throw new BusinessException(ErrorCode::BAD_REQUEST, 'Đơn chưa thanh toán !');
+        }
+        if ($order->is_confirmed) {
+            throw new BusinessException(ErrorCode::BAD_REQUEST, 'Đơn này đã được xác nhận !');
+        }
+        $order->is_confirmed = true;
+        $currentUser->total_spent = $order->total_spent + $order->total_amount;
+        $this->userSerive->updateRank($currentUser);
+        $order->completed_at = Carbon::now();
+
+    }
+    private function updateSoldQuantity(array $orderItems)
+    {
+        DB::transaction(function () use ($orderItems) {
+            foreach ($orderItems as $item) {
+                $variant = ProductVariant::find($item->product_variant_id)->firstOrFail();
+
+                if (!$variant || !$variant->product) {
+                    throw new BusinessException(ErrorCode::BAD_REQUEST, "Không tìm thấy thông tin sản phẩm cho item ID: {$item->id}");
+                }
+
+                $product = $variant->product;
+                if ($product->status !== Status::ACTIVE) {
+                    throw new BusinessException(ErrorCode::BAD_REQUEST, "Sản phẩm {$product->name} hiện không còn hoạt động.");
+                }
+                $product->increment('sold_quantity', $item->quantity);
+            }
+        });
+
+    }
     public function create(OrderCreationRequest $req)
     {
         return DB::transaction(function () use ($req) {
@@ -152,7 +214,6 @@ class OrderService
                 if ($totalQuantity > $productVariant->quantity) {
                     throw new BusinessException(ErrorCode::BAD_REQUEST, "Product {$productVariant->sku} exceeds available quantity.");
                 }
-                $productVariant->decrement('quantity', $totalQuantity);
 
                 $orderItem = new OrderItem();
                 $orderItem->list_price_snapShot = $productVariant->price;
@@ -255,6 +316,12 @@ class OrderService
                     'order_id' => $order->id
                 ]);
             }
+            if ($order->payment_type === PaymentType::COD) {
+                foreach ($mergedVariants as $variantId => $totalQuantity) {
+                    ProductVariant::where('id', $variantId)->decrement('quantity', $totalQuantity);
+                }
+            }
+            $this->updateSoldQuantity($orderItems);
 
             // 9. Firebase Update
             // $this->fireBaseService->updateStatus($order);

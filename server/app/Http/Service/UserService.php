@@ -221,6 +221,16 @@ class UserService
         $currentUser->phone = $req['new_phone'];
     }
 
+    public function updateRank($user){
+        $rank = UserRank::where('status', Status::ACTIVE)
+            ->where('min_spent', '<=', $user->total_spent)
+            ->orderBy('min_spent', 'desc')
+            ->first();
+        if($rank && $rank->id !=$user->user_rank_id){
+            $user->user_rank_id = $rank->id;
+            $user->save();
+        }   
+    }
     public function findUserById($id)
     {
         $user = User::where('id', $id)->firstOrFail();

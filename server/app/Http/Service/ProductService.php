@@ -191,7 +191,7 @@ class ProductService
             ->firstOrFail();
 
         Log::info("ABCCCC: ");
-    
+
         $data = [
             'name' => $req->name ?? $product->name,
             'description' => $req->description ?? $product->description,
@@ -225,30 +225,45 @@ class ProductService
     public function deleteAttribute(int $productId, array $attributeIds)
     {
         foreach ($attributeIds as $id) {
-            $attribute = Attribute::where('id', $id)->firstOrFail();
             $productAttribute = ProductAttribute::where('product_id', $productId)
-                ->where('attribute_id', $attribute->id)->firstOrFail();
-            $attributeValues = ProductAttributeValue::where('product_attribute_id', $productAttribute->id)->get();
-            foreach ($attributeValues as $value) {
-                $valueModel = ProductAttributeValue::find($value->id);
-                if ($valueModel) {
-                    $valueModel->productVariants()->detach();
-                    $valueModel->delete();
+                ->where('attribute_id', $id)
+                ->first();
+
+            if ($productAttribute) {
+                $attributeValues = ProductAttributeValue::where('product_attribute_id', $productAttribute->id)->get();
+
+                foreach ($attributeValues as $value) {
+                    $valueModel = ProductAttributeValue::find($value->id);
+
+                    if ($valueModel) {
+                        $variantIds = $valueModel->productVariants()->pluck('product_variants.id');
+
+                        if ($variantIds->isNotEmpty()) {
+                            ProductVariant::whereIn('id', $variantIds)->delete();
+                        }
+                        $valueModel->delete();
+                    }
                 }
+                $productAttribute->delete();
             }
-            $productAttribute->delete();
         }
     }
 
     public function deleteAttributeValue(int $productId, array $attributeValueIds)
     {
         foreach ($attributeValueIds as $id) {
-            $attributeValue = ProductAttributeValue::where('id', $id)->firstOrFail();
+            $attributeValue = ProductAttributeValue::with('productVariants')->find($id);
+
+            if (!$attributeValue)
+                continue;
+
             $productAttribute = $attributeValue->productAttribute;
-            if ($productAttribute->product_id !== $productId) {
-                throw new BusinessException(ErrorCode::BAD_REQUEST, 'Thuộc tính không thuộc sản phẩm này!');
+            if (!$productAttribute || $productAttribute->product_id !== $productId) {
+                throw new BusinessException(400, "Giá trị ID $id không thuộc sản phẩm này!");
             }
-            $attributeValue->productVariants()->detach();
+            foreach ($attributeValue->productVariants as $variant) {
+                $variant->delete();
+            }
             $attributeValue->delete();
         }
     }

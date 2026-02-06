@@ -44,6 +44,7 @@ class Order extends Model
         'delivered_at',
         'completed_at',
         'payment_at',
+        'user_id',
         'is_confirmed'
     ];
 
