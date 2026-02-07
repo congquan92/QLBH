@@ -15,7 +15,9 @@ class VoucherUsage extends Model
     protected $keyType = 'int';
 
     protected $fillable = [
-        'usedAt'
+        'usedAt',
+        'voucher_id',
+        'order_id'
     ];
 
     public function voucher()

@@ -167,6 +167,87 @@ class OrderService
         });
 
     }
+    public function cancelOrder(int $orderId)
+    {
+        return DB::transaction(function () use ($orderId) {
+            $currentUser = auth()->user();
+            $order = Order::where('id', $orderId)->firstOrFail();
+
+            if ($order->user_id !== $currentUser->id) {
+                throw new BusinessException(ErrorCode::UNAUTHORIZED, "Đơn hàng này không phải của bạn");
+            }
+
+            if ($order->order_status === DeliveryStatus::PENDING) {
+                if (
+                    $order->payment_type === PaymentType::COD ||
+                    ($order->payment_type == PaymentType::BANK_TRANSFER && $order->payment_status == PaymentStatus::UNPAID)
+                ) {
+                    foreach ($order->orderItem as $item) {
+                        $variant = ProductVariant::where('id', $item->product_variant_id)->firstOrFail();
+                        $variant->increment('quantity', $item->quantity);
+                    }
+                }
+
+                $order->order_status = DeliveryStatus::CANCELLED;
+                $order->save();
+
+                $voucherUsage = VoucherUsage::where('order_id', $order->id)->firstOrFail();
+                $voucherUsage->delete();
+
+                // Firebase Update (nếu có)
+                // $this->fireBaseService->updateStatus($order);
+
+                return $order;
+            } else {
+                throw new BusinessException(400, "Không thể hủy đơn hàng ở trạng thái này");
+            }
+        });
+    }
+    public function completePayment(int $orderId)
+    {
+        return DB::transaction(function () use ($orderId) {
+            $order = Order::where("id", $orderId)->firstOrFail();
+            if ($order->payment_type !== PaymentType::BANK_TRANSFER) {
+                throw new BusinessException(ErrorCode::BAD_REQUEST, "Đơn hàng không phải loại thanh toán ngân hàng");
+            }
+
+            if ($order->payment_status === PaymentStatus::PAID) {
+                throw new BusinessException(ErrorCode::BAD_REQUEST, "Đơn hàng đã được thanh toán trước đó");
+            }
+
+            foreach ($order->orderItem as $item) {
+                $variant = ProductVariant::where('id', $item->product_variant_id)->firstOrFail();
+                if ($variant->quantity < $item->quantity) {
+                    throw new BusinessException(ErrorCode::BAD_REQUEST, "Sản phẩm {$variant->sku} đã hết hàng trong lúc thanh toán");
+                }
+                $variant->decrement('quantity', $item->quantity);
+            }
+
+            $order->payment_status = PaymentStatus::PAID;
+            $order->payment_at = Carbon::now();
+            $order->save();
+
+            return $order;
+        });
+    }
+    public function getOrderById(int $orderId)
+    {
+        $user = auth()->user();
+        $order = Order::findOrFail($orderId);
+
+        if ($order->user_id !== $user->id) {
+            throw new BusinessException(ErrorCode::UNAUTHORIZED, "Đơn hàng không phải của bạn");
+        }
+
+        return OrderMapper::toOrderResponse($order);
+    }
+
+    public function getOrderByIdForAdmin(int $orderId)
+    {
+        $order = Order::findOrFail($orderId);
+        return OrderMapper::toOrderResponse($order);
+    }
+
     public function create(OrderCreationRequest $req)
     {
         return DB::transaction(function () use ($req) {
@@ -280,6 +361,7 @@ class OrderService
                 $this->voucherService->decreaseVoucherQuantity($voucher);
 
                 $order->voucher_snapshot = $voucher->toArray();
+                $order->voucher_id = $voucher->id;
                 $order->voucher_discount_value = $discountValue;
             }
 

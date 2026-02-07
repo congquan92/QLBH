@@ -46,6 +46,7 @@ return new class extends Migration {
 
             $table->foreignId('user_id')->nullable()->constrained();
             $table->unsignedBigInteger('product_variant_id');
+            $table->unsignedBigInteger('voucher_id');
             $table->json('voucher_snapshot')->nullable();
             $table->timestamps();
         });
