@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\FirebaseController;
 use App\Http\Controllers\UploadFileController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BrevoController;
@@ -24,6 +25,7 @@ Route::get('/product/detail/{productId}', [ProductController::class, 'getProduct
 Route::post('/order/add', [OrderController::class, 'store']);
 Route::get('/category/all', [CategoryController::class, 'findAllWithouPagination']);
 Route::get('/product/category/{id}', [ProductController::class, 'findAllByCategory']);
+Route::post('/firebase/test', [FirebaseController::class,'test']);
 //google
 Route::post('/auth/social/google', [OAuthController::class, 'googleLogin']);
 // Route bảo vệ bởi JWT

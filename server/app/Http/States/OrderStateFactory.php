@@ -13,7 +13,7 @@ use App\States\PendingState;
 use App\States\ShippedState;
 
 class OrderStateFactory {
-    public static function getState(string $status): OrderState {
+    public static function getState(DeliveryStatus $status): OrderState {
         return match ($status) {
             DeliveryStatus::PENDING   => new PendingState(),
             DeliveryStatus::CONFIRMED => new ConfirmedState(),

@@ -3,6 +3,7 @@ namespace App\Http\Service;
 use App\Enums\DeliveryStatus;
 use App\Enums\PaymentStatus;
 use App\Enums\PaymentType;
+use App\Enums\RoleType;
 use App\Enums\Status;
 use App\Enums\VoucherStatus;
 use App\Exceptions\BusinessException;
@@ -29,11 +30,13 @@ class OrderService
     protected $voucherService;
     protected $ghnService;
     protected $userSerive;
-    public function __construct(VoucherService $voucherService, GhnService $ghnService, UserService $userSerive)
+    protected $firebaseService;
+    public function __construct(VoucherService $voucherService, GhnService $ghnService, UserService $userSerive, FirebaseService $firebaseService)
     {
         $this->voucherService = $voucherService;
         $this->ghnService = $ghnService;
         $this->userSerive = $userSerive;
+        $this->firebaseService = $firebaseService;
     }
 
     public function findAllByUser(?string $keyword, ?string $sort, int $page, int $size, ?string $orderStatus): PageResponse
@@ -113,7 +116,8 @@ class OrderService
     }
     public function changeStatus($orderId, DeliveryStatus $status)
     {
-        $order = Order::where('id', $orderId)
+       return DB::transaction(function () use ($orderId, $status) {
+         $order = Order::where('id', $orderId)
             ->firstOrFail();
         if ($order->payment_type = PaymentType::BANK_TRANSFER && $order->payment_status == PaymentStatus::UNPAID) {
             throw new BusinessException(ErrorCode::BAD_REQUEST, 'Không thể chuyển trạng thái cho đơn chưa thanh toán !');
@@ -121,6 +125,7 @@ class OrderService
         $currentState = OrderStateFactory::getState($order->order_status);
         $currentState->changeState($order, $status);
         $order->save();
+       });
     }
     public function completeOrder($orderId)
     {
@@ -194,12 +199,9 @@ class OrderService
                 $voucherUsage = VoucherUsage::where('order_id', $order->id)->firstOrFail();
                 $voucherUsage->delete();
 
-                // Firebase Update (nếu có)
-                // $this->fireBaseService->updateStatus($order);
-
                 return $order;
             } else {
-                throw new BusinessException(400, "Không thể hủy đơn hàng ở trạng thái này");
+                throw new BusinessException(ErrorCode::BAD_REQUEST, "Không thể hủy đơn hàng ở trạng thái này");
             }
         });
     }
@@ -405,8 +407,13 @@ class OrderService
             }
             $this->updateSoldQuantity($orderItems);
 
-            // 9. Firebase Update
-            // $this->fireBaseService->updateStatus($order);
+
+            $this->firebaseService->sendNotification(RoleType::ORDER_STAFF->value, [
+                'title' => '📦 Đơn hàng mới!',
+                'body' => 'Khách hàng vừa đặt đơn #ORD-999',
+                'order_id' => $order->id,
+                'type' => 'new_order'
+            ]);
 
             return $order->id;
         });

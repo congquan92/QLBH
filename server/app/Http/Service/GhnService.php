@@ -17,6 +17,7 @@ class GhnService
     protected $token;
     protected $shopId;
 
+
     public function __construct()
     {
         $this->baseUrl = config('services.ghn.base_url');

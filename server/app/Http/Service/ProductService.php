@@ -259,7 +259,7 @@ class ProductService
 
             $productAttribute = $attributeValue->productAttribute;
             if (!$productAttribute || $productAttribute->product_id !== $productId) {
-                throw new BusinessException(400, "Giá trị ID $id không thuộc sản phẩm này!");
+                throw new BusinessException(ErrorCode::BAD_REQUEST, "Giá trị ID $id không thuộc sản phẩm này!");
             }
             foreach ($attributeValue->productVariants as $variant) {
                 $variant->delete();
