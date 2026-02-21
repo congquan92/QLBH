@@ -1,6 +1,7 @@
 <?php
 namespace App\Models;
 
+use App\Enums\EmploymentType;
 use Illuminate\Database\Eloquent\Model;
 
 class SalaryConfig extends Model
@@ -13,4 +14,9 @@ class SalaryConfig extends Model
         'multiplier',
         'is_holiday'
     ];
+
+    protected $casts = [
+        'employee_type' => EmploymentType::class,
+    ];
+
 }

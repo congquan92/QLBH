@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\FirebaseController;
+use App\Http\Controllers\SalaryConfigController;
 use App\Http\Controllers\UploadFileController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BrevoController;
@@ -11,6 +12,7 @@ use App\Http\Controllers\ProductController;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\UserController;
 use App\Http\Middleware\JwtAuthenticate;
+use Cloudinary\Transformation\Rotate;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\WebAuthn\WebAuthnLoginController;
 use App\Http\Controllers\WebAuthn\WebAuthnRegisterController;
@@ -80,11 +82,14 @@ Route::middleware('auth')->group(function () {
     Route::delete('/file/delete', action: [UploadFileController::class, 'delete']);
     //Supplier
     Route::post('/supplier/add', [SupplierController::class, 'store']);
-
-
     Route::post('/webauthn/register/options', [WebAuthnRegisterController::class, 'options']);
     Route::post('/webauthn/register', [WebAuthnRegisterController::class, 'register']);
 
+    //SalaryConfig
+    Route::get('/salaryConfig/list',[SalaryConfigController::class,'findAll']);
+    Route::post('/salaryConfig/add',[SalaryConfigController::class,'add']);
+    Route::put('/salaryConfig/{id}/update',[SalaryConfigController::class,'update']);
+    Route::delete('/salaryConfig/{id}/delete',[SalaryConfigController::class,'delete']);
     // Lấy challenge để login/xác thực điểm danh
     Route::post('/webauthn/login/options', [WebAuthnLoginController::class, 'options']);
     Route::post('/webauthn/login', [WebAuthnController::class, 'recordAttendance']);

@@ -123,7 +123,7 @@ class OrderService
             throw new BusinessException(ErrorCode::BAD_REQUEST, 'Không thể chuyển trạng thái cho đơn chưa thanh toán !');
         }
         $currentState = OrderStateFactory::getState($order->order_status);
-        $currentState->changeState($order, $status);
+        $currentState->changeState($order, $status, $this->firebaseService);
         $order->save();
        });
     }
@@ -282,6 +282,8 @@ class OrderService
 
                 return $carry;
             }, []);
+
+            Log::info('mergedVariants',$mergedVariants);
             $subTotal = 0;
             $orderItems = [];
             $packages = [];
@@ -304,6 +306,7 @@ class OrderService
                 $orderItem->url_image_snapShot = $productVariant->product->url_image_cover;
                 $orderItem->product_id = $productVariant->product_id;
                 $orderItem->quantity = $totalQuantity;
+                $orderItem->product_variant_id = $productVariant->id;
                 $orderItem->variant_attributes_snapshot = ProductVariantMapper::toVariantResponse($productVariant);
 
                 $itemTotal = $productVariant->price * $totalQuantity;

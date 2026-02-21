@@ -7,7 +7,6 @@ use App\Enums\Gender;
 use App\Enums\UserStatus;
 use App\Models\Attendance;
 use App\Models\JobHistory;
-use Illuminate\Support\Facades\Log;
 use Tymon\JWTAuth\Contracts\JWTSubject;
 use Laragear\WebAuthn\WebAuthnData;
 use Illuminate\Foundation\Auth\User as Authenticatable;

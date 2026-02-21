@@ -206,7 +206,6 @@ class ProductService
             $data['category_id'] = $category->id;
         }
 
-        // 4. Xử lý Supplier (Tương tự)
         if ($req->has('supplierId')) {
             $supplier = Supplier::where('id', $req->supplierId)
                 ->where('status', Status::ACTIVE)
