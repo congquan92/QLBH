@@ -1,7 +1,11 @@
 <?php
 
+use App\Http\Controllers\ExportController;
 use App\Http\Controllers\FirebaseController;
+use App\Http\Controllers\JobHistoryController;
+use App\Http\Controllers\LeaveController;
 use App\Http\Controllers\SalaryConfigController;
+use App\Http\Controllers\ScheduleController;
 use App\Http\Controllers\UploadFileController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BrevoController;
@@ -27,7 +31,7 @@ Route::get('/product/detail/{productId}', [ProductController::class, 'getProduct
 Route::post('/order/add', [OrderController::class, 'store']);
 Route::get('/category/all', [CategoryController::class, 'findAllWithouPagination']);
 Route::get('/product/category/{id}', [ProductController::class, 'findAllByCategory']);
-Route::post('/firebase/test', [FirebaseController::class,'test']);
+Route::post('/firebase/test', [FirebaseController::class, 'test']);
 //google
 Route::post('/auth/social/google', [OAuthController::class, 'googleLogin']);
 // Route bảo vệ bởi JWT
@@ -85,11 +89,19 @@ Route::middleware('auth')->group(function () {
     Route::post('/webauthn/register/options', [WebAuthnRegisterController::class, 'options']);
     Route::post('/webauthn/register', [WebAuthnRegisterController::class, 'register']);
 
+    //Order
+    Route::get("/order/list", [OrderController::class, 'findAll']);
+    Route::get("/order/admin/list", [OrderController::class, 'findAllByAdmin']);
+    Route::post("/order/changestatus/{id}/{status}", [OrderController::class, 'updateStatus']);
+    Route::put("/complete/{id}", [OrderController::class, 'completeOrder']);
+    Route::get("/order/{id}", [OrderController::class, 'getOrderById']);
+    Route::get('/order/admin/{id}', [OrderController::class, 'getOrderByIdForAdmin']);
+    Route::delete('/order/cancel/{id}', [OrderController::class, 'cancelOrder']);
     //SalaryConfig
-    Route::get('/salaryConfig/list',[SalaryConfigController::class,'findAll']);
-    Route::post('/salaryConfig/add',[SalaryConfigController::class,'add']);
-    Route::put('/salaryConfig/{id}/update',[SalaryConfigController::class,'update']);
-    Route::delete('/salaryConfig/{id}/delete',[SalaryConfigController::class,'delete']);
+    Route::get('/salaryConfig/list', [SalaryConfigController::class, 'findAll']);
+    Route::post('/salaryConfig/add', [SalaryConfigController::class, 'add']);
+    Route::put('/salaryConfig/{id}/update', [SalaryConfigController::class, 'update']);
+    Route::delete('/salaryConfig/{id}/delete', [SalaryConfigController::class, 'delete']);
     // Lấy challenge để login/xác thực điểm danh
     Route::post('/webauthn/login/options', [WebAuthnLoginController::class, 'options']);
     Route::post('/webauthn/login', [WebAuthnController::class, 'recordAttendance']);
@@ -97,4 +109,56 @@ Route::middleware('auth')->group(function () {
     Route::post('/webauthn/delete/{id}', [WebAuthnController::class, 'delete']);
 
     Route::post('/notifications/send/mail', [BrevoController::class, 'sendOTP']);
+
+    // Nhóm các route về Lịch làm việc (Schedules)
+    Route::prefix('schedules')->group(function () {
+        
+        // 1. Xem báo cáo quân số & danh sách nhân viên chi tiết cả tuần (MỚI THÊM)
+        Route::get('/weekly-report', [ScheduleController::class, 'weeklyReport']);
+
+        // 2. Xem lịch của TẤT CẢ nhân viên trong 1 ngày cụ thể
+        Route::get('/daily', [ScheduleController::class, 'dailyStaff']);
+
+        // 3. Xem lịch chi tiết theo tuần của 1 nhân viên cụ thể
+        Route::get('/weekly/{userId}', [ScheduleController::class, 'weeklyEmployee']);
+
+        // 4. Cài đặt lịch mặc định theo Chức vụ (T2-CN)
+        Route::post('/positions/{positionId}/default', [ScheduleController::class, 'setPositionDefaultSchedule']);
+
+        // 5. Phân công ca đặc biệt (ShiftAssignment)
+        Route::post('/assignments', [ScheduleController::class, 'store']);
+
+        // 6. Xóa phân công ca đặc biệt
+        Route::delete('/assignments', [ScheduleController::class, 'destroy']);
+    });
+
+    // Nhóm các route về Nghỉ phép (Leave Requests)
+    Route::prefix('leave-requests')->group(function () {
+        Route::post('/', [LeaveController::class, 'store']);                // Gửi đơn
+        Route::post('/{id}/status', [LeaveController::class, 'updateStatus']); // Duyệt/Từ chối
+        Route::delete('/{id}', [LeaveController::class, 'destroy']);         // Xóa đơn (chỉ khi PENDING)
+    });
+
+    // --- NHÓM QUẢN LÝ CHỨC VỤ & LỊCH SỬ CÔNG TÁC (Job History) ---
+    Route::prefix('job-history')->group(function () {
+        // Thăng chức/Thay đổi chức vụ nhân viên (Admin)
+        Route::post('/promote/{userId}', [JobHistoryController::class, 'promote']);
+
+        // Xem lộ trình sự nghiệp của nhân viên cụ thể (Admin)
+        Route::get('/career/{id}', [JobHistoryController::class, 'showCarrerById']);
+
+        // Nhân viên tự xem lộ trình sự nghiệp/thâm niên của mình (User)
+        Route::get('/my-career', [JobHistoryController::class, 'showCarrerMe']);
+    });
+
+    // --- NHÓM XUẤT BÁO CÁO EXCEL/PDF (Export) ---
+    Route::prefix('export')->group(function () {
+        // Xuất bảng phân ca tổng hợp của tất cả nhân viên trong tuần (Admin)
+        // Params: ?start_date=2026-02-23&type=excel|pdf
+        Route::get('/schedule', [ExportController::class, 'exportSchedule']);
+
+        // Nhân viên tự xuất thời khóa biểu cá nhân của tuần này (User)
+        // Params: ?type=excel|pdf
+        Route::get('/my-schedule', [ExportController::class, 'exportMySchedule']);
+    });
 });

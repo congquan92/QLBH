@@ -10,39 +10,39 @@ use Illuminate\Support\Facades\DB;
 class SalaryConfigService
 {
 
- public function findAll(?string $keyword, ?string $sort, int $page, int $size): PageResponse
-{
-    $query = SalaryConfig::query();
+    public function findAll(?string $keyword, ?string $sort, int $page, int $size): PageResponse
+    {
+        $query = SalaryConfig::query();
 
-    $column = 'id';
-    $direction = 'asc';
-    
-    if ($sort && str_contains($sort, ':')) {
-        [$partsColumn, $partsDirection] = explode(':', $sort);
-        $allowedColumns = ['id', 'rule_name', 'multiplier', 'created_at'];
-        if (in_array($partsColumn, $allowedColumns)) {
-            $column = $partsColumn;
-            $direction = strtolower($partsDirection) === 'desc' ? 'desc' : 'asc';
+        $column = 'id';
+        $direction = 'asc';
+
+        if ($sort && str_contains($sort, ':')) {
+            [$partsColumn, $partsDirection] = explode(':', $sort);
+            $allowedColumns = ['id', 'rule_name', 'multiplier', 'created_at'];
+            if (in_array($partsColumn, $allowedColumns)) {
+                $column = $partsColumn;
+                $direction = strtolower($partsDirection) === 'desc' ? 'desc' : 'asc';
+            }
         }
-    }
-    $query->orderBy($column, $direction);
-    if (!empty($keyword)) {
-        $query->where(function ($q) use ($keyword) {
-            $q->where('rule_name', 'like', "%{$keyword}%")
-              ->orWhere('employee_type', 'like', "%{$keyword}%");
+        $query->orderBy($column, $direction);
+        if (!empty($keyword)) {
+            $query->where(function ($q) use ($keyword) {
+                $q->where('rule_name', 'like', "%{$keyword}%")
+                    ->orWhere('employee_type', 'like', "%{$keyword}%");
+            });
+        }
+
+        $paginator = $query->paginate($size, ['*'], 'page', $page);
+
+        $dtoItems = $paginator->getCollection()->map(function ($config) {
+            return SalaryConfigMapper::toSalaryConfigMapper($config);
         });
+
+        $paginator->setCollection($dtoItems);
+
+        return PageResponse::fromLaravelPaginator($paginator);
     }
-
-    $paginator = $query->paginate($size, ['*'], 'page', $page);
-
-    $dtoItems = $paginator->getCollection()->map(function ($config) {
-        return SalaryConfigMapper::toSalaryConfigMapper($config);
-    });
-
-    $paginator->setCollection($dtoItems);
-
-    return PageResponse::fromLaravelPaginator($paginator);
-}
 
     public function create(SalaryConfigCreationRequest $req)
     {
@@ -60,7 +60,8 @@ class SalaryConfigService
         });
     }
 
-    public function update(SalaryConfigUpdateRequest $req , $id){
+    public function update(SalaryConfigUpdateRequest $req, $id)
+    {
         $salaryConfig = SalaryConfig::findOrFail($id);
         $data = array_filter($req->validated(), function ($value) {
             return !is_null($value);
@@ -68,7 +69,9 @@ class SalaryConfigService
         $salaryConfig->update($data);
     }
 
-    public function delete($id){
-        SalaryConfig::deleteOrFail($id);
+    public function delete($id)
+    {
+        $salaryConfig = SalaryConfig::findOrFail($id);
+        $salaryConfig->delete();
     }
 }

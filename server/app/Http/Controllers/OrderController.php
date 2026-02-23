@@ -2,72 +2,88 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\DeliveryStatus;
 use App\Http\Requests\orders\OrderCreationRequest;
+use App\Http\Responses\ApiResponse;
 use App\Http\Service\OrderService;
-use App\Models\Order;
 use Illuminate\Http\Request;
 
 class OrderController extends Controller
 {
-     protected OrderService $orderService;
+    use ApiResponse;
+    protected OrderService $orderService;
 
-     public function __construct(OrderService $orderService)
+    public function __construct(OrderService $orderService)
     {
         $this->orderService = $orderService;
     }
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
+
+    public function findAll(Request $request)
     {
-        //
+        $keyword = $request->query('keyword');
+        $sort = $request->query('sort');
+        $page = (int) $request->query('page', 1);
+        $size = (int) $request->query('size', 10);
+        $startDate = $request->query('startDate');
+        $endDate = $request->query('endDate');
+        $deliveryStatus = $request->query('deliveryStatus');
+
+        $result = $this->orderService->findAllByUser(
+            $keyword,
+            $sort,
+            $page,
+            $size,
+            $startDate,
+            $endDate,
+            $deliveryStatus
+        );
+        return $this->success($result, 'Order me list fetched successfully');
+    }
+    public function findAllByAdmin(Request $request)
+    {
+        $keyword = $request->query('keyword');
+        $sort = $request->query('sort');
+        $page = (int) $request->query('page', 1);
+        $size = (int) $request->query('size', 10);
+        $startDate = $request->query('startDate');
+        $endDate = $request->query('endDate');
+        $deliveryStatus = $request->query('deliveryStatus');
+
+        $result = $this->orderService->findAllByAdmin(
+            $keyword,
+            $sort,
+            $page,
+            $size,
+            $startDate,
+            $endDate,
+            $deliveryStatus
+        );
+        return $this->success($result, 'Order all list fetched successfully');
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
-    {
-        //
-    }
-
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(OrderCreationRequest $request)
     {
         $this->orderService->create($request);
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(Order $order)
+    public function updateStatus($id, DeliveryStatus $status)
     {
-        //
+        $this->orderService->changeStatus($id, $status);
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(Order $order)
-    {
-        //
+    public function completeOrder($id){
+        $this->orderService->completeOrder($id);
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, Order $order)
-    {
-        //
+    public function getOrderById($id){
+        $this->orderService->getOrderById($id);
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(Order $order)
-    {
-        //
+    public function getOrderByIdForAdmin($id){
+        $this->orderService->getOrderByIdForAdmin($id);
+    }
+
+    public function cancelOrder($id){
+        $this->orderService->cancelOrder($id);
     }
 }

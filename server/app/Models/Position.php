@@ -6,6 +6,7 @@ use App\Enums\SalaryType;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Position extends Model
 {
@@ -16,7 +17,7 @@ class Position extends Model
     protected $fillable = [
         'name',
         'base_salary',
-        'salary_type'
+        'salary_type',
     ];
     protected $casts = [
         'salary_type' => SalaryType::class,
@@ -31,10 +32,10 @@ class Position extends Model
         return $this->hasManyThrough(
             User::class,
             JobHistory::class,
-            'position_id', // Khóa ngoại trên bảng JobHistory
-            'id',          // Khóa ngoại trên bảng User
-            'id',          // Khóa nội trên bảng Position
-            'user_id'      // Khóa nội trên bảng JobHistory
+            'position_id',
+            'id',          
+            'id',         
+            'user_id'
         )->whereNull('job_histories.end_date');
     }
 
@@ -47,5 +48,8 @@ class Position extends Model
     public function isMonthly(): bool
     {
         return $this->salary_type === 'MONTHLY';
+    }
+    public function defaultSchedules(): HasMany {
+        return $this->hasMany(PositionDefaultSchedule::class);
     }
 }

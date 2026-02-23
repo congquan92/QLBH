@@ -39,7 +39,7 @@ class OrderService
         $this->firebaseService = $firebaseService;
     }
 
-    public function findAllByUser(?string $keyword, ?string $sort, int $page, int $size, ?string $orderStatus): PageResponse
+    public function findAllByUser(?string $keyword, ?string $sort, int $page, int $size, ?string $startDate, ?string $endDate, ?string $orderStatus): PageResponse
     {
         $user = auth()->user();
         $query = Order::where('user_id', $user->id);
@@ -55,6 +55,13 @@ class OrderService
 
         if ($orderStatus) {
             $query->where('order_status', $orderStatus);
+        }
+        if ($startDate && $endDate) {
+            $query->whereBetween('created_at', [$startDate, $endDate]);
+        } elseif ($startDate) {
+            $query->where('created_at', '>=', $startDate);
+        } elseif ($endDate) {
+            $query->where('created_at', '<=', $endDate);
         }
         if (!empty($keyword)) {
             $query->where(function ($q) use ($keyword) {
@@ -73,7 +80,7 @@ class OrderService
         return PageResponse::fromLaravelPaginator($paginator);
     }
 
-    public function findAllByAdmin(?string $keyword, bool $isAll, ?string $orderStatus, ?string $sort, int $page, int $size, ?string $startDate, ?string $endDate): PageResponse
+    public function findAllByAdmin(?string $keyword, ?string $sort, int $page, int $size, ?string $startDate, ?string $endDate, ?string $orderStatus): PageResponse
     {
         $query = Order::query();
 
@@ -93,6 +100,10 @@ class OrderService
 
         if ($startDate && $endDate) {
             $query->whereBetween('created_at', [$startDate, $endDate]);
+        } elseif ($startDate) {
+            $query->where('created_at', '>=', $startDate);
+        } elseif ($endDate) {
+            $query->where('created_at', '<=', $endDate);
         }
 
         if (!empty($keyword)) {
@@ -116,16 +127,16 @@ class OrderService
     }
     public function changeStatus($orderId, DeliveryStatus $status)
     {
-       return DB::transaction(function () use ($orderId, $status) {
-         $order = Order::where('id', $orderId)
-            ->firstOrFail();
-        if ($order->payment_type = PaymentType::BANK_TRANSFER && $order->payment_status == PaymentStatus::UNPAID) {
-            throw new BusinessException(ErrorCode::BAD_REQUEST, 'Không thể chuyển trạng thái cho đơn chưa thanh toán !');
-        }
-        $currentState = OrderStateFactory::getState($order->order_status);
-        $currentState->changeState($order, $status, $this->firebaseService);
-        $order->save();
-       });
+        return DB::transaction(function () use ($orderId, $status) {
+            $order = Order::where('id', $orderId)
+                ->firstOrFail();
+            if ($order->payment_type == PaymentType::BANK_TRANSFER && $order->payment_status == PaymentStatus::UNPAID) {
+                throw new BusinessException(ErrorCode::BAD_REQUEST, 'Không thể chuyển trạng thái cho đơn chưa thanh toán !');
+            }
+            $currentState = OrderStateFactory::getState($order->order_status);
+            $currentState->changeState($order, $status, $this->firebaseService);
+            $order->save();
+        });
     }
     public function completeOrder($orderId)
     {
@@ -283,7 +294,7 @@ class OrderService
                 return $carry;
             }, []);
 
-            Log::info('mergedVariants',$mergedVariants);
+            Log::info('mergedVariants', $mergedVariants);
             $subTotal = 0;
             $orderItems = [];
             $packages = [];

@@ -1,10 +1,7 @@
 <?php
 
 namespace App\Http\Requests\Orders;
-
-use App\Enums\PaymentType;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 class SalaryConfigCreationRequest extends FormRequest
 {
