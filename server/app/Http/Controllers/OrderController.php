@@ -61,6 +61,7 @@ class OrderController extends Controller
         return $this->success($result, 'Order all list fetched successfully');
     }
 
+  
     public function store(OrderCreationRequest $request)
     {
         $this->orderService->create($request);
