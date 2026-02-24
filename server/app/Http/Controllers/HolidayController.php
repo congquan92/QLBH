@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Responses\ApiResponse;
 use App\Http\Service\HolidayService;
 use Illuminate\Http\Request;
-use Exception;
+
 
 class HolidayController extends Controller
 {

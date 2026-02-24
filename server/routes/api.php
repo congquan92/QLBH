@@ -2,7 +2,6 @@
 
 use App\Http\Controllers\ExportController;
 use App\Http\Controllers\FirebaseController;
-use App\Http\Controllers\HolidayController;
 use App\Http\Controllers\JobHistoryController;
 use App\Http\Controllers\LeaveController;
 use App\Http\Controllers\SalaryConfigController;
@@ -135,6 +134,7 @@ Route::middleware('auth')->group(function () {
 
     // Nhóm các route về Nghỉ phép (Leave Requests)
     Route::prefix('leave-requests')->group(function () {
+        Route::get('/list', [LeaveController::class, 'index']);
         Route::post('/', [LeaveController::class, 'store']);                // Gửi đơn
         Route::post('/{id}/status', [LeaveController::class, 'updateStatus']); // Duyệt/Từ chối
         Route::delete('/{id}', [LeaveController::class, 'destroy']);         // Xóa đơn (chỉ khi PENDING)

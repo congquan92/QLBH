@@ -2,13 +2,15 @@
 
 namespace App\Http\Controllers;
 
-use App\Services\LeaveService;
+use App\Http\Responses\ApiResponse;
+use App\Http\Service\LeaveService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
-use Exception;
+
 
 class LeaveController extends Controller
 {
+    use ApiResponse;
     protected $leaveService;
 
     public function __construct(LeaveService $leaveService)
@@ -17,24 +19,37 @@ class LeaveController extends Controller
     }
 
     /**
+     * API Xem danh sách đơn nghỉ phép (Phân trang, tìm kiếm)
+     */
+    public function index(Request $request): JsonResponse
+    {
+        $keyword = $request->query('keyword');
+        $status = $request->query('status');
+        $sort = $request->query('sort', 'leave_date:desc');
+        $page = (int) $request->query('page', 1);
+        $size = (int) $request->query('size', 10);
+
+        $response = $this->leaveService->findAll($keyword, $status, $sort, $page, $size);
+
+        return $this->success($response, 'Danh sách đơn nghỉ phép.');
+    }
+
+    /**
      * API Gửi đơn nghỉ phép
      */
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'leave_date' => 'required|date|after_today', // Ví dụ dùng custom rule hoặc after:today
+            'leave_date' => 'required|date|after:today',
             'reason' => 'nullable|string|max:255',
+        ], [
+            'leave_date.required' => 'Ngày nghỉ không được để trống.',
+            'leave_date.date' => 'Định dạng ngày không hợp lệ.',
+            'leave_date.after' => 'Ngày xin nghỉ phải sau ngày hôm nay.',
         ]);
 
-        try {
-            $leave = $this->leaveService->createLeaveRequest($validated);
-            return response()->json([
-                'message' => 'Gửi đơn nghỉ phép thành công.',
-                'data' => $leave
-            ], 201);
-        } catch (Exception $e) {
-            return response()->json(['message' => $e->getMessage()], 400);
-        }
+        $leave = $this->leaveService->createLeaveRequest($validated);
+        return $this->success($leave, 'Gửi đơn nghỉ phép thành công.');
     }
 
     /**
@@ -46,16 +61,8 @@ class LeaveController extends Controller
         $request->validate([
             'status' => 'required|string|in:APPROVED,REJECTED',
         ]);
-
-        try {
-            $leave = $this->leaveService->changeStatus($id, $request->status);
-            return response()->json([
-                'message' => 'Cập nhật trạng thái đơn thành công.',
-                'data' => $leave
-            ]);
-        } catch (Exception $e) {
-            return response()->json(['message' => 'Lỗi: ' . $e->getMessage()], 400);
-        }
+        $leave = $this->leaveService->changeStatus($id, $request->status);
+        return $this->success($leave, 'Cập nhật trạng thái đơn thành công.');
     }
 
     /**
@@ -64,11 +71,7 @@ class LeaveController extends Controller
      */
     public function destroy($id): JsonResponse
     {
-        try {
-            $this->leaveService->deleteLeaveRequest($id);
-            return response()->json(['message' => 'Đã xóa đơn nghỉ phép thành công.']);
-        } catch (Exception $e) {
-            return response()->json(['message' => $e->getMessage()], 403);
-        }
+        $this->leaveService->deleteLeaveRequest($id);
+        return $this->success(null, 'Đã xóa đơn nghỉ phép thành công.');
     }
 }
