@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\ExportController;
 use App\Http\Controllers\FirebaseController;
+use App\Http\Controllers\HolidayController;
 use App\Http\Controllers\JobHistoryController;
 use App\Http\Controllers\LeaveController;
 use App\Http\Controllers\SalaryConfigController;
@@ -160,5 +161,12 @@ Route::middleware('auth')->group(function () {
         // Nhân viên tự xuất thời khóa biểu cá nhân của tuần này (User)
         // Params: ?type=excel|pdf
         Route::get('/my-schedule', [ExportController::class, 'exportMySchedule']);
+    });
+
+    Route::prefix('holidays')->group(function () {
+        Route::get('/list', [HolidayController::class, 'index']);          // Lấy danh sách + Phân trang + Tìm kiếm
+        Route::post('/', [HolidayController::class, 'store']);         // Tạo mới ngày lễ
+        Route::put('/{id}', [HolidayController::class, 'update']);     // Cập nhật ngày lễ
+        Route::delete('/{id}', [HolidayController::class, 'destroy']); // Xóa ngày lễ
     });
 });
