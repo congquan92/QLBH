@@ -129,6 +129,31 @@ class ScheduleService
         ]);
     }
 
+    public function updateAssignment($id, array $data)
+    {
+        $assignment = ShiftAssignment::findOrFail($id);
+        $newShift = Shift::findOrFail($data['shift_id']);
+
+        // Kiểm tra trùng lặp (Overlapping) tương tự như lúc tạo mới
+        $existing = ShiftAssignment::where('user_id', $assignment->user_id)
+            ->where('date', $data['date'] ?? $assignment->date)
+            ->where('id', '!=', $id)
+            ->get();
+
+        foreach ($existing as $item) {
+            $old = $item->shift;
+            $isOverlapping = ($newShift->start_time < $old->end_time) &&
+                ($newShift->end_time > $old->start_time);
+
+            if ($isOverlapping) {
+                throw new Exception("Lỗi: Ca mới trùng khung giờ với ca '{$old->name}' đã có.");
+            }
+        }
+
+        $assignment->update($data);
+        return $assignment;
+    }
+
     public function deleteAssignment($userId, $date, $shiftId)
     {
         return ShiftAssignment::where('user_id', $userId)

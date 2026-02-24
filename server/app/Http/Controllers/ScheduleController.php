@@ -3,6 +3,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\Position\PositionScheduleRequest;
 use App\Http\Requests\Shift\ShiftAssignmentRequest;
+use App\Http\Responses\ApiResponse;
 use App\Services\ScheduleService;
 use App\Models\User;
 use App\Models\Position;
@@ -11,6 +12,7 @@ use Illuminate\Support\Facades\DB;
 
 class ScheduleController extends Controller
 {
+    use ApiResponse;
     protected $scheduleService;
 
     public function __construct(ScheduleService $service)
@@ -97,6 +99,16 @@ class ScheduleController extends Controller
                 'status' => 'error',
                 'message' => $e->getMessage()
             ], 400);
+        }
+    }
+
+    public function updateAssignment(ShiftAssignmentRequest $request, $id)
+    {
+        try {
+            $assignment = $this->scheduleService->updateAssignment($id, $request->validated());
+            return $this->success($assignment, 'Cập nhật phân công ca thành công.');
+        } catch (\Exception $e) {
+            return response()->json(['message' => $e->getMessage()], 400);
         }
     }
 

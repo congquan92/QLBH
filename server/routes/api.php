@@ -2,10 +2,12 @@
 
 use App\Http\Controllers\ExportController;
 use App\Http\Controllers\FirebaseController;
+use App\Http\Controllers\HolidayController;
 use App\Http\Controllers\JobHistoryController;
 use App\Http\Controllers\LeaveController;
 use App\Http\Controllers\SalaryConfigController;
 use App\Http\Controllers\ScheduleController;
+use App\Http\Controllers\ShiftController;
 use App\Http\Controllers\UploadFileController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BrevoController;
@@ -112,7 +114,7 @@ Route::middleware('auth')->group(function () {
 
     // Nhóm các route về Lịch làm việc (Schedules)
     Route::prefix('schedules')->group(function () {
-        
+
         // 1. Xem báo cáo quân số & danh sách nhân viên chi tiết cả tuần (MỚI THÊM)
         Route::get('/weekly-report', [ScheduleController::class, 'weeklyReport']);
 
@@ -128,6 +130,8 @@ Route::middleware('auth')->group(function () {
         // 5. Phân công ca đặc biệt (ShiftAssignment)
         Route::post('/assignments', [ScheduleController::class, 'store']);
 
+        Route::put('/{id}', [ScheduleController::class, 'updateAssignment']); // Sửa ca của nhân viên
+
         // 6. Xóa phân công ca đặc biệt
         Route::delete('/assignments', [ScheduleController::class, 'destroy']);
     });
@@ -138,6 +142,13 @@ Route::middleware('auth')->group(function () {
         Route::post('/', [LeaveController::class, 'store']);                // Gửi đơn
         Route::post('/{id}/status', [LeaveController::class, 'updateStatus']); // Duyệt/Từ chối
         Route::delete('/{id}', [LeaveController::class, 'destroy']);         // Xóa đơn (chỉ khi PENDING)
+    });
+
+    Route::prefix('shifts')->group(function () {
+        Route::get('/list', [ShiftController::class, 'index']);
+        Route::post('/', [ShiftController::class, 'store']);                
+        Route::put('/{id}', [ShiftController::class, 'update']); 
+        Route::delete('/{id}', [ShiftController::class, 'destroy']);
     });
 
     // --- NHÓM QUẢN LÝ CHỨC VỤ & LỊCH SỬ CÔNG TÁC (Job History) ---
