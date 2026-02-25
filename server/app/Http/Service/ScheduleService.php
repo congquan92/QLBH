@@ -52,6 +52,7 @@ class ScheduleService
             $schedule[] = [
                 'date' => $dateStr,
                 'day_name' => $date->translatedFormat('l'),
+                'shift_id' => $shift?->id ?? null,
                 'shift_name' => $shift?->name ?? 'Nghỉ',
                 'time' => $shift ? "{$shift->start_time} - {$shift->end_time}" : '-',
                 'type' => $type
@@ -79,22 +80,28 @@ class ScheduleService
 
         return $users->map(function ($user) use ($specialShifts, $defaultShifts) {
             $shift = null;
+            $isSpecial = false;
 
             if (isset($specialShifts[$user->id])) {
                 $shift = $specialShifts[$user->id]->shift;
+                $isSpecial = true;
             } else {
                 $posSchedules = $defaultShifts->get($user->position_id);
                 $shift = $posSchedules ? $posSchedules->first()->shift : null;
+                $isSpecial = false;
             }
 
             return [
+                'user_id' => $user->id,
                 'name' => $user->full_name,
                 'position' => $user->position->name ?? 'N/A',
                 'shift' => $shift?->id ?? null,
+                'shift_name' => $shift?->name ?? null,
                 'start' => $shift?->start_time ?? '-',
                 'end' => $shift?->end_time ?? '-',
+                'is_special' => $isSpecial
             ];
-        })->filter(fn($item) => !is_null($item['shift'])); 
+        })->filter(fn($item) => !is_null($item['shift']));
     }
 
     public function assignShift($data)
@@ -214,6 +221,7 @@ class ScheduleService
                 }
             }
             return [
+                'shift_id' => $shift->id,
                 'shift_name' => $shift->name,
                 'time' => "{$shift->start_time} - {$shift->end_time}",
                 'staff_count' => $count
@@ -251,8 +259,11 @@ class ScheduleService
                     'staff_count' => $employeesInShift->count(),
                     'employees' => $employeesInShift->map(function ($emp) {
                         return [
+                            'user_id' => $emp['user_id'], 
                             'name' => $emp['name'],
-                            'position' => $emp['position']
+                            'position' => $emp['position'],
+                            'is_special' => $emp['is_special'], // TRẢ VỀ Ở ĐÂY
+                            'assignment_type' => $emp['is_special'] ? 'Ca đặc biệt' : 'Mặc định'
                         ];
                     })
                 ];
@@ -270,6 +281,44 @@ class ScheduleService
         return [
             'week_range' => "Từ {$start->format('d/m/Y')} đến " . $start->copy()->addDays(6)->format('d/m/Y'),
             'weekly_schedule' => $weeklyData
+        ];
+    }
+
+    // App\Http\Service\ScheduleService.php
+
+    public function getDefaultScheduleByPosition(int $positionId)
+    {
+        $position = \App\Models\Position::with(['defaultSchedules.shift'])->findOrFail($positionId);
+
+        $daysVi = [
+            0 => 'Chủ Nhật',
+            1 => 'Thứ Hai',
+            2 => 'Thứ Ba',
+            3 => 'Thứ Tư',
+            4 => 'Thứ Năm',
+            5 => 'Thứ Sáu',
+            6 => 'Thứ Bảy',
+        ];
+
+        $schedules = $position->defaultSchedules->sortBy('day_of_week')->map(function ($item) use ($daysVi) {
+            return [
+                'day_of_week' => $item->day_of_week,
+                'day_name' => $daysVi[$item->day_of_week] ?? 'N/A',
+                'shift_id' => $item->shift_id,
+                'shift_name' => $item->shift->name ?? 'N/A',
+                'start_time' => $item->shift->start_time ?? '-',
+                'end_time' => $item->shift->end_time ?? '-',
+            ];
+        })->values();
+
+        return [
+            'position' => [
+                'id' => $position->id,
+                'name' => $position->name,
+                'base_salary' => $position->base_salary,
+                'salary_type' => $position->salary_type,
+            ],
+            'default_schedules' => $schedules
         ];
     }
 }

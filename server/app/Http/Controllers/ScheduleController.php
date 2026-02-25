@@ -21,6 +21,17 @@ class ScheduleController extends Controller
     }
 
     /**
+     * Xem lịch làm việc mặc định của một Chức vụ cụ thể
+     * GET /api/schedules/positions/{positionId}
+     */
+    public function getPositionSchedule($positionId)
+    {
+        $data = $this->scheduleService->getDefaultScheduleByPosition((int) $positionId);
+
+        return $this->success($data, 'Xem lịch làm việc mặc định của một Chức vụ cụ thể.');
+    }
+
+    /**
      * Xem báo cáo quân số chi tiết và danh sách nhân viên theo ca trong cả tuần
      * Endpoint: GET /api/schedules/weekly-report?date=2026-02-23
      */
@@ -50,6 +61,24 @@ class ScheduleController extends Controller
         return response()->json([
             'message' => "Danh sách nhân viên làm việc ngày $date",
             'data' => $data
+        ]);
+    }
+
+    /**
+     * Nhân viên tự xem lịch của bản thân
+     * GET /api/schedules/my-schedule?date=2026-02-25
+     */
+    public function mySchedule(Request $request)
+    {
+        $user = $request->user();
+        $startDate = $request->query('date', now()->format('Y-m-d'));
+        $schedule = $this->scheduleService->getEmployeeWeeklySchedule($user, $startDate);
+
+        return response()->json([
+            'status' => 'success',
+            'employee' => $user->full_name,
+            'position' => $user->position->name ?? 'N/A',
+            'week_schedule' => $schedule
         ]);
     }
 

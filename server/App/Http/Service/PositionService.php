@@ -42,12 +42,18 @@ class PositionService
 
         return PageResponse::fromLaravelPaginator($paginator);
     }
-    public function removeEmployeeFromPosition(int $userId)
+    /**
+     * Cập nhật chức vụ mới cho một nhân viên
+     */
+    public function updateEmployeePosition(int $userId, int $newPositionId)
     {
         $user = User::findOrFail($userId);
 
+        // Kiểm tra xem position mới có tồn tại không
+        Position::findOrFail($newPositionId);
+
         return $user->update([
-            'position_id' => null
+            'position_id' => $newPositionId
         ]);
     }
 
@@ -97,7 +103,7 @@ class PositionService
     {
         $position = Position::findOrFail($id);
 
-        if ($position->currentEmployees()->count() > 0) {
+        if ($position->users()->exists()) {
             throw new Exception("Không thể xóa chức vụ này vì vẫn còn nhân viên đang đảm nhiệm.");
         }
 

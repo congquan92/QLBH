@@ -114,7 +114,7 @@ Route::middleware('auth')->group(function () {
     // Nhóm các route về Lịch làm việc (Schedules)
     Route::prefix('schedules')->group(function () {
 
-        // 1. Xem báo cáo quân số & danh sách nhân viên chi tiết cả tuần (MỚI THÊM)
+        // 1. Xem báo cáo quân số & danh sách nhân viên chi tiết cả tuần
         Route::get('/weekly-report', [ScheduleController::class, 'weeklyReport']);
 
         // 2. Xem lịch của TẤT CẢ nhân viên trong 1 ngày cụ thể
@@ -125,14 +125,17 @@ Route::middleware('auth')->group(function () {
 
         // 4. Cài đặt lịch mặc định theo Chức vụ (T2-CN)
         Route::post('/positions/{positionId}/default', [ScheduleController::class, 'setPositionDefaultSchedule']);
+        // 5. Xem danh sách lịch theo vị trí 
+        Route::get('/positions/{positionId}', [ScheduleController::class, 'getPositionSchedule']);
 
-        // 5. Phân công ca đặc biệt (ShiftAssignment)
+        // 6. Phân công ca đặc biệt (ShiftAssignment)
         Route::post('/assignments', [ScheduleController::class, 'store']);
 
         Route::put('/{id}', [ScheduleController::class, 'updateAssignment']); // Sửa ca của nhân viên
-
-        // 6. Xóa phân công ca đặc biệt
+        // 7. Xóa phân công ca đặc biệt
         Route::delete('/assignments', [ScheduleController::class, 'destroy']);
+        // 8. Xem lịch bản thân
+        Route::get('/my-schedule', [ScheduleController::class, 'mySchedule']);
     });
 
     // Nhóm các route về Nghỉ phép (Leave Requests)
@@ -196,8 +199,5 @@ Route::middleware('auth')->group(function () {
 
         // Xem danh sách nhân viên thuộc chức vụ
         Route::get('{id}/employees', [PositionController::class, 'getEmployees']);
-
-        // Gỡ chức vụ của một nhân viên 
-        Route::delete('employees/{userId}', [PositionController::class, 'removeEmployee']);
     });
 });

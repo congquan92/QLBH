@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Position\PositionRequest;
+use App\Http\Responses\ApiResponse;
 use App\Http\Service\PositionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -11,6 +12,7 @@ use Exception;
 
 class PositionController extends Controller
 {
+    use ApiResponse;
     protected $positionService;
 
     public function __construct(PositionService $service)
@@ -41,7 +43,7 @@ class PositionController extends Controller
     public function store(PositionRequest $request): JsonResponse
     {
         $position = $this->positionService->store($request->validated());
-        
+
         return response()->json([
             'status' => 'success',
             'message' => 'Tạo chức vụ thành công!',
@@ -55,8 +57,8 @@ class PositionController extends Controller
      */
     public function update(PositionRequest $request, $id): JsonResponse
     {
-        $position = $this->positionService->update((int)$id, $request->validated());
-        
+        $position = $this->positionService->update((int) $id, $request->validated());
+
         return response()->json([
             'status' => 'success',
             'message' => 'Cập nhật chức vụ thành công!',
@@ -73,30 +75,9 @@ class PositionController extends Controller
         $page = (int) $request->query('page', 1);
         $size = (int) $request->query('size', 10);
 
-        $data = $this->positionService->getEmployeesByPosition((int)$id, $page, $size);
+        $data = $this->positionService->getEmployeesByPosition((int) $id, $page, $size);
 
         return response()->json($data);
-    }
-
-    /**
-     * Gỡ chức vụ của một nhân viên (Xóa nhân viên khỏi position)
-     * DELETE /api/positions/employees/{userId}
-     */
-    public function removeEmployee($userId): JsonResponse
-    {
-        try {
-            $this->positionService->removeEmployeeFromPosition((int)$userId);
-            
-            return response()->json([
-                'status' => 'success',
-                'message' => 'Đã gỡ nhân viên khỏi chức vụ thành công.'
-            ]);
-        } catch (Exception $e) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Không tìm thấy nhân viên.'
-            ], 404);
-        }
     }
 
     /**
@@ -105,18 +86,8 @@ class PositionController extends Controller
      */
     public function destroy($id): JsonResponse
     {
-        try {
-            $this->positionService->delete((int)$id);
-            
-            return response()->json([
-                'status' => 'success',
-                'message' => 'Đã xóa chức vụ thành công.'
-            ]);
-        } catch (Exception $e) {
-            return response()->json([
-                'status' => 'error',
-                'message' => $e->getMessage()
-            ], 400);
-        }
+        $this->positionService->delete((int) $id);
+
+        return $this->success(null,'Đã xóa chức vụ thành công.');
     }
 }

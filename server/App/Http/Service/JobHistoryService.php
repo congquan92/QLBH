@@ -15,7 +15,7 @@ class JobHistoryService
                 ->whereNull('end_date')
                 ->update(['end_date' => Carbon::parse($data['effective_date'])->subDay()]);
 
-            return JobHistory::create([
+            $newJob = JobHistory::create([
                 'user_id' => $userId,
                 'position_id' => $data['position_id'],
                 'current_salary' => $data['current_salary'],
@@ -23,14 +23,21 @@ class JobHistoryService
                 'effective_date' => $data['effective_date'],
                 'end_date' => null,
             ]);
+
+            User::where('id', $userId)->update([
+                'position_id' => $data['position_id']
+            ]);
+
+            return $newJob;
         });
     }
 
     public function calculateExperienceYears(User $user)
     {
         $firstJob = $user->jobHistories()->oldest('effective_date')->first();
-        if (!$firstJob) return 0;
-        
+        if (!$firstJob)
+            return 0;
+
         return Carbon::parse($firstJob->effective_date)->diffInYears(now());
     }
 
@@ -56,10 +63,12 @@ class JobHistoryService
             if (!$previousJob) {
                 throw new \Exception("Không có lịch sử chức vụ cũ để quay lại.");
             }
-
-            $currentJob::destroy($currentJob->id);
-
+            $currentJob->delete();
             $previousJob->update(['end_date' => null]);
+
+            User::where('id', $userId)->update([
+                'position_id' => $previousJob->position_id
+            ]);
 
             return $previousJob;
         });

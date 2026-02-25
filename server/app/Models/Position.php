@@ -27,14 +27,20 @@ class Position extends Model
         return $this->hasMany(JobHistory::class, 'position_id');
     }
 
+    public function users(): HasMany
+    {
+        return $this->hasMany(User::class, 'position_id');
+    }
+
+
     public function currentEmployees()
     {
         return $this->hasManyThrough(
             User::class,
             JobHistory::class,
             'position_id',
-            'id',          
-            'id',         
+            'id',
+            'id',
             'user_id'
         )->whereNull('job_histories.end_date');
     }
@@ -49,7 +55,8 @@ class Position extends Model
     {
         return $this->salary_type === 'MONTHLY';
     }
-    public function defaultSchedules(): HasMany {
+    public function defaultSchedules(): HasMany
+    {
         return $this->hasMany(PositionDefaultSchedule::class);
     }
 }
