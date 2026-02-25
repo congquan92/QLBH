@@ -5,6 +5,7 @@ use App\Http\Controllers\FirebaseController;
 use App\Http\Controllers\HolidayController;
 use App\Http\Controllers\JobHistoryController;
 use App\Http\Controllers\LeaveController;
+use App\Http\Controllers\PositionController;
 use App\Http\Controllers\SalaryConfigController;
 use App\Http\Controllers\ScheduleController;
 use App\Http\Controllers\ShiftController;
@@ -144,8 +145,8 @@ Route::middleware('auth')->group(function () {
 
     Route::prefix('shifts')->group(function () {
         Route::get('/list', [ShiftController::class, 'index']);
-        Route::post('/', [ShiftController::class, 'store']);                
-        Route::put('/{id}', [ShiftController::class, 'update']); 
+        Route::post('/', [ShiftController::class, 'store']);
+        Route::put('/{id}', [ShiftController::class, 'update']);
         Route::delete('/{id}', [ShiftController::class, 'destroy']);
     });
 
@@ -177,5 +178,26 @@ Route::middleware('auth')->group(function () {
         Route::post('/', [HolidayController::class, 'store']);         // Tạo mới ngày lễ
         Route::put('/{id}', [HolidayController::class, 'update']);     // Cập nhật ngày lễ
         Route::delete('/{id}', [HolidayController::class, 'destroy']); // Xóa ngày lễ
+    });
+
+    Route::prefix('positions')->group(function () {
+
+        // Lấy danh sách chức vụ
+        Route::get('/', [PositionController::class, 'index']);
+
+        // Tạo chức vụ mới
+        Route::post('/', [PositionController::class, 'store']);
+
+        // Cập nhật thông tin chức vụ
+        Route::put('{id}', [PositionController::class, 'update']);
+
+        // Xóa hẳn một chức vụ
+        Route::delete('{id}', [PositionController::class, 'destroy']);
+
+        // Xem danh sách nhân viên thuộc chức vụ
+        Route::get('{id}/employees', [PositionController::class, 'getEmployees']);
+
+        // Gỡ chức vụ của một nhân viên 
+        Route::delete('employees/{userId}', [PositionController::class, 'removeEmployee']);
     });
 });

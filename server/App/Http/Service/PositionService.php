@@ -54,10 +54,10 @@ class PositionService
     /**
      * Xem danh sách nhân viên của một Position cụ thể
      */
-    public function getEmployeesByPosition(int $positionId, int $page, int $size): PageResponse
+    public function getEmployeesByPosition(int $positionId, int $page, int $size): array
     {
         $position = Position::findOrFail($positionId);
-
+        $positionData = PositionMapper::toBaseResponse($position);
         $paginator = User::where('position_id', $positionId)
             ->orderBy('full_name', 'asc')
             ->paginate($size, ['*'], 'page', $page);
@@ -74,7 +74,11 @@ class PositionService
         });
 
         $paginator->setCollection($dtoItems);
-        return PageResponse::fromLaravelPaginator($paginator);
+        $pageResponse = PageResponse::fromLaravelPaginator($paginator);
+        return [
+            'position' => $positionData,
+            'employees' => $pageResponse
+        ];
     }
 
     public function store(array $data)
