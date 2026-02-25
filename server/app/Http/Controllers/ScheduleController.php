@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\Position\PositionScheduleRequest;
 use App\Http\Requests\Shift\ShiftAssignmentRequest;
 use App\Http\Responses\ApiResponse;
-use App\Services\ScheduleService;
+use App\Http\Service\ScheduleService;
 use App\Models\User;
 use App\Models\Position;
 use Illuminate\Http\Request;

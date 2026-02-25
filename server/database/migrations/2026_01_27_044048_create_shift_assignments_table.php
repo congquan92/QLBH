@@ -15,6 +15,7 @@ return new class extends Migration {
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->foreignId('shift_id')->constrained();
             $table->date('date');
+            $table->timestamps();
         });
     }
 

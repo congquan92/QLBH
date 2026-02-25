@@ -1,5 +1,5 @@
 <?php
-namespace App\Services;
+namespace App\Http\Service;
 
 use App\Enums\LeaveStatus;
 use App\Models\LeaveRequest;
@@ -94,7 +94,7 @@ class ScheduleService
                 'start' => $shift?->start_time ?? '-',
                 'end' => $shift?->end_time ?? '-',
             ];
-        })->filter(fn($item) => $item['shift'] !== 'Nghỉ'); // Chỉ lấy những người có làm
+        })->filter(fn($item) => !is_null($item['shift'])); 
     }
 
     public function assignShift($data)
@@ -168,7 +168,7 @@ class ScheduleService
      * Ưu tiên 2: Lịch làm việc mặc định theo Thứ của chức vụ (PositionDefaultSchedule)
      * Mặc định: Trả về null (Ngày nghỉ)
      */
-    public function getEffectiveShift(User $user, $date)
+    public function getEffectiveShift($user, $date)
     {
         $dateStr = Carbon::parse($date)->format('Y-m-d');
 
