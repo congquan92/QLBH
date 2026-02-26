@@ -1,6 +1,5 @@
 <?php
-
-namespace App\Http\Requests\Orders;
+namespace App\Http\Requests\Salary;
 use Illuminate\Foundation\Http\FormRequest;
 
 class SalaryConfigCreationRequest extends FormRequest

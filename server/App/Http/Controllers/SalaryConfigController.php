@@ -2,8 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\Orders\SalaryConfigCreationRequest;
-use App\Http\Requests\Orders\SalaryConfigUpdateRequest;
+
+use App\Http\Requests\Salary\SalaryConfigCreationRequest;
+use App\Http\Requests\Salary\SalaryConfigUpdateRequest;
 use App\Http\Responses\ApiResponse;
 use App\Http\Service\SalaryConfigService;
 use Illuminate\Http\Request;
@@ -26,7 +27,7 @@ class SalaryConfigController extends Controller
         $size = (int) $request->query('size', 10);
 
         $result = $this->salaryConfigService->findAll($keyword, $sort, $page, $size);
-        return $this->success($result, 'Product list fetched successfully');
+        return $this->success($result, 'Salary config list fetched successfully');
     }
     public function add(SalaryConfigCreationRequest $request)
     {

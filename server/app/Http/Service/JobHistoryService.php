@@ -1,6 +1,9 @@
 <?php
-namespace App\Service;
+namespace App\Http\Service;
 
+use App\Enums\SalaryType;
+use App\Models\Position;
+use App\Models\SalaryScale;
 use App\Models\User;
 use App\Models\JobHistory;
 use Illuminate\Support\Facades\DB;
@@ -11,6 +14,22 @@ class JobHistoryService
     public function promoteEmployee($userId, $data)
     {
         return DB::transaction(function () use ($userId, $data) {
+            $user = User::findOrFail($userId);
+            $position = Position::findOrFail($data['position_id']);
+            $coefficient = 1.0;
+            if ($position->salary_type === SalaryType::MONTHLY) {
+                $yearsOfWork = $this->calculateExperienceYears($user);
+                $salaryScale = SalaryScale::where('years_of_experience', '<=', $yearsOfWork)
+                    ->orderBy('years_of_experience', 'desc')
+                    ->first();
+
+                if ($salaryScale) {
+                    $coefficient = $salaryScale->coefficient;
+                }
+            }
+
+            $calculatedSalary = $position->base_salary * $coefficient;
+
             JobHistory::where('user_id', $userId)
                 ->whereNull('end_date')
                 ->update(['end_date' => Carbon::parse($data['effective_date'])->subDay()]);
@@ -18,18 +37,51 @@ class JobHistoryService
             $newJob = JobHistory::create([
                 'user_id' => $userId,
                 'position_id' => $data['position_id'],
-                'current_salary' => $data['current_salary'],
+                'current_salary' => $calculatedSalary,
                 'employment_type' => $data['employment_type'],
                 'effective_date' => $data['effective_date'],
                 'end_date' => null,
             ]);
 
-            User::where('id', $userId)->update([
+            $user->update([
                 'position_id' => $data['position_id']
             ]);
 
             return $newJob;
         });
+    }
+
+    public function showCarrerById($userId)
+    {
+        $user = User::with([
+            'position',
+            'jobHistories.position'
+        ])->findOrFail($userId);
+        $years = $this->calculateExperienceYears($user);
+        return [
+            'user_id' => $user->id,
+            'full_name' => $user->full_name,
+            'email' => $user->email,
+            'seniority' => round($years, 1) . ' năm',
+            'current_position' => [
+                'id' => $user->position->id ?? null,
+                'name' => $user->position->name ?? 'N/A',
+                'salary' => $user->jobHistories->where('end_date', null)->first()?->current_salary ?? 0,
+                'salary_type' => $user->position->salary_type ?? 'N/A'
+            ],
+            'career_history' => $user->jobHistories->map(function ($history) {
+                return [
+                    'id' => $history->id,
+                    'position_id' => $history->position_id,
+                    'position_name' => $history->position->name ?? 'N/A',
+                    'salary' => $history->current_salary,
+                    'employment_type' => $history->employment_type,
+                    'effective_date' => $history->effective_date,
+                    'end_date' => $history->end_date ?? 'Hiện tại',
+                    'status' => $history->end_date === null ? 'Đang giữ chức' : 'Đã kết thúc'
+                ];
+            })
+        ];
     }
 
     public function calculateExperienceYears(User $user)

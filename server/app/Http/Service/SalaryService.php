@@ -2,44 +2,84 @@
 
 namespace App\Services;
 
-use App\Models\{Attendance, User, SalaryConfig};
+use App\Enums\EmploymentType;
+use App\Models\{Attendance, JobHistory, User, SalaryConfig};
 use Carbon\Carbon;
 
 class SalaryService
 {
     public function calculateMonthlySalary($userId, $month, $year)
     {
-        $user = User::with(['position', 'salaryScale'])->findOrFail($userId);
+        $user = User::with(['position'])->findOrFail($userId);
         $startDate = Carbon::create($year, $month, 1)->startOfMonth();
         $endDate = $startDate->copy()->endOfMonth();
 
-        // 1. Lấy lương tháng cố định
-        $coefficient = $user->salaryScale->coefficient ?? 1.0;
-        $monthlyBaseSalary = $user->position->base_salary * $coefficient;
+        $jobHistory = JobHistory::where('user_id', $userId)
+            ->where('effective_date', '<=', $endDate->format('Y-m-d'))
+            ->where(function ($query) use ($startDate) {
+                $query->whereNull('end_date')
+                    ->orWhere('end_date', '>=', $startDate->format('Y-m-d'));
+            })
+            ->orderBy('effective_date', 'desc')
+            ->first();
 
-        // 2. Tính lương mỗi giờ để làm cơ sở tính Bonus (nếu tính thưởng theo giờ)
-        // Giả sử 1 tháng làm 26 ngày, mỗi ngày 8 tiếng
-        $hourlyRate = $monthlyBaseSalary / 26 / 8;
+        if (!$jobHistory) {
+            throw new \Exception("Không tìm thấy thông tin lương hợp lệ cho tháng này.");
+        }
 
-        // 3. Tìm các bản ghi điểm danh vào NGÀY LỄ trong tháng này
+        $monthlyBaseSalary = $jobHistory->current_salary;
+
+        // 2. TÍNH HOURLY RATE DỰA TRÊN LOẠI HÌNH CÔNG VIỆC
+        if ($jobHistory->employment_type === EmploymentType::FULLTIME) {
+            // Lấy các ngày làm việc mặc định trong tuần (VD: T2 -> T6)
+            $defaultSchedules = $jobHistory->position->defaultSchedules;
+            $workingDaysInWeek = $defaultSchedules->pluck('day_of_week')->toArray(); // [1, 2, 3, 4, 5]
+
+            // Đếm tổng số ngày làm việc thực tế trong tháng này dựa trên lịch mặc định
+            $totalWorkingDaysInMonth = 0;
+            $tempDate = $startDate->copy();
+            while ($tempDate->lte($endDate)) {
+                if (in_array($tempDate->dayOfWeek, $workingDaysInWeek)) {
+                    $totalWorkingDaysInMonth++;
+                }
+                $tempDate->addDay();
+            }
+
+            // Tính trung bình số giờ làm việc mỗi ngày từ các ca (Shift)
+            $avgHoursPerDay = $defaultSchedules->avg(function ($schedule) {
+                $shift = $schedule->shift;
+                if (!$shift)
+                    return 8; // Mặc định 8h nếu không có ca
+                return Carbon::parse($shift->start_time)->diffInHours(Carbon::parse($shift->end_time));
+            }) ?: 8;
+
+            // Công thức: Lương tháng / Tổng ngày làm trong tháng / Số giờ mỗi ngày
+            $hourlyRate = ($totalWorkingDaysInMonth > 0)
+                ? ($monthlyBaseSalary / $totalWorkingDaysInMonth / $avgHoursPerDay)
+                : 0;
+
+        } else {
+            // PART_TIME: Lấy trực tiếp lương trong JobHistory (Lương theo giờ)
+            $hourlyRate = $monthlyBaseSalary;
+        }
+        // 3. Tính thưởng ngày lễ (Bonus)
         $holidayAttendances = Attendance::where('user_id', $userId)
             ->whereBetween('date', [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')])
-            ->where('is_holiday', true) // Chỉ lọc những ngày lễ có đi làm
+            ->where('is_holiday', true)
             ->get();
 
-        $totalBonus = 0;
+        $totalSalaryBonus = 0;
         $bonusDetails = [];
 
         foreach ($holidayAttendances as $record) {
-            // Lấy hệ số thưởng từ SalaryConfig (Ví dụ: Multiplier = 2.0 nghĩa là thưởng thêm 200% cho số giờ đó)
-            $config = SalaryConfig::where('employee_type', $user->getEmploymentTypeAttribute)
-                                ->where('is_holiday', true)->first();
-            
-            $multiplier = $config ? $config->multiplier : 1.0; // Nếu multiplier là 2, tức là thưởng thêm gấp đôi lương giờ
+            // Lấy config thưởng theo loại hình (Full-time/Part-time) từ JobHistory
+            $config = SalaryConfig::where('employee_type', $jobHistory->employment_type)
+                ->where('is_holiday', true)
+                ->first();
 
-            // Khoản thưởng = Số giờ làm * Lương giờ * Hệ số thưởng
+            $multiplier = $config ? $config->multiplier : 1.0;
             $bonusAmount = $record->total_hours * $hourlyRate * $multiplier;
-            
+
             $totalSalaryBonus += $bonusAmount;
             $bonusDetails[] = [
                 'date' => $record->date,
@@ -54,6 +94,7 @@ class SalaryService
         return [
             'employee' => $user->full_name,
             'month' => "$month/$year",
+            'position' => $jobHistory->position->name,
             'base_salary' => round($monthlyBaseSalary, 0),
             'total_holiday_bonus' => round($totalSalaryBonus, 0),
             'final_salary' => round($finalSalary, 0),

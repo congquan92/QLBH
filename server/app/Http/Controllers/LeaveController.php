@@ -34,6 +34,17 @@ class LeaveController extends Controller
         return $this->success($response, 'Danh sách đơn nghỉ phép.');
     }
 
+    public function myLeaves(Request $request)
+    {
+        $keyword = $request->query('keyword');
+        $status = $request->query('status');
+        $sort = $request->query('sort', 'leave_date:desc');
+        $page = (int) $request->query('page', 1);
+        $size = (int) $request->query('size', 10);
+        $data = $this->leaveService->findMyLeaves($keyword, $status, $sort, $page, $size);
+
+        return $this->success($data,"List me leave Request");
+    }
     /**
      * API Gửi đơn nghỉ phép
      */
@@ -41,16 +52,20 @@ class LeaveController extends Controller
     {
         $validated = $request->validate([
             'leave_date' => 'required|date|after:today',
+            'shift_id' => 'required|exists:shifts,id',
             'reason' => 'nullable|string|max:255',
         ], [
             'leave_date.required' => 'Ngày nghỉ không được để trống.',
-            'leave_date.date' => 'Định dạng ngày không hợp lệ.',
             'leave_date.after' => 'Ngày xin nghỉ phải sau ngày hôm nay.',
+            'shift_id.required' => 'Vui lòng chọn ca làm việc muốn nghỉ.',
+            'shift_id.exists' => 'Ca làm việc không tồn tại.',
         ]);
 
         $leave = $this->leaveService->createLeaveRequest($validated);
         return $this->success($leave, 'Gửi đơn nghỉ phép thành công.');
     }
+
+    
 
     /**
      * API Duyệt hoặc Từ chối đơn (Admin)

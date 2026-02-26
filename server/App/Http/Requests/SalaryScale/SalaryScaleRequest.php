@@ -13,7 +13,6 @@ class SalaryScaleRequest extends FormRequest
             'name' => 'required|string|max:255',
             'years_of_experience' => 'required|integer|min:0',
             'coefficient' => 'required|numeric|min:1',
-            'status' => 'required'
         ];
     }
 

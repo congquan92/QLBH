@@ -14,16 +14,10 @@ class ShiftSeeder extends Seeder
     {
         $shifts = [
             [
-                'name' => 'Ca Hành Chính',
-                'start_time' => '08:00:00',
-                'end_time' => '17:00:00',
-                'grace_period' => 15, // Đi muộn tối đa 15p
-            ],
-            [
                 'name' => 'Ca Sáng',
                 'start_time' => '07:00:00',
                 'end_time' => '11:30:00',
-                'grace_period' => 10, // Đi muộn tối đa 10p
+                'grace_period' => 10,
             ],
             [
                 'name' => 'Ca Chiều',

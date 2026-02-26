@@ -8,18 +8,20 @@ return new class extends Migration {
     /**
      * Run the migrations.
      */
-    public function up(): void
+   public function up(): void
     {
         Schema::create('leave_requests', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            $table->foreignId('shift_id')->constrained()->onDelete('cascade'); 
+            
             $table->date('leave_date');
             $table->string('reason')->nullable();
-            $table->string('status')->default('PENDING'); // Sẽ cast sang Enum LeaveStatus
+            $table->string('status')->default('PENDING'); 
             $table->foreignId('approved_by')->nullable()->constrained('users');
             $table->timestamps();
 
-            $table->index(['user_id', 'leave_date']);
+            $table->index(['user_id', 'leave_date', 'shift_id'], 'user_leave_shift_index');
             $table->index('status');
         });
     }

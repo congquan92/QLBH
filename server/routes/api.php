@@ -7,6 +7,8 @@ use App\Http\Controllers\JobHistoryController;
 use App\Http\Controllers\LeaveController;
 use App\Http\Controllers\PositionController;
 use App\Http\Controllers\SalaryConfigController;
+use App\Http\Controllers\SalaryController;
+use App\Http\Controllers\SalaryScaleController;
 use App\Http\Controllers\ScheduleController;
 use App\Http\Controllers\ShiftController;
 use App\Http\Controllers\UploadFileController;
@@ -141,6 +143,7 @@ Route::middleware('auth')->group(function () {
     // Nhóm các route về Nghỉ phép (Leave Requests)
     Route::prefix('leave-requests')->group(function () {
         Route::get('/list', [LeaveController::class, 'index']);
+        Route::get('/me', [LeaveController::class, 'myLeaves']);
         Route::post('/', [LeaveController::class, 'store']);                // Gửi đơn
         Route::post('/{id}/status', [LeaveController::class, 'updateStatus']); // Duyệt/Từ chối
         Route::delete('/{id}', [LeaveController::class, 'destroy']);         // Xóa đơn (chỉ khi PENDING)
@@ -200,4 +203,21 @@ Route::middleware('auth')->group(function () {
         // Xem danh sách nhân viên thuộc chức vụ
         Route::get('{id}/employees', [PositionController::class, 'getEmployees']);
     });
+
+    Route::prefix('salary-configs')->group(function () {
+        Route::get('/list', [SalaryConfigController::class, 'findAll']);      // Lấy danh sách
+        Route::post('/', [SalaryConfigController::class, 'add']);        // Thêm mới
+        Route::put('/{id}', [SalaryConfigController::class, 'update']);  // Cập nhật
+        Route::delete('/{id}', [SalaryConfigController::class, 'delete']); // Xóa
+    });
+
+    Route::prefix('salary-scales')->group(function () {
+        Route::get('/list', [SalaryScaleController::class, 'index']);
+        Route::post('/', [SalaryScaleController::class, 'store']);
+        Route::put('/{id}', [SalaryScaleController::class, 'update']);
+        Route::delete('/{id}', [SalaryScaleController::class, 'destroy']);
+    });
+
+    Route::get('salaries/calculate/{userId}', [SalaryController::class, 'calculateMonthlySalary']);
+    Route::get('salaries/calculate/me', [SalaryController::class, 'calculateMonthlySalary']);
 });

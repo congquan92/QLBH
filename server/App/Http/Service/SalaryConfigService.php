@@ -2,8 +2,8 @@
 namespace App\Http\Service;
 
 use App\Http\Mapper\SalaryConfigMapper;
-use App\Http\Requests\Orders\SalaryConfigCreationRequest;
-use App\Http\Requests\Orders\SalaryConfigUpdateRequest;
+use App\Http\Requests\Salary\SalaryConfigCreationRequest;
+use App\Http\Requests\Salary\SalaryConfigUpdateRequest;
 use App\Http\Responses\PageResponse;
 use App\Models\SalaryConfig;
 use Illuminate\Support\Facades\DB;

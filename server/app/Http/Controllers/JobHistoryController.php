@@ -1,8 +1,8 @@
 <?php
 namespace App\Http\Controllers;
 use App\Http\Responses\ApiResponse;
+use App\Http\Service\JobHistoryService;
 use App\Models\User;
-use App\Service\JobHistoryService;
 use Illuminate\Http\Request;
 
 class JobHistoryController extends Controller
@@ -19,7 +19,6 @@ class JobHistoryController extends Controller
     {
         $request->validate([
             'position_id' => 'required|exists:positions,id',
-            'current_salary' => 'required|numeric',
             'employment_type' => 'required',
             'effective_date' => 'required|date|after:today'
         ], [
@@ -32,24 +31,22 @@ class JobHistoryController extends Controller
 
     public function showCarrerById($id)
     {
-        $user = User::findOrFail($id);
-        $years = $this->employeeService->calculateExperienceYears($user);
+        $data = $this->employeeService->showCarrerById($id);
 
         return response()->json([
-            'full_name' => $user->full_name,
-            'seniority' => $years . ' năm',
-            'current_salary' => $user->current_salary
+            'status' => 'success',
+            'data' => $data
         ]);
     }
-     public function showCarrerMe($id)
+    public function showCarrerMe()
     {
         $user = auth()->user();
-        $years = $this->employeeService->calculateExperienceYears($user);
+        $data = $this->employeeService->showCarrerById($user->id);
+
 
         return response()->json([
-            'full_name' => $user->full_name,
-            'seniority' => $years . ' năm',
-            'current_salary' => $user->current_salary
+            'status' => 'success',
+            'data' => $data
         ]);
     }
 }

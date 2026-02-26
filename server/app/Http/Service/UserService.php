@@ -3,6 +3,7 @@ namespace App\Http\Service;
 
 use App\Enums\OTPType;
 use App\Enums\Rank;
+use App\Enums\SalaryType;
 use App\Enums\Status;
 use App\Enums\UserStatus;
 use App\Exceptions\BusinessException;
@@ -17,7 +18,10 @@ use App\Http\Requests\User\UserPasswordRequest;
 use App\Http\Requests\User\UserUpdateRequest;
 use App\Http\Responses\PageResponse;
 use App\Models\Address;
+use App\Models\JobHistory;
+use App\Models\Position;
 use App\Models\Role;
+use App\Models\SalaryScale;
 use App\Models\User;
 use App\Models\UserRank;
 use Hash;
@@ -77,7 +81,7 @@ class UserService
         }
 
         return DB::transaction(function () use ($req) {
-
+            $position = Position::findOrFail($req['positionId']);
             $userRank = UserRank::where('name', Rank::BRONZE->value)->first();
             if (!$userRank) {
                 throw new BusinessException(ErrorCode::NOT_EXISTED, "Không tìm thấy mức hạng người dùng tương ứng !");
@@ -100,7 +104,26 @@ class UserService
             }
             $user->userRank()->associate($userRank);
             $user->role()->associate($role);
+
+            $user->position_id = $position->id;
+
             $user->save();
+
+            $coefficient = 1.0;
+            if ($position->salary_type === SalaryType::MONTHLY) {
+                $salaryScale = SalaryScale::where('years_of_experience', 0)->first();
+                $coefficient = $salaryScale ? $salaryScale->coefficient : 1.0;
+            }
+
+
+            JobHistory::create([
+                'user_id' => $user->id,
+                'position_id' => $position->id,
+                'current_salary' =>$position->base_salary * $coefficient,
+                'employment_type' => $req['employmentType'],
+                'effective_date' => now(),
+                'end_date' => null,
+            ]);
             return $user->id;
         });
     }
@@ -211,7 +234,7 @@ class UserService
         }
         $currentUser->emai = $newEmail;
     }
-     public function changePhone(UpdatePhoneRequest $req)
+    public function changePhone(UpdatePhoneRequest $req)
     {
         $currentUser = auth()->user();
         $verifyOTP = $this->brevoService->verifyOTP($currentUser, OTPType::PHONE_RESET, $req['otp']);
@@ -221,15 +244,16 @@ class UserService
         $currentUser->phone = $req['new_phone'];
     }
 
-    public function updateRank($user){
+    public function updateRank($user)
+    {
         $rank = UserRank::where('status', Status::ACTIVE)
             ->where('min_spent', '<=', $user->total_spent)
             ->orderBy('min_spent', 'desc')
             ->first();
-        if($rank && $rank->id !=$user->user_rank_id){
+        if ($rank && $rank->id != $user->user_rank_id) {
             $user->user_rank_id = $rank->id;
             $user->save();
-        }   
+        }
     }
     public function findUserById($id)
     {

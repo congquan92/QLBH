@@ -27,6 +27,8 @@ class UserCreationRequest extends FormRequest
                 'string',
                 'regex:/^(0[0-9]{9}|\+84[0-9]{9})$/',
             ],
+            'positionId' => 'required|exists:positions,id',
+            'employmentType' => 'required|string',
             'roleId' => 'required|int',
             'username' => 'required|string|max:100|unique:users,username',
             'password' => ['required', 'string', 'min:8'],

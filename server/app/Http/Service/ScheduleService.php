@@ -21,41 +21,71 @@ class ScheduleService
         $end = Carbon::parse($startDate)->endOfWeek();
         $schedule = [];
 
-        // Lấy tất cả ca đặc biệt trong tuần này
         $assignments = ShiftAssignment::where('user_id', $user->id)
             ->whereBetween('date', [$start->format('Y-m-d'), $end->format('Y-m-d')])
             ->with('shift')
             ->get()
-            ->keyBy('date');
+            ->groupBy('date');
 
-        // Lấy lịch mặc định của chức vụ
         $defaultSchedules = PositionDefaultSchedule::where('position_id', $user->position_id)
             ->with('shift')
             ->get()
-            ->keyBy('day_of_week');
+            ->groupBy('day_of_week');
+
+        $approvedLeaves = LeaveRequest::where('user_id', $user->id)
+            ->whereBetween('leave_date', [$start->format('Y-m-d'), $end->format('Y-m-d')])
+            ->where('status', 'APPROVED')
+            ->get()
+            ->groupBy(function ($data) {
+                return Carbon::parse($data->leave_date)->format('Y-m-d');
+            });
 
         for ($date = $start->copy(); $date->lte($end); $date->addDay()) {
             $dateStr = $date->format('Y-m-d');
-            $dayOfWeek = $date->dayOfWeek;
+            $dayOfWeek = $date->dayOfWeekIso;
 
-            $shift = null;
-            $type = 'Nghỉ';
+            $leaveShiftIds = isset($approvedLeaves[$dateStr])
+                ? $approvedLeaves[$dateStr]->pluck('shift_id')->toArray()
+                : [];
 
+            $dayShifts = [];
             if (isset($assignments[$dateStr])) {
-                $shift = $assignments[$dateStr]->shift;
-                $type = 'Ca đặc biệt';
+                foreach ($assignments[$dateStr] as $item) {
+                    if (!in_array($item->shift_id, $leaveShiftIds)) {
+                        $dayShifts[] = [
+                            'shift_id' => $item->shift->id,
+                            'shift_name' => $item->shift->name,
+                            'time' => "{$item->shift->start_time} - {$item->shift->end_time}",
+                            'type' => 'Ca đặc biệt'
+                        ];
+                    }
+                }
             } elseif (isset($defaultSchedules[$dayOfWeek])) {
-                $shift = $defaultSchedules[$dayOfWeek]->shift;
-                $type = 'Mặc định';
+                foreach ($defaultSchedules[$dayOfWeek] as $item) {
+                    if (!in_array($item->shift_id, $leaveShiftIds)) {
+                        $dayShifts[] = [
+                            'shift_id' => $item->shift->id,
+                            'shift_name' => $item->shift->name,
+                            'time' => "{$item->shift->start_time} - {$item->shift->end_time}",
+                            'type' => 'Mặc định'
+                        ];
+                    }
+                }
+            }
+
+            if (empty($dayShifts)) {
+                $dayShifts[] = [
+                    'shift_id' => null,
+                    'shift_name' => 'Nghỉ',
+                    'time' => '-',
+                    'type' => 'Nghỉ'
+                ];
             }
 
             $schedule[] = [
                 'date' => $dateStr,
                 'day_name' => $date->translatedFormat('l'),
-                'shift_id' => $shift?->id ?? null,
-                'shift_name' => $shift?->name ?? 'Nghỉ',
-                'time' => $shift ? "{$shift->start_time} - {$shift->end_time}" : '-',
-                'type' => $type
+                'shifts' => $dayShifts
             ];
         }
 
@@ -67,41 +97,71 @@ class ScheduleService
      */
     public function getAllStaffScheduleByDate($date)
     {
-        $targetDate = Carbon::parse($date);
-        $dayOfWeek = $targetDate->dayOfWeek;
+        $dayOfWeek = Carbon::parse($date)->dayOfWeekIso;
 
-        $users = User::with(['position'])->where('status', 'ACTIVE')->get();
+        // 1. Eager load cực nhanh: Lấy User, Position, DefaultSchedules và Shift cùng lúc
+        $users = User::with(['position.defaultSchedules.shift'])->get();
 
-        $specialShifts = ShiftAssignment::where('date', $targetDate->format('Y-m-d'))
-            ->with('shift')->get()->keyBy('user_id');
+        // 2. Tối ưu: Lấy toàn bộ đơn nghỉ và ca đặc biệt của ngày đó TRƯỚC khi vào vòng lặp
+        $allApprovedLeaves = LeaveRequest::where('leave_date', $date)
+            ->where('status', 'APPROVED')
+            ->get()
+            ->groupBy('user_id');
 
-        $defaultShifts = PositionDefaultSchedule::where('day_of_week', $dayOfWeek)
-            ->with('shift')->get()->groupBy('position_id');
+        $allSpecialAssignments = ShiftAssignment::where('date', $date)
+            ->with('shift')
+            ->get()
+            ->groupBy('user_id');
 
-        return $users->map(function ($user) use ($specialShifts, $defaultShifts) {
-            $shift = null;
-            $isSpecial = false;
+        $finalSchedule = $users->map(function ($user) use ($dayOfWeek, $allApprovedLeaves, $allSpecialAssignments) {
+            // Lấy danh sách ID ca nghỉ của user này
+            $userLeaves = isset($allApprovedLeaves[$user->id])
+                ? $allApprovedLeaves[$user->id]->pluck('shift_id')->toArray()
+                : [];
 
-            if (isset($specialShifts[$user->id])) {
-                $shift = $specialShifts[$user->id]->shift;
-                $isSpecial = true;
-            } else {
-                $posSchedules = $defaultShifts->get($user->position_id);
-                $shift = $posSchedules ? $posSchedules->first()->shift : null;
-                $isSpecial = false;
+            $dayShifts = collect();
+
+            // 3. Kiểm tra Ca đặc biệt (Ưu tiên)
+            if (isset($allSpecialAssignments[$user->id])) {
+                foreach ($allSpecialAssignments[$user->id] as $assign) {
+                    if (!in_array($assign->shift_id, $userLeaves)) {
+                        $dayShifts->push([
+                            'id' => $assign->shift->id,
+                            'name' => $assign->shift->name,
+                            'time' => "{$assign->shift->start_time} - {$assign->shift->end_time}",
+                            'is_special' => true
+                        ]);
+                    }
+                }
             }
+            // 4. Nếu không có ca đặc biệt, lấy lịch mặc định
+            else if ($user->position && $user->position->defaultSchedules) {
+                $defaults = $user->position->defaultSchedules->where('day_of_week', $dayOfWeek);
+                foreach ($defaults as $default) {
+                    if (!in_array($default->shift_id, $userLeaves)) {
+                        $dayShifts->push([
+                            'id' => $default->shift->id,
+                            'name' => $default->shift->name,
+                            'time' => "{$default->shift->start_time} - {$default->shift->end_time}",
+                            'is_special' => false
+                        ]);
+                    }
+                }
+            }
+
+            // 5. Trả về cấu trúc gom nhóm theo User
+            if ($dayShifts->isEmpty())
+                return null; // Không có ca thì bỏ qua hoặc trả về mảng "Nghỉ" tùy bạn
 
             return [
                 'user_id' => $user->id,
                 'name' => $user->full_name,
                 'position' => $user->position->name ?? 'N/A',
-                'shift' => $shift?->id ?? null,
-                'shift_name' => $shift?->name ?? null,
-                'start' => $shift?->start_time ?? '-',
-                'end' => $shift?->end_time ?? '-',
-                'is_special' => $isSpecial
+                'shifts' => $dayShifts->values()->all()
             ];
-        })->filter(fn($item) => !is_null($item['shift']));
+        })->filter()->values(); // filter() để loại bỏ các user không có lịch làm việc trong ngày
+
+        return $finalSchedule;
     }
 
     public function assignShift($data)
@@ -259,7 +319,7 @@ class ScheduleService
                     'staff_count' => $employeesInShift->count(),
                     'employees' => $employeesInShift->map(function ($emp) {
                         return [
-                            'user_id' => $emp['user_id'], 
+                            'user_id' => $emp['user_id'],
                             'name' => $emp['name'],
                             'position' => $emp['position'],
                             'is_special' => $emp['is_special'], // TRẢ VỀ Ở ĐÂY
