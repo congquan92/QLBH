@@ -1,7 +1,7 @@
 <?php
 namespace App\Http\Controllers;
 
-use App\Services\ExportService;
+use App\Http\Service\ExportService;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -54,7 +54,8 @@ class ExportController extends Controller
 
         if ($request->type === 'pdf') {
             // Xuất PDF theo dạng danh sách dọc cho dễ đọc trên điện thoại
-            $pdf = Pdf::loadView('exports.personal_schedule_pdf', $data);
+           $pdf = Pdf::loadView('exports.personal_schedule_pdf', $data)
+          ->setPaper('a4', 'landscape');
             return $pdf->download("Lich-ca-nhan-tuan-" . now()->weekOfYear . ".pdf");
         }
 

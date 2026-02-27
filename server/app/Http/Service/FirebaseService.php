@@ -77,7 +77,6 @@ class FirebaseService
             'customer' => $order->customer_name,
             'total' => $order->total_amount,
             'updated_at' => now()->toDateTimeString(),
-            ''
         ];
 
         $response = Http::put($url, $data);

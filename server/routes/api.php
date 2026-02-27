@@ -5,6 +5,7 @@ use App\Http\Controllers\FirebaseController;
 use App\Http\Controllers\HolidayController;
 use App\Http\Controllers\JobHistoryController;
 use App\Http\Controllers\LeaveController;
+use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PositionController;
 use App\Http\Controllers\SalaryConfigController;
 use App\Http\Controllers\SalaryController;
@@ -216,6 +217,11 @@ Route::middleware('auth')->group(function () {
         Route::post('/', [SalaryScaleController::class, 'store']);
         Route::put('/{id}', [SalaryScaleController::class, 'update']);
         Route::delete('/{id}', [SalaryScaleController::class, 'destroy']);
+    });
+
+    Route::prefix('payment')->group(function () {
+        Route::post('/{orderId}/add', [PaymentController::class, 'addPayment']);
+        Route::get('/vnpay-return', [PaymentController::class, 'returnPayment'])->name('vnpay.return');
     });
 
     Route::get('salaries/calculate/{userId}', [SalaryController::class, 'calculateMonthlySalary']);

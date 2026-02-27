@@ -1,6 +1,7 @@
 <?php
-namespace App\Services;
+namespace App\Http\Service;
 
+use App\Http\Service\ScheduleService;
 use App\Models\User;
 use Carbon\Carbon;
 
@@ -60,29 +61,31 @@ class ExportService
 
     public function getPersonalExportData($user, $date)
     {
-        $start = Carbon::parse($date)->startOfWeek(); // Lấy Thứ 2 của tuần
-        $end = $start->copy()->addDays(6); // Đến Chủ Nhật
+        $start = Carbon::parse($date)->startOfWeek();
+        $end = $start->copy()->addDays(6);
 
         $schedule = [];
         for ($i = 0; $i < 7; $i++) {
             $currentDate = $start->copy()->addDays($i);
-            // Sử dụng ScheduleService để lấy ca thực tế (đã check mặc định & đặc biệt)
             $shift = $this->scheduleService->getEffectiveShift($user, $currentDate->format('Y-m-d'));
 
             $schedule[] = [
-                'date' => $currentDate->format('d/m/Y'),
-                'day' => $currentDate->translatedFormat('l'),
-                'shift_name' => $shift ? $shift->name : 'Nghỉ',
-                'time' => $shift ? "{$shift->start_time} - {$shift->end_time}" : '-',
-                'note' => $shift ? 'Có lịch làm việc' : 'Ngày nghỉ'
+                'date' => $currentDate->format('d/m'),
+                'day_name' => $currentDate->translatedFormat('l'),
+                'shifts' => [
+                    [
+                        'shift_name' => $shift ? $shift->name : 'Nghỉ',
+                        'time' => $shift ? "{$shift->start_time} - {$shift->end_time}" : '-',
+                    ]
+                ]
             ];
         }
 
         return [
-            'full_name' => $user->full_name,
+            'employee' => $user->full_name, 
             'position' => $user->position->name ?? 'N/A',
             'week_range' => "Từ {$start->format('d/m/Y')} đến {$end->format('d/m/Y')}",
-            'content' => $schedule
+            'week_schedule' => $schedule 
         ];
     }
 }
