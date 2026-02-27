@@ -43,9 +43,16 @@ class JobHistoryService
                 'end_date' => null,
             ]);
 
-            $user->update([
+            $updateData = [
                 'position_id' => $data['position_id']
-            ]);
+            ];
+            
+            if (!empty($data['role_id'])) {
+                $updateData['role_id'] = $data['role_id'];
+                $updateData['token_version'] = ($user->token_version ?? 0) + 1;
+            }
+
+            $user->update($updateData);
 
             return $newJob;
         });

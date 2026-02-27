@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\ExportController;
 use App\Http\Controllers\FirebaseController;
+use App\Http\Controllers\GroupPermissionController;
 use App\Http\Controllers\HolidayController;
 use App\Http\Controllers\JobHistoryController;
 use App\Http\Controllers\LeaveController;
@@ -25,6 +26,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\WebAuthn\WebAuthnLoginController;
 use App\Http\Controllers\WebAuthn\WebAuthnRegisterController;
 use App\Http\Controllers\WebAuthn\WebAuthnController;
+use Server\App\Http\Controllers\RoleController;
 
 
 // Route public
@@ -222,6 +224,29 @@ Route::middleware('auth')->group(function () {
     Route::prefix('payment')->group(function () {
         Route::post('/{orderId}/add', [PaymentController::class, 'addPayment']);
         Route::get('/vnpay-return', [PaymentController::class, 'returnPayment'])->name('vnpay.return');
+    });
+
+    Route::prefix('roles')->group(function () {
+        Route::get('/', [RoleController::class, 'index']);
+        Route::post('/', [RoleController::class, 'store']);
+        Route::get('/{id}', [RoleController::class, 'show']);
+        Route::put('/{id}', [RoleController::class, 'update']);
+        Route::delete('/{id}', [RoleController::class, 'destroy']);
+        
+        // API hủy liên kết nhóm quyền
+        Route::post('/{id}/detach-groups', [RoleController::class, 'detachGroups']);
+    });
+
+    // --- Group Permission Routes ---
+    Route::prefix('group-permissions')->group(function () {
+        Route::get('/', [GroupPermissionController::class, 'index']);
+        Route::post('/', [GroupPermissionController::class, 'store']);
+        Route::get('/{id}', [GroupPermissionController::class, 'show']);
+        Route::put('/{id}', [GroupPermissionController::class, 'update']);
+        Route::delete('/{id}', [GroupPermissionController::class, 'destroy']);
+        
+        // API hủy liên kết quyền lẻ
+        Route::post('/{id}/detach-permissions', [GroupPermissionController::class, 'detachPermissions']);
     });
 
     Route::get('salaries/calculate/{userId}', [SalaryController::class, 'calculateMonthlySalary']);

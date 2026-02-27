@@ -36,7 +36,6 @@ class UserUpdateRequest extends FormRequest
             'dateOfBirth.required' => 'Date of birth must be not blank',
             'email.required' => MessageError::EMAIL_NOT_BLANK,
             'email.email' => 'Invalid email',
-            'roleId.required' => 'Vai trò không được để trống !',
             'email.unique' => 'Email already exists',
             'username.required' => MessageError::USERNAME_NOT_BLANK,
             'username.unique' => MessageError::USERNAME_EXISTED,

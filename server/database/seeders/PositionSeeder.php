@@ -29,7 +29,7 @@ class PositionSeeder extends Seeder
             ['name' => 'Nhân viên Bán hàng (Full-time)', 'base_salary' => 7000000, 'salary_type' => 'MONTHLY'],
             ['name' => 'Nhân viên Bán hàng (Part-time)', 'base_salary' => 25000, 'salary_type' => 'HOURLY'],
             ['name' => 'Quản lý kho', 'base_salary' => 10000000, 'salary_type' => 'MONTHLY'],
-            ['name' => 'Nhân viên kiểm kho', 'base_salary' => 30000, 'salary_type' => 'HOURLY']
+            ['name' => 'Quản trị viên', 'base_salary' => 30000000, 'salary_type' => 'MONTHLY']
         ];
 
         foreach ($positions as $pos) {
@@ -57,7 +57,7 @@ class PositionSeeder extends Seeder
                     'position_id' => $position->id,
                     'current_salary' => $startingSalary,
                     'employment_type' => str_contains($position->name, 'Full-time') ? 'FULL_TIME' : 'PART_TIME',
-                    'effective_date' => Carbon::now()->startOfMonth(), 
+                    'effective_date' => Carbon::now()->startOfMonth(),
                     'end_date' => null,
                 ]);
             }
