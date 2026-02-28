@@ -16,7 +16,7 @@ class RoleMapper
             $role->id,
             $role->name,
             $role->description,
-            $role->status,
+            $role->status->value,
             $groupPermission
         );
     }

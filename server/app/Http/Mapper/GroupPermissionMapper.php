@@ -16,14 +16,14 @@ class GroupPermissionMapper
                     $permission->id,
                     $permission->name,
                     $permission->description ?? '',
-                    $permission->status ?? 'ACTIVE'
+                    $permission->status->value ?? 'ACTIVE'
                 );
             })->toArray();
         return new GroupPermissionResponse(
             $groupPermission->id,
             $groupPermission->name,
             $groupPermission->description,
-            $groupPermission->status,
+            $groupPermission->status->value,
             $permissionResponses
         );
     }

@@ -38,6 +38,7 @@ class GroupPermissionController extends Controller
     {
         $data = $request->validate([
             'name' => 'required|string',
+            'description' => 'nullable|string',
             'permission_ids' => 'required|array'
         ]);
 

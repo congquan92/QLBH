@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Http\Service\PaymentService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Log;
 
 class PaymentController extends Controller
 {

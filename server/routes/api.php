@@ -26,7 +26,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\WebAuthn\WebAuthnLoginController;
 use App\Http\Controllers\WebAuthn\WebAuthnRegisterController;
 use App\Http\Controllers\WebAuthn\WebAuthnController;
-use Server\App\Http\Controllers\RoleController;
+use App\Http\Controllers\RoleController;
 
 
 // Route public
