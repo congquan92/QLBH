@@ -2,48 +2,45 @@
 
 namespace App\Providers;
 
-use App\Models\Role;
+use App\Models\Permission;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
-use Laravel\Pail\ValueObjects\Origin\Console;
 
 class AuthServiceProvider extends ServiceProvider
 {
     public function boot(): void
     {
-        Gate::define('CREATE_CATEGORIES', function ($user) {
-            Log::info('Gate CREATE_CATEGORIES', [
-                'user_id' => $user->id ?? null,
-                'role' => $user->role?->name,
-            ]);
+        // 1. Quyền ưu tiên: ADMIN luôn trả về true cho mọi Gate
+        Gate::before(function ($user, $ability) {
             if ($user->role?->name === 'ADMIN') {
                 return true;
             }
-
-            // return $user->role
-            //     && $user->role->permissions()
-            //         ->where('name', 'CREATE_CATEGORIES')
-            //         ->exists();
-            return true;
         });
 
+        // 2. Định nghĩa Gate động dựa trên Database
+        // Logic: Lấy tất cả tên permissions có trong máy để định nghĩa Gate tương ứng
+        try {
+            // Lấy danh sách tên tất cả permission (nên cache lại để tối ưu performance)
+            $permissions = Permission::where('status', 'ACTIVE')->pluck('name');
 
-        Gate::define('ADD_SUPPLIER', function ($user) {
-            Log::info('Gate ADD_SUPPLIER', [
-                'user_id' => $user->id ?? null,
-                'role' => $user->role?->name,
-            ]);
-            if ($user->role?->name === 'ADMIN') {
-                return true;
+            foreach ($permissions as $permissionName) {
+                Gate::define($permissionName, function ($user) use ($permissionName) {
+                    
+                    // Kiểm tra User có Role không
+                    if (!$user->role) return false;
+
+                    // Logic kiểm tra: Role -> Group -> Permission
+                    return $user->role->groupPermissions()
+                        ->whereHas('permissions', function ($query) use ($permissionName) {
+                            $query->where('name', $permissionName)
+                                  ->where('permissions.status', 'ACTIVE');
+                        })->exists();
+                });
             }
-
-            // return $user->role
-            //     && $user->role->permissions()
-            //         ->where('name', 'ADD_SUPPLIER')
-            //         ->exists();
-            return true;
-        });
-
+        } catch (\Exception $e) {
+            // Tránh lỗi khi chạy migration lần đầu chưa có bảng permissions
+            Log::error("Phân quyền Gate lỗi: " . $e->getMessage());
+        }
     }
 }

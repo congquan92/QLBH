@@ -17,7 +17,6 @@ class CategoryService
 {
     public function findAll()
     {
-        // Gate::authorize('VIEW_ALL_CATEGORIES');
         $categories = Category::whereNull('parent_id')
             ->with('childrenRecursive')
             ->get();
