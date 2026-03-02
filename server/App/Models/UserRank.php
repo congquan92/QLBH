@@ -17,6 +17,7 @@ class UserRank extends Model
     protected $keyType = 'int';
 
     protected $fillable = [
+        'id',
         'name',
         'min_spent',
         'status'

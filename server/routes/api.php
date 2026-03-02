@@ -23,6 +23,7 @@ use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\VoucherController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\WebAuthn\WebAuthnLoginController;
 use App\Http\Controllers\WebAuthn\WebAuthnRegisterController;
@@ -42,12 +43,13 @@ Route::get('/category/all', [CategoryController::class, 'findAllWithouPagination
 Route::get('/product/category/{id}', [ProductController::class, 'findAllByCategory']);
 Route::post('/firebase/test', [FirebaseController::class, 'test']);
 Route::post('/auth/social/google', [OAuthController::class, 'googleLogin']);
-
+Route::get('/voucher/list', action: [VoucherController::class, 'findAll']);
+Route::get('/voucher/detail/{id}', [VoucherController::class, 'show']);
 // ==========================================
 // Route bảo vệ bởi JWT
 // ==========================================
 Route::middleware('auth')->group(function () {
-    
+
     // Auth
     Route::post('/auth/logout', [AuthController::class, 'logout']);
     Route::post('/auth/refresh', [AuthController::class, 'refresh']);
@@ -59,14 +61,14 @@ Route::middleware('auth')->group(function () {
     Route::get('/user/{userId}', [UserController::class, 'getDetailUser'])->middleware('can:VIEW_USER_DETAIL');
     Route::post('/user/add', [UserController::class, 'createUser'])->middleware('can:CREATE_USER');
     Route::put('/user/{userId}/update/role', [UserController::class, 'updateRoleUser'])->middleware('can:ASSIGN_ROLE');
-    
+
     // Address (Thường cho phép User tự quản lý)
     Route::post('/user/add/address', [UserController::class, 'createAddress']);
     Route::get('/user/address/list', [UserController::class, 'getAllAddresses']);
     Route::put('/user/address/default/{addressId}', [UserController::class, 'updateDefaultAddress']);
     Route::put('/user/address/update/{addressId}', [UserController::class, 'updateAddress']);
     Route::delete('/user/address/delete/{addressId}', [UserController::class, 'deleteAddress']);
-    
+
     // Account Security
     Route::post('/user/{userId}/verify-account', [UserController::class, 'verifyAccount'])->middleware('can:VERIFY_ACCOUNT');
     Route::put('/user/change-email', [UserController::class, 'changeEmail']);
@@ -240,6 +242,20 @@ Route::middleware('auth')->group(function () {
         Route::get('/categories', [StatisticalController::class, 'getCategories']);
     });
 
+    Route::prefix('voucher')->group(function () {
+        // Admin routes
+        Route::get('/admin/list', [VoucherController::class, 'findAllByAdmin'])
+            ->middleware('can:VIEW_ALL_VOUCHER');
+
+        Route::post('/add', [VoucherController::class, 'store'])
+            ->middleware('can:CREATE_VOUCHER');
+
+        Route::put('/update/{id}', [VoucherController::class, 'update'])
+            ->middleware('can:UPDATE_VOUCHER');
+
+        // Route dành cho User kiểm tra voucher của mình (nếu cần alias riêng)
+        Route::get('/my-available', [VoucherController::class, 'findAll']);
+    });
     // Salaries
     Route::get('salaries/calculate/{userId}', [SalaryController::class, 'calculateMonthlySalary'])->middleware('can:CALCULATE_SALARY');
     Route::get('salaries/calculate/me', [SalaryController::class, 'calculateMonthlySalary']);

@@ -121,7 +121,8 @@ class CategoryService
     }
     public function getCategoryById($id)
     {
-        $category = Category::findOrFail($id);
+        $category = Category::where('id', $id)
+            ->where('status', Status::ACTIVE)->firstOrFail();
         return CategoryMapper::toResponse($category);
     }
 

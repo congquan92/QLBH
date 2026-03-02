@@ -16,6 +16,7 @@ class ImageReview extends Model
     protected $keyType = 'int';
 
     protected $fillable = [
+        'id',
         'urlImage',
     ];
 

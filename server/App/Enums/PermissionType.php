@@ -70,4 +70,10 @@ enum PermissionType: string
     case MANAGE_ROLES = 'MANAGE_ROLES';
     case MANAGE_PERMISSION_GROUPS = 'MANAGE_PERMISSION_GROUPS';
     case EXPORT_DATA = 'EXPORT_DATA';
+
+    // Voucher Management
+    case VIEW_ALL_VOUCHER = 'VIEW_ALL_VOUCHER';
+    case CREATE_VOUCHER = 'CREATE_VOUCHER';
+    case UPDATE_VOUCHER = 'UPDATE_VOUCHER';
+    case DELETE_VOUCHER = 'DELETE_VOUCHER';
 }
