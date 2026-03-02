@@ -31,17 +31,17 @@ class RoleSeeder extends Seeder
 
                 case RoleType::WAREHOUSE_STAFF:
                     $warehouseGroups = GroupPermission::whereIn('name', [
-                        'QUẢN LÝ SẢN PHẨM', 
-                        'QUẢN LÝ DANH MỤC', 
+                        'QUẢN LÝ SẢN PHẨM',
+                        'QUẢN LÝ DANH MỤC',
                         'QUẢN LÝ NHẬP KHO'
                     ])->pluck('id');
                     $role->groupPermissions()->sync($warehouseGroups);
                     break;
 
                 case RoleType::ORDER_STAFF:
-                    // Nhân viên vận đơn: Tập trung vào xử lý đơn hàng
                     $orderGroups = GroupPermission::whereIn('name', [
-                        'QUẢN LÝ ĐƠN HÀNG'
+                        'QUẢN LÝ ĐƠN HÀNG',
+                        'QUẢN LÝ KHUYẾN MÃI'
                     ])->pluck('id');
                     $role->groupPermissions()->sync($orderGroups);
                     break;

@@ -2,64 +2,43 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\UserRank\UserRankCreationRequest;
+use App\Http\Responses\ApiResponse;
+use App\Http\Service\UserRankService;
 use App\Models\UserRank;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class UserRankController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
+use ApiResponse;
+    protected UserRankService $userRankService;
+
+    public function __construct(UserRankService $userRankService)
     {
-        //
+        $this->userRankService = $userRankService;
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
+    public function findAll(Request $request): JsonResponse
     {
-        //
+        $keyword = $request->query('keyword');
+        $sort = $request->query('sort');
+        $page = (int) $request->query('page', 1);
+        $size = (int) $request->query('size', 10);
+
+        $result = $this->userRankService->findAll($keyword,$sort, $page, $size);
+        return $this->success($result, "Danh sách hạng người dùng");
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
+     public function store(UserRankCreationRequest $request): JsonResponse
     {
-        //
+        $voucher = $this->userRankService->create($request);
+        return $this->success($voucher, "Tạo hạng người dùng");
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(UserRank $userRank)
+    public function update(Request $request, $id): JsonResponse
     {
-        //
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(UserRank $userRank)
-    {
-        //
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, UserRank $userRank)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(UserRank $userRank)
-    {
-        //
+        $this->userRankService->update($id, $request->all());
+        return $this->success(null, "Cập nhật hạng người dùng");
     }
 }

@@ -2,64 +2,64 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Voucher;
+use App\Http\Requests\Voucher\VoucherCreationRequest;
+use App\Http\Responses\ApiResponse;
+use App\Http\Service\VoucherService;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 
 class VoucherController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
+    use ApiResponse;
+    protected VoucherService $voucherService;
+
+    public function __construct(VoucherService $voucherService)
     {
-        //
+        $this->voucherService = $voucherService;
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
+    // Lấy danh sách cho User (Yêu cầu đăng nhập bên trong Service đã throw exception)
+    public function findAll(Request $request): JsonResponse
     {
-        //
+        $sort = $request->query('sort');
+        $page = (int) $request->query('page', 1);
+        $size = (int) $request->query('size', 10);
+
+        $result = $this->voucherService->findAll($sort, $page, $size);
+        return $this->success($result, "Danh sách voucher cho người dùng");
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
+    // Lấy danh sách cho Admin
+    public function findAllByAdmin(Request $request): JsonResponse
     {
-        //
+        $result = $this->voucherService->findAllByAdmin(
+            $request->query('keyword'),
+            $request->query('rank'),
+            $request->query('sort'),
+            $request->query('timeStatus'),
+            $request->query('startDate'),
+            $request->query('endDate'),
+            (int) $request->query('page', 1),
+            (int) $request->query('size', 10)
+        );
+        return $this->success($result, "Danh sách voucher cho admnin");
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(Voucher $voucher)
+    public function store(VoucherCreationRequest $request): JsonResponse
     {
-        //
+        $voucher = $this->voucherService->add($request);
+        return $this->success($voucher, "Tạo voucher");
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(Voucher $voucher)
+    public function update(Request $request, $id): JsonResponse
     {
-        //
+        $this->voucherService->update($id, $request->all());
+        return $this->success(null, "Cập nhật voucher");
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, Voucher $voucher)
+    public function show($id): JsonResponse
     {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(Voucher $voucher)
-    {
-        //
+        $voucher = $this->voucherService->getVoucherById($id);
+        return $this->success($voucher, "Xem chi tiết voucher");
     }
 }
