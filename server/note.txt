@@ -5,3 +5,6 @@ php artisan migrate:fresh --seed // Drop tất cả các bảng và chạy lại
 php artisan make:migration nameFile // Tạo file migration
 php artisan serve  // chay du an
 tail -f storage/logs/laravel.log //xem log
+
+php artisan make:seeder fileName //tao seeder chay du lieu mau 
+php artisan db:seed --class=fileName // chay du lieu mau trong seeder

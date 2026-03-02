@@ -20,6 +20,7 @@ return new class extends Migration {
             $table->string('name_product_snapshot');
             $table->string('url_image_snapShot');
             $table->json('variant_attributes_snapshot');
+            $table->unsignedBigInteger('product_variant_id');
             $table->foreignId('order_id')->constrained();
             $table->foreignId('product_id')->constrained();
             $table->timestamps();

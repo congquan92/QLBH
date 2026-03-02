@@ -7,14 +7,16 @@
     "license": "MIT",
     "require": {
         "php": "^8.2",
+        "barryvdh/laravel-dompdf": "^3.1",
         "cloudinary/cloudinary_php": "^3.1",
         "darkaonline/l5-swagger": "^10.1",
         "firebase/php-jwt": "^6.10",
         "getbrevo/brevo-php": "1.x.x",
         "laragear/webauthn": "*",
-        "laravel/framework": "^12.0",
+        "laravel/framework": "^12.52",
         "laravel/socialite": "^5.24",
         "laravel/tinker": "^2.10.1",
+        "maatwebsite/excel": "^3.1",
         "tymon/jwt-auth": "^2.2"
     },
     "require-dev": {
