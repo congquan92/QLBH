@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\ExportController;
 use App\Http\Controllers\FirebaseController;
@@ -28,9 +29,6 @@ use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\VoucherController;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\WebAuthn\WebAuthnLoginController;
-use App\Http\Controllers\WebAuthn\WebAuthnRegisterController;
-use App\Http\Controllers\WebAuthn\WebAuthnController;
 use App\Http\Controllers\RoleController;
 
 
@@ -115,13 +113,10 @@ Route::middleware('auth')->group(function () {
     // Supplier
     Route::post('/supplier/add', [SupplierController::class, 'store'])->middleware('can:ADD_SUPPLIER');
 
-    // WebAuthn
-    Route::post('/webauthn/register/options', [WebAuthnRegisterController::class, 'options']);
-    Route::post('/webauthn/register', [WebAuthnRegisterController::class, 'register']);
-    Route::post('/webauthn/login/options', [WebAuthnLoginController::class, 'options']);
-    Route::post('/webauthn/login', [WebAuthnController::class, 'recordAttendance']);
-    Route::get('/webauthn/list', [WebAuthnController::class, 'WebAuthnList']);
-    Route::post('/webauthn/delete/{id}', [WebAuthnController::class, 'delete']);
+    Route::prefix('attendance')->group(function () {
+        Route::post('/record', [AttendanceController::class, 'record']);
+        Route::get('/my-history', [AttendanceController::class, 'history']);
+    });
 
     // Order
     Route::get("/order/list", [OrderController::class, 'findAll']);

@@ -7,7 +7,6 @@ use App\Http\Requests\supplier\SupplierCreationRequest;
 use App\Http\Responses\PageResponse;
 use App\Models\Supplier;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Gate;
 
 class SupplierService
 {

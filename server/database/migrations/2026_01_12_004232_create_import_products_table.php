@@ -19,7 +19,7 @@ return new class extends Migration
             $table->string('description');
             $table->decimal('totalAmount',15,2);
             $table->string('status')
-                  ->default(DeliveryStatus::ACTIVE->value);
+                  ->default(DeliveryStatus::PENDING->value);
             $table->string('view_status')->default(Status::ACTIVE->value);      
             $table->foreignId('product_id')->constrained('products')->onDelete('cascade');
             $table->timestamps();
