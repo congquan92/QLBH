@@ -1,13 +1,16 @@
 <?php
 
+use App\Http\Controllers\CartController;
 use App\Http\Controllers\ExportController;
 use App\Http\Controllers\FirebaseController;
 use App\Http\Controllers\GroupPermissionController;
 use App\Http\Controllers\HolidayController;
+use App\Http\Controllers\ImportProductController;
 use App\Http\Controllers\JobHistoryController;
 use App\Http\Controllers\LeaveController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PositionController;
+use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\SalaryConfigController;
 use App\Http\Controllers\SalaryController;
 use App\Http\Controllers\SalaryScaleController;
@@ -45,6 +48,7 @@ Route::post('/firebase/test', [FirebaseController::class, 'test']);
 Route::post('/auth/social/google', [OAuthController::class, 'googleLogin']);
 Route::get('/voucher/list', action: [VoucherController::class, 'findAll']);
 Route::get('/voucher/detail/{id}', [VoucherController::class, 'show']);
+Route::get('/reviews/{id}', action: [ReviewController::class, 'show']);
 // ==========================================
 // Route bảo vệ bởi JWT
 // ==========================================
@@ -255,6 +259,65 @@ Route::middleware('auth')->group(function () {
 
         // Route dành cho User kiểm tra voucher của mình (nếu cần alias riêng)
         Route::get('/my-available', [VoucherController::class, 'findAll']);
+    });
+
+    Route::prefix('reviews')->group(function () {
+        Route::post('/', [ReviewController::class, 'store']); // Tạo review
+        Route::get('/me/{productId}', [ReviewController::class, 'getMyReviewByProduct']); // Lấy review của mình theo SP
+        Route::put('/{id}', [ReviewController::class, 'update']); // Cập nhật text/rating
+
+        // Quản lý ảnh của bài Review
+        Route::post('/{reviewId}/images', [ReviewController::class, 'addImages']);
+        Route::delete('/{reviewId}/images', [ReviewController::class, 'deleteImages']);
+    });
+
+    // Nhóm hành động dành cho Quản trị viên
+    Route::prefix('reviews')->group(function () {
+        Route::get('/', [ReviewController::class, 'index'])->middleware('can:VIEW_REVIEWS_ADMIN');
+
+        // Nếu bạn thêm hàm xóa review vi phạm
+        Route::delete('/{id}', [ReviewController::class, 'destroy'])
+            ->middleware('can:DELETE_REVIEWS_ADMIN');
+    });
+
+    Route::prefix('suppliers')->group(function () {
+        Route::get('/', [SupplierController::class, 'index'])->middleware('can:VIEW_SUPPLIERS');
+        Route::get('/{id}', [SupplierController::class, 'show'])->middleware('can:VIEW_SUPPLIERS');
+
+        // Thêm mới
+        Route::post('/', [SupplierController::class, 'store'])->middleware('can:ADD_SUPPLIER');
+
+        // Cập nhật
+        Route::put('/{id}', [SupplierController::class, 'update'])->middleware('can:UPDATE_SUPPLIER');
+
+        // Vô hiệu hóa (Xóa bằng cách đổi status)
+        Route::delete('/{id}', [SupplierController::class, 'destroy'])->middleware('can:DELETE_SUPPLIER');
+    });
+
+    Route::prefix('carts')->group(function () {
+       // Lấy danh sách giỏ hàng (Phân trang + Sắp xếp)
+    Route::get('/', [CartController::class, 'index']);
+    
+    // Thêm sản phẩm vào giỏ
+    Route::post('/', [CartController::class, 'store']);
+    
+    // Cập nhật số lượng sản phẩm trong giỏ
+    Route::put('/{id}', [CartController::class, 'update']);
+    
+    // Xóa sản phẩm khỏi giỏ
+    Route::delete('/{id}', [CartController::class, 'destroy']);
+    });
+
+Route::prefix('import-products')->group(function () {
+       // Lấy danh sách giỏ hàng (Phân trang + Sắp xếp)
+    Route::get('/', [ImportProductController::class, 'index'])->middleware('can:VIEW_IMPORT_PRODUCT');
+        Route::post('/', [ImportProductController::class, 'store'])->middleware('can:ADD_IMPORT_PRODUCT');
+        
+        Route::post('/{id}/confirm', [ImportProductController::class, 'confirm'])->middleware('can:CONFIRM_IMPORT_PRODUCT');
+        Route::post('/{id}/cancel', [ImportProductController::class, 'cancel'])->middleware('can:CANCEL_IMPORT_PRODUCT');
+        
+        Route::put('/{id}/quantities', [ImportProductController::class, 'updateQuantities'])->middleware('can:UPDATE_IMPORT_PRODUCT');
+        Route::delete('/{id}', [ImportProductController::class, 'destroy'])->middleware('can:DELETE_IMPORT_PRODUCT');
     });
     // Salaries
     Route::get('salaries/calculate/{userId}', [SalaryController::class, 'calculateMonthlySalary'])->middleware('can:CALCULATE_SALARY');

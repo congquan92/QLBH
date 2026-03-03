@@ -10,6 +10,7 @@ class UserRankService{
    public function findAll(?string $keyword, ?string $sort, int $page, int $size)
     {
         $query = UserRank::query();
+        $query->where('status', '!=', 'DISABLE');
 
         if (!empty($keyword)) {
             $query->where('name', 'like', "%{$keyword}%");

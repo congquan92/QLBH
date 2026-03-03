@@ -41,7 +41,8 @@ class RoleSeeder extends Seeder
                 case RoleType::ORDER_STAFF:
                     $orderGroups = GroupPermission::whereIn('name', [
                         'QUẢN LÝ ĐƠN HÀNG',
-                        'QUẢN LÝ KHUYẾN MÃI'
+                        'QUẢN LÝ KHUYẾN MÃI',
+                        'QUẢN LÝ ĐÁNH GIÁ'
                     ])->pluck('id');
                     $role->groupPermissions()->sync($orderGroups);
                     break;

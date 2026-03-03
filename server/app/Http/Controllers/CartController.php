@@ -1,65 +1,84 @@
 <?php
-
 namespace App\Http\Controllers;
 
-use App\Models\Cart;
+use App\Http\Service\CartService;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 
 class CartController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
+    protected CartService $cartService;
+
+    public function __construct(CartService $cartService)
     {
-        //
+        $this->cartService = $cartService;
     }
 
     /**
-     * Show the form for creating a new resource.
+     * Lấy danh sách item trong giỏ hàng
      */
-    public function create()
+    public function index(Request $request): JsonResponse
     {
-        //
+        $result = $this->cartService->getCarts(
+            $request->query('sort'),
+            (int)$request->query('page', 1),
+            (int)$request->query('size', 10)
+        );
+
+        return response()->json($result);
     }
 
     /**
-     * Store a newly created resource in storage.
+     * Thêm mới sản phẩm vào giỏ hàng
      */
-    public function store(Request $request)
+    public function store(Request $request): JsonResponse
     {
-        //
+        $request->validate([
+            'product_variant_id' => 'required|integer',
+            'quantity' => 'required|integer|min:1'
+        ]);
+
+        try {
+            $cart = $this->cartService->add($request->all());
+            return response()->json([
+                'message' => 'Đã thêm sản phẩm vào giỏ hàng thành công',
+                'data' => $cart
+            ], 201);
+        } catch (\Exception $e) {
+            return response()->json(['message' => $e->getMessage()], 400);
+        }
     }
 
     /**
-     * Display the specified resource.
+     * Cập nhật số lượng item (Dùng PUT hoặc PATCH)
      */
-    public function show(Cart $cart)
+    public function update(Request $request, $id): JsonResponse
     {
-        //
+        $request->validate([
+            'quantity' => 'required|integer|min:1'
+        ]);
+
+        try {
+            $cart = $this->cartService->update((int)$id, $request->only('quantity'));
+            return response()->json([
+                'message' => 'Cập nhật số lượng thành công',
+                'data' => $cart
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['message' => $e->getMessage()], 400);
+        }
     }
 
     /**
-     * Show the form for editing the specified resource.
+     * Xóa item khỏi giỏ hàng
      */
-    public function edit(Cart $cart)
+    public function destroy($id): JsonResponse
     {
-        //
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, Cart $cart)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(Cart $cart)
-    {
-        //
+        try {
+            $this->cartService->delete((int)$id);
+            return response()->json(['message' => 'Đã xóa sản phẩm khỏi giỏ hàng']);
+        } catch (\Exception $e) {
+            return response()->json(['message' => $e->getMessage()], 400);
+        }
     }
 }

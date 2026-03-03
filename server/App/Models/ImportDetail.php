@@ -18,6 +18,7 @@ class ImportDetail extends Model
     protected $fillable = [
         'quantity',
         'unitPrice',
+        'product_variant_id',
         'nameProductSnapShot',
         'urlImageSnapShot',
         'variantAttributesSnapshot',

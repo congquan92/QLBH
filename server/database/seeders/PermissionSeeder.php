@@ -27,14 +27,15 @@ class PermissionSeeder extends Seeder
 
             // 2. Định nghĩa Nhóm Quyền và Từ khóa tự động gom nhóm
             $groupsConfig = [
-                'QUẢN LÝ DANH MỤC'  => ['CATEGORIES'],
-                'QUẢN LÝ SẢN PHẨM'  => ['PRODUCT', 'VARIANT', 'ATTRIBUTE', 'IMAGE_PRODUCT'],
-                'QUẢN LÝ ĐƠN HÀNG'  => ['ORDER', 'SHIP', 'RETURN_ORDER'],
-                'BÁO CÁO THỐNG KÊ'   => ['STATISTICAL'],
-                'QUẢN LÝ NHÂN SỰ'   => ['SCHEDULE', 'SHIFT', 'LEAVE', 'HOLIDAY', 'POSITION', 'PROMOTE'],
+                'QUẢN LÝ ĐÁNH GIÁ' => ['REVIEWS'],
+                'QUẢN LÝ DANH MỤC' => ['CATEGORIES'],
+                'QUẢN LÝ SẢN PHẨM' => ['PRODUCT', 'VARIANT', 'ATTRIBUTE', 'IMAGE_PRODUCT'],
+                'QUẢN LÝ ĐƠN HÀNG' => ['ORDER', 'SHIP', 'RETURN_ORDER'],
+                'BÁO CÁO THỐNG KÊ' => ['STATISTICAL'],
+                'QUẢN LÝ NHÂN SỰ' => ['SCHEDULE', 'SHIFT', 'LEAVE', 'HOLIDAY', 'POSITION', 'PROMOTE'],
                 'QUẢN LÝ TÀI CHÍNH' => ['SALARY', 'SCALE', 'CALCULATE_SALARY'],
-                'QUẢN LÝ HỆ THỐNG'  => ['ROLE', 'PERMISSION_GROUPS', 'USERS', 'STATISTICAL', 'EXPORT'],
-                'QUẢN LÝ NHẬP KHO'  => ['IMPORT_PRODUCT', 'SUPPLIER'],
+                'QUẢN LÝ HỆ THỐNG' => ['ROLE', 'PERMISSION_GROUPS', 'USERS', 'STATISTICAL', 'EXPORT'],
+                'QUẢN LÝ NHẬP KHO' => ['IMPORT_PRODUCT', 'SUPPLIER'],
             ];
 
             foreach ($groupsConfig as $groupName => $keywords) {

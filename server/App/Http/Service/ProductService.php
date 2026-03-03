@@ -186,9 +186,7 @@ class ProductService
 
     public function update(UpdateProductRequest $req)
     {
-        $product = Product::where('id', $req->id)
-            ->where('status', Status::ACTIVE)
-            ->firstOrFail();
+        $product = Product::where('id', $req->id)->firstOrFail();
 
         Log::info("ABCCCC: ");
 
@@ -198,6 +196,9 @@ class ProductService
             'list_price' => $req->listPrice ?? $product->list_price,
             'sale_price' => $req->salePrice ?? $product->sale_price,
         ];
+        if ($req->has('status')) {
+            $data['status'] = $req->status;
+        }
 
         if ($req->has('categoryId')) {
             $category = Category::where('id', $req->categoryId)
@@ -314,9 +315,8 @@ class ProductService
     public function deleteProduct(int $productId): void
     {
         $product = Product::where('id', $productId)
-            ->where('status', Status::ACTIVE)
             ->firstOrFail();
-        $product->status = Status::INACTIVE;
+        $product->status = Status::DISABLED;
         $product->save();
     }
 

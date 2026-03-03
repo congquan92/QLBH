@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
 
             $table->string('urlImage');
-            $table->foreignId('review_id')->constrained();
+          $table->foreignId('review_id')->constrained()->onDelete('cascade');
             $table->timestamps();
         });
     }
