@@ -171,6 +171,8 @@ Route::middleware('auth')->group(function () {
     Route::prefix('export')->group(function () {
         Route::get('/schedule', [ExportController::class, 'exportSchedule'])->middleware('can:EXPORT_DATA');
         Route::get('/my-schedule', [ExportController::class, 'exportMySchedule']);
+        Route::get('/export/late-arrivals', [ExportController::class, 'exportLateArrivals'])
+            ->middleware('can:VIEW_STATISTICAL'); 
     });
 
     // Holidays
@@ -290,27 +292,27 @@ Route::middleware('auth')->group(function () {
     });
 
     Route::prefix('carts')->group(function () {
-       // Lấy danh sách giỏ hàng (Phân trang + Sắp xếp)
-    Route::get('/', [CartController::class, 'index']);
-    
-    // Thêm sản phẩm vào giỏ
-    Route::post('/', [CartController::class, 'store']);
-    
-    // Cập nhật số lượng sản phẩm trong giỏ
-    Route::put('/{id}', [CartController::class, 'update']);
-    
-    // Xóa sản phẩm khỏi giỏ
-    Route::delete('/{id}', [CartController::class, 'destroy']);
+        // Lấy danh sách giỏ hàng (Phân trang + Sắp xếp)
+        Route::get('/', [CartController::class, 'index']);
+
+        // Thêm sản phẩm vào giỏ
+        Route::post('/', [CartController::class, 'store']);
+
+        // Cập nhật số lượng sản phẩm trong giỏ
+        Route::put('/{id}', [CartController::class, 'update']);
+
+        // Xóa sản phẩm khỏi giỏ
+        Route::delete('/{id}', [CartController::class, 'destroy']);
     });
 
-Route::prefix('import-products')->group(function () {
-       // Lấy danh sách giỏ hàng (Phân trang + Sắp xếp)
-    Route::get('/', [ImportProductController::class, 'index'])->middleware('can:VIEW_IMPORT_PRODUCT');
+    Route::prefix('import-products')->group(function () {
+        // Lấy danh sách giỏ hàng (Phân trang + Sắp xếp)
+        Route::get('/', [ImportProductController::class, 'index'])->middleware('can:VIEW_IMPORT_PRODUCT');
         Route::post('/', [ImportProductController::class, 'store'])->middleware('can:ADD_IMPORT_PRODUCT');
-        
+
         Route::post('/{id}/confirm', [ImportProductController::class, 'confirm'])->middleware('can:CONFIRM_IMPORT_PRODUCT');
         Route::post('/{id}/cancel', [ImportProductController::class, 'cancel'])->middleware('can:CANCEL_IMPORT_PRODUCT');
-        
+
         Route::put('/{id}/quantities', [ImportProductController::class, 'updateQuantities'])->middleware('can:UPDATE_IMPORT_PRODUCT');
         Route::delete('/{id}', [ImportProductController::class, 'destroy'])->middleware('can:DELETE_IMPORT_PRODUCT');
     });

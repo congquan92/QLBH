@@ -1,6 +1,7 @@
 <?php
 namespace App\Http\Controllers;
 
+use App\Exports\LateArrivalsExport;
 use App\Http\Service\ExportService;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
@@ -54,13 +55,28 @@ class ExportController extends Controller
 
         if ($request->type === 'pdf') {
             // Xuất PDF theo dạng danh sách dọc cho dễ đọc trên điện thoại
-           $pdf = Pdf::loadView('exports.personal_schedule_pdf', $data)
-          ->setPaper('a4', 'landscape');
+            $pdf = Pdf::loadView('exports.personal_schedule_pdf', $data)
+                ->setPaper('a4', 'landscape');
             return $pdf->download("Lich-ca-nhan-tuan-" . now()->weekOfYear . ".pdf");
         }
 
         if ($request->type === 'excel') {
             return Excel::download(new \App\Exports\PersonalScheduleExport($data), 'lich-ca-nhan.xlsx');
         }
+    }
+    public function exportLateArrivals(Request $request)
+    {
+        $request->validate([
+            'time_range' => 'required|in:THIS_WEEK,LAST_WEEK,THIS_MONTH,LAST_MONTH',
+        ]);
+
+        $result = $this->exportService->getLateArrivalsData($request->time_range);
+
+        $fileName = 'danh-sach-di-tre-' . strtolower($request->time_range) . '.xlsx';
+
+        return Excel::download(
+            new LateArrivalsExport($result['data']),
+            $fileName
+        );
     }
 }
