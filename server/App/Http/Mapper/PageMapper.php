@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Mappers;
+namespace App\Http\Mapper;
 
 use App\Models\Page;
 

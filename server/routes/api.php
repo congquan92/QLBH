@@ -9,6 +9,7 @@ use App\Http\Controllers\HolidayController;
 use App\Http\Controllers\ImportProductController;
 use App\Http\Controllers\JobHistoryController;
 use App\Http\Controllers\LeaveController;
+use App\Http\Controllers\PageController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PositionController;
 use App\Http\Controllers\ReviewController;
@@ -315,6 +316,14 @@ Route::middleware('auth')->group(function () {
 
         Route::put('/{id}/quantities', [ImportProductController::class, 'updateQuantities'])->middleware('can:UPDATE_IMPORT_PRODUCT');
         Route::delete('/{id}', [ImportProductController::class, 'destroy'])->middleware('can:DELETE_IMPORT_PRODUCT');
+    });
+
+    Route::prefix('pages')->group(function () {
+        Route::get('/', [PageController::class, 'index'])->middleware('can:VIEW_PAGES');
+        Route::post('/', [PageController::class, 'store'])->middleware('can:CREATE_PAGE');
+        Route::get('/{id}', [PageController::class, 'show'])->middleware('can:VIEW_PAGES');
+        Route::put('/{id}', [PageController::class, 'update'])->middleware('can:UPDATE_PAGE');
+        Route::delete('/{id}', [PageController::class, 'destroy'])->middleware('can:DELETE_PAGE');
     });
     // Salaries
     Route::get('salaries/calculate/{userId}', [SalaryController::class, 'calculateMonthlySalary'])->middleware('can:CALCULATE_SALARY');

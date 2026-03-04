@@ -24,8 +24,8 @@ class Page extends Model
     {
         return $this->belongsToMany(Role::class, 'roles_pages', 'page_id', 'role_id');
     }
-
-    public function groupPermissions(){
-        return $this->hasMany(OrderItem::class);
+    public function groupPermissions()
+    {
+        return $this->hasMany(GroupPermission::class, 'page_id');
     }
 }

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Http\Service\RoleService;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 use Exception;
 
 class RoleController extends Controller
@@ -16,17 +17,25 @@ class RoleController extends Controller
         $this->roleService = $roleService;
     }
 
-    public function index(Request $request)
+    /**
+     * Lấy danh sách Vai trò (Phân trang, tìm kiếm, sắp xếp)
+     */
+    public function index(Request $request): JsonResponse
     {
         $keyword = $request->query('keyword');
         $sort = $request->query('sort');
         $page = (int)$request->query('page', 1);
         $size = (int)$request->query('size', 10);
 
-        return response()->json($this->roleService->findAll($keyword, $sort, $page, $size));
+        $result = $this->roleService->findAll($keyword, $sort, $page, $size);
+        
+        return response()->json($result);
     }
 
-    public function show($id)
+    /**
+     * Xem chi tiết Vai trò
+     */
+    public function show($id): JsonResponse
     {
         return response()->json([
             'status' => 200,
@@ -34,13 +43,18 @@ class RoleController extends Controller
         ]);
     }
 
-    public function store(Request $request)
+    /**
+     * Lưu Vai trò mới và gán danh sách Pages
+     */
+    public function store(Request $request): JsonResponse
     {
-        // Validation cơ bản (Nên dùng FormRequest để sạch code hơn)
+        // Sử dụng Page_ids thay vì group_permission_ids
         $data = $request->validate([
             'name' => 'required|string|unique:roles,name',
-            'group_permission_ids' => 'nullable|array',
-            'description' => 'nullable|string'
+            'description' => 'nullable|string',
+            'status' => 'nullable|string|in:ACTIVE,INACTIVE',
+            'page_ids' => 'nullable|array',
+            'page_ids.*' => 'exists:pages,id'
         ]);
 
         return response()->json([
@@ -50,30 +64,48 @@ class RoleController extends Controller
         ], 201);
     }
 
-    public function update(Request $request, $id)
+    /**
+     * Cập nhật Vai trò và danh sách Pages
+     */
+    public function update(Request $request, $id): JsonResponse
     {
+        $data = $request->validate([
+            'name' => 'nullable|string|unique:roles,name,' . $id,
+            'description' => 'nullable|string',
+            'status' => 'nullable|string|in:ACTIVE,INACTIVE',
+            'page_ids' => 'nullable|array',
+            'page_ids.*' => 'exists:pages,id'
+        ]);
+
         return response()->json([
             'status' => 200,
             'message' => 'Cập nhật vai trò thành công',
-            'data' => $this->roleService->update($id, $request->all())
+            'data' => $this->roleService->update($id, $data)
         ]);
     }
 
     /**
-     * Gỡ bỏ các nhóm quyền khỏi vai trò
+     * Gỡ bỏ các Trang (Pages) khỏi vai trò
+     * (Thay thế cho detachGroups cũ)
      */
-    public function detachGroups(Request $request, $id)
+    public function detachPages(Request $request, $id): JsonResponse
     {
-        $request->validate(['group_permission_ids' => 'required|array']);
+        $request->validate([
+            'page_ids' => 'required|array',
+            'page_ids.*' => 'exists:pages,id'
+        ]);
         
         return response()->json([
             'status' => 200,
-            'message' => 'Đã gỡ nhóm quyền khỏi vai trò thành công',
-            'data' => $this->roleService->detachGroups($id, $request->group_permission_ids)
+            'message' => 'Đã gỡ bỏ quyền truy cập trang khỏi vai trò thành công',
+            'data' => $this->roleService->detachPages($id, $request->page_ids)
         ]);
     }
 
-    public function destroy($id)
+    /**
+     * Xóa Vai trò
+     */
+    public function destroy($id): JsonResponse
     {
         try {
             $this->roleService->delete($id);
@@ -88,4 +120,4 @@ class RoleController extends Controller
             ], 400);
         }
     }
-}
+}   
