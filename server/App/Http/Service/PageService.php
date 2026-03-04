@@ -1,10 +1,10 @@
 <?php
 namespace App\Http\Service;
 
+use App\Http\Mapper\PageMapper;
 use App\Http\Responses\PageResponse;
 use App\Models\GroupPermission;
 use App\Models\Page;
-use App\Mappers\PageMapper; // Giả định bạn có Mapper này
 use Illuminate\Support\Facades\DB;
 
 class PageService
@@ -16,7 +16,7 @@ class PageService
     {
         // Khởi tạo query với các quan hệ: Page -> GroupPermissions -> Permissions
         $query = Page::with(['groupPermissions.permissions', 'roles']);
-        
+
         // Logic sắp xếp
         $column = 'sort_order'; // Mặc định sắp xếp theo sort_order của Page
         $direction = 'asc';
@@ -34,8 +34,8 @@ class PageService
 
         // Thực hiện phân trang
         $paginator = $query->orderBy($column, $direction)
-                           ->paginate($size, ['*'], 'page', $page);
-        
+            ->paginate($size, ['*'], 'page', $page);
+
         // Map sang DTO Response (nếu bạn sử dụng Mapper)
         $dtoItems = $paginator->getCollection()->map(function ($pageItem) {
             // Thay đổi sang PageMapper tương ứng của bạn
@@ -46,6 +46,15 @@ class PageService
 
         // Trả về theo cấu trúc chung của dự án bạn
         return PageResponse::fromLaravelPaginator($paginator);
+    }
+    /**
+     * Lấy chi tiết một Page theo ID
+     */
+    public function findById($id)
+    {
+        $page = Page::with(['groupPermissions.permissions'])->findOrFail($id);
+
+        return PageMapper::toPageResponse($page);
     }
     public function createPage(array $data)
     {
@@ -71,7 +80,7 @@ class PageService
     {
         return DB::transaction(function () use ($id, $data) {
             $page = Page::findOrFail($id);
-            
+
             // Cập nhật thông tin Page
             $page->update([
                 'title' => $data['title'],
@@ -83,7 +92,7 @@ class PageService
             if (isset($data['group_permission_ids'])) {
                 // B1: Gỡ bỏ page_id cũ của những group cũ (set null)
                 GroupPermission::where('page_id', $page->id)->update(['page_id' => null]);
-                
+
                 // B2: Gán page_id mới cho những group được gửi lên
                 GroupPermission::whereIn('id', $data['group_permission_ids'])
                     ->update(['page_id' => $page->id]);
@@ -107,6 +116,31 @@ class PageService
 
             // 3. Xóa Page
             return $page->delete();
+        });
+    }
+
+    public function detachGroupPermissions($pageId, array $groupPermissionIds)
+    {
+        return DB::transaction(function () use ($pageId, $groupPermissionIds) {
+            $page = Page::findOrFail($pageId);
+
+            // 1. Kiểm tra xem các Group truyền lên có thực sự thuộc Page này không
+            $validCount = GroupPermission::where('page_id', $page->id)
+                ->whereIn('id', $groupPermissionIds)
+                ->count();
+
+            // Nếu số lượng tìm thấy ít hơn số lượng gửi lên -> có ID sai hoặc thuộc Page khác
+            if ($validCount !== count($groupPermissionIds)) {
+                throw new \Exception("Một hoặc nhiều nhóm quyền không thuộc trang này, không thể gỡ bỏ.");
+            }
+
+            // 2. Thực hiện gỡ bỏ
+            GroupPermission::where('page_id', $page->id)
+                ->whereIn('id', $groupPermissionIds)
+                ->update(['page_id' => null]);
+
+            // 3. Trả về dữ liệu
+            return PageMapper::toPageResponse($page->load('groupPermissions.permissions'));
         });
     }
 }

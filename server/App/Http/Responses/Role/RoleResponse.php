@@ -1,7 +1,6 @@
 <?php
 namespace App\Http\Responses\Role;
 
-use App\Http\Responses\PageResponse;
 
 class RoleResponse {
     public function __construct(

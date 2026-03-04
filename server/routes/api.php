@@ -324,6 +324,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/{id}', [PageController::class, 'show'])->middleware('can:VIEW_PAGES');
         Route::put('/{id}', [PageController::class, 'update'])->middleware('can:UPDATE_PAGE');
         Route::delete('/{id}', [PageController::class, 'destroy'])->middleware('can:DELETE_PAGE');
+        Route::post('{id}/detach-groups', [PageController::class, 'detachGroups'])->middleware('can:UPDATE_PAGE');;
     });
     // Salaries
     Route::get('salaries/calculate/{userId}', [SalaryController::class, 'calculateMonthlySalary'])->middleware('can:CALCULATE_SALARY');

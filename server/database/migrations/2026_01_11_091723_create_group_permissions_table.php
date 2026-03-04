@@ -12,7 +12,7 @@ return new class extends Migration {
     {
        Schema::create('group_permissions', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('page_id')->constrained('pages')->cascadeOnDelete(); // Quan hệ 1-N với Page
+            $table->foreignId('page_id')->nullable()->constrained('pages')->cascadeOnDelete(); // Quan hệ 1-N với Page
             $table->string('name'); // VD: "Nhân viên"
             $table->string('url')->nullable(); // VD: "/admin/employees"
             $table->string('icon')->nullable(); // VD: "Users"
