@@ -2,6 +2,7 @@
 namespace App\Http\Mapper;
 
 use App\Http\Responses\Role\RoleResponse;
+use App\Mappers\PageMapper;
 use App\Models\Role;
 
 
@@ -9,15 +10,15 @@ class RoleMapper
 {
     public static function toRoleResponse(Role $role): RoleResponse
     {
-        $groupPermission = $role->groupPermissions->map(function ($permission) {
-            return GroupPermissionMapper::toGroupPermissionResponse($permission);
+        $pageResponse = $role->pages->map(function ($page) {
+            return PageMapper::toPageResponse($page);
         })->toArray();
         return new RoleResponse(
             $role->id,
             $role->name,
             $role->description,
             $role->status->value,
-            $groupPermission
+            $pageResponse
         );
     }
 }

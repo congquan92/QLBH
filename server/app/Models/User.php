@@ -8,18 +8,14 @@ use App\Enums\UserStatus;
 use App\Models\Attendance;
 use App\Models\JobHistory;
 use Tymon\JWTAuth\Contracts\JWTSubject;
-use Laragear\WebAuthn\WebAuthnData;
 use Illuminate\Foundation\Auth\User as Authenticatable;
-use Laragear\WebAuthn\Contracts\WebAuthnAuthenticatable;
-use Laragear\WebAuthn\WebAuthnAuthentication;
 
 
 /**
  * @property-read \Illuminate\Database\Eloquent\Collection|Role[] $roles
  */
-class User extends Authenticatable implements JWTSubject, WebAuthnAuthenticatable
+class User extends Authenticatable implements JWTSubject
 {
-    use WebAuthnAuthentication;
     protected $primaryKey = 'id';
     public $incrementing = true; // auto increment
     protected $keyType = 'int';
@@ -121,24 +117,6 @@ class User extends Authenticatable implements JWTSubject, WebAuthnAuthenticatabl
         return $this->hasMany(Attendance::class);
     }
 
-    public function webAuthnData(): WebAuthnData
-    {
-        return new WebAuthnData(
-            (string) $this->id,
-            $this->full_name
-        );
-    }
-
-    // Giữ lại các hàm này để hỗ trợ các tính năng khác của package
-    public function webAuthnDisplayName(): string
-    {
-        return (string) ($this->full_name ?? $this->username ?? 'User');
-    }
-
-    public function webAuthnName(): string
-    {
-        return (string) ($this->id ?? $this->username);
-    }
 
     public function currentJob()
     {

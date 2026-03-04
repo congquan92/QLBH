@@ -10,27 +10,19 @@ class GroupPermission extends Model
     protected $fillable = [
         'name',
         'description',
+        'url',
+        'icon',
         'status'
     ];
-     protected $casts = [
+    protected $casts = [
         'status' => Status::class,
     ];
+    public function page()
+    {
+        return $this->belongsTo(Page::class);
+    }
     public function permissions()
     {
-        return $this->belongsToMany(
-            Permission::class,
-            'permission_group_detail',
-            'group_permission_id',
-            'permission_id'
-        );
-    }
-     public function roles()
-    {
-        return $this->belongsToMany(
-            Role::class,
-            'role_group_permission',
-            'group_permission_id',
-            'role_id'
-        );
+        return $this->belongsToMany(Permission::class, 'permission_group_detail');
     }
 }

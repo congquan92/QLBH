@@ -10,43 +10,38 @@ class Role extends Model
 {
     use HasFactory;
 
-    protected $primaryKey = 'id';
-    public $incrementing = true; // auto increment
-    protected $keyType = 'int';
+    protected $fillable = ['name', 'description', 'status'];
+    protected $casts = ['status' => Status::class];
 
-    protected $fillable = [
-        'name',
-        'description',
-        'status',
-    ];
-
-    protected $casts = [
-        'status' => Status::class
-    ];
-
-
-    public function groupPermissions()
+    // 1. Role Many-to-Many với Page
+    public function pages()
     {
-        return $this->belongsToMany(
-            GroupPermission::class,
-            'role_group_permission',
-            'role_id',
-            'group_permission_id'
-        );
+        return $this->belongsToMany(Page::class, 'roles_pages', 'role_id', 'page_id');
     }
 
+    // 2. Lấy GroupPermissions thông qua Page (Linh động)
+    public function groupPermissions()
+    {
+        return $this->hasManyThrough(
+            GroupPermission::class,
+            Page::class,
+            'id', // Khóa ngoại trên bảng trung gian roles_pages (không đúng, cần xử lý qua pages)
+            'page_id', // Khóa ngoại trên GroupPermission
+            'id', // Khóa nội của Role
+            'id'  // Khóa nội của Page
+        )->join('roles_pages', 'pages.id', '=', 'roles_pages.page_id')
+         ->where('roles_pages.role_id', $this->id);
+    }
+
+    // 3. Lấy toàn bộ mã Permission để check quyền (Hành động)
     public function permissions()
     {
-        // Lấy tất cả permissions thông qua mối quan hệ với GroupPermission
-        return $this->hasManyThrough(
-            Permission::class,
-            GroupPermission::class,
-            'id', // Khóa ngoại trên GroupPermission (sẽ được map qua bảng trung gian)
-            'id', // Khóa ngoại trên Permission
-            'id', // Khóa nội trên Role
-            'id'  // Sẽ được Laravel xử lý qua bảng pivot
-        )->join('permission_group_detail', 'permissions.id', '=', 'permission_group_detail.permission_id')
-            ->join('role_group_permission', 'permission_group_detail.group_permission_id', '=', 'role_group_permission.group_permission_id')
-            ->where('role_group_permission.role_id', $this->id);
+        return Permission::whereHas('groupPermissions', function($query) {
+            $query->whereHas('page', function($q) {
+                $q->whereHas('roles', function($rq) {
+                    $rq->where('roles.id', $this->id);
+                });
+            });
+        });
     }
 }

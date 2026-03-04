@@ -2,6 +2,7 @@
 
 namespace App\Http\Responses\Auth;
 
+use App\Http\Responses\Role\RoleResponse;
 use Carbon\Carbon;
 
 class AuthenticationResponse
@@ -9,7 +10,7 @@ class AuthenticationResponse
     public function __construct(
         public string $token,
         public bool $authenticated,
-        public string $role,
+        public RoleResponse $role,
         public Carbon $expiredAt
     ) {}
 
