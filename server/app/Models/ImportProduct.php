@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Enums\DeliveryStatus;
+use App\Enums\Status;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -15,16 +17,26 @@ class ImportProduct extends Model
     protected $keyType = 'int';
 
     protected $fillable = [
+        'id',
         'description',
+        'product_id',
         'totalAmount',
-        'status'
+        'status',
+        'view_status'
     ];
 
     protected $casts = [
-        'status' => Status::class
+        'status' => DeliveryStatus::class,
+        'view_status' => Status::class
     ];
 
-    public function importDetail(){
-        return $this -> hasMany(ImportDetail::class);
+    public function importDetail()
+    {
+        return $this->hasMany(ImportDetail::class);
+    }
+
+    public function product()
+    {
+        return $this->belongsTo(Product::class);
     }
 }

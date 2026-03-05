@@ -1,7 +1,9 @@
 <?php
 namespace App\Http\Service;
 
+use App\Enums\CheckInStatus;
 use App\Http\Service\ScheduleService;
+use App\Models\Attendance;
 use App\Models\User;
 use Carbon\Carbon;
 
@@ -88,4 +90,63 @@ class ExportService
             'week_schedule' => $schedule 
         ];
     }
+    public function getLateArrivalsData($timeRange)
+{
+    $now = now();
+    $start = null;
+    $end = null;
+
+    // Xác định khoảng thời gian
+    switch (strtoupper($timeRange)) {
+        case 'THIS_WEEK':
+            $start = $now->copy()->startOfWeek();
+            $end = $now->copy()->endOfWeek();
+            break;
+        case 'LAST_WEEK':
+            $start = $now->copy()->subWeek()->startOfWeek();
+            $end = $now->copy()->subWeek()->endOfWeek();
+            break;
+        case 'THIS_MONTH':
+            $start = $now->copy()->startOfMonth();
+            $end = $now->copy()->endOfMonth();
+            break;
+        case 'LAST_MONTH':
+            $start = $now->copy()->subMonth()->startOfMonth();
+            $end = $now->copy()->subMonth()->endOfMonth();
+            break;
+        default:
+            $start = $now->copy()->startOfDay();
+            $end = $now->copy()->endOfDay();
+    }
+
+    // Lấy dữ liệu điểm danh có trạng thái LATE (dựa trên Enum CheckInStatus của bạn)
+    $lateAttendances = Attendance::with(['user.position', 'shift'])
+        ->where('status', CheckInStatus::LATE)
+        ->whereBetween('date', [$start->toDateString(), $end->toDateString()])
+        ->orderBy('date', 'desc')
+        ->get();
+
+    $content = $lateAttendances->map(function ($att) {
+        $startTime = Carbon::parse($att->date . ' ' . $att->shift->start_time);
+        $checkInTime = Carbon::parse($att->check_in);
+        
+        // Tính số phút đi trễ
+        $diffMinutes = $checkInTime->diffInMinutes($startTime);
+
+        return [
+            'date' => $att->date,
+            'user_id' => $att->user->id,
+            'full_name' => $att->user->full_name,
+            'position' => $att->user->position->name ?? 'N/A',
+            'shift_name' => $att->shift->name,
+            'shift_time' => "{$att->shift->start_time} - {$att->shift->end_time}",
+            'check_in' => $checkInTime->format('H:i:s'),
+            'late_minutes' => $diffMinutes . ' phút'
+        ];
+    });
+
+    return [
+        'time_range_label' => "Từ {$start->format('d/m/Y')} đến {$end->format('d/m/Y')}",
+        'data' => $content
+    ];}
 }

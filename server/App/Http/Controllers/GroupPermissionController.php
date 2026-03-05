@@ -36,10 +36,13 @@ class GroupPermissionController extends Controller
 
     public function store(Request $request)
     {
-        $data = $request->validate([
-            'name' => 'required|string',
-            'description' => 'nullable|string',
-            'permission_ids' => 'required|array'
+       $data = $request->validate([
+            'name'           => 'required|string|max:255',
+            'description'    => 'nullable|string',
+            'url'            => 'nullable|string',
+            'icon'           => 'nullable|string',
+            'permission_ids' => 'required|array',
+            'permission_ids.*' => 'exists:permissions,id'
         ]);
 
         return response()->json([
@@ -51,10 +54,19 @@ class GroupPermissionController extends Controller
 
     public function update(Request $request, $id)
     {
+        $data = $request->validate([
+            'name'           => 'nullable|string|max:255',
+            'description'    => 'nullable|string',
+            'url'            => 'nullable|string',
+            'icon'           => 'nullable|string',
+            'status'         => 'nullable|string',
+            'permission_ids' => 'nullable|array',
+            'permission_ids.*' => 'exists:permissions,id'
+        ]);
         return response()->json([
             'status' => 200,
             'message' => 'Cập nhật nhóm quyền thành công',
-            'data' => $this->groupService->update($id, $request->all())
+            'data' => $this->groupService->update($id, $data)
         ]);
     }
 

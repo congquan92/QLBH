@@ -10,9 +10,12 @@ return new class extends Migration {
      */
     public function up(): void
     {
-        Schema::create('group_permissions', function (Blueprint $table) {
+       Schema::create('group_permissions', function (Blueprint $table) {
             $table->id();
-            $table->string('name');
+            $table->foreignId('page_id')->nullable()->constrained('pages')->cascadeOnDelete(); // Quan hệ 1-N với Page
+            $table->string('name'); // VD: "Nhân viên"
+            $table->string('url')->nullable(); // VD: "/admin/employees"
+            $table->string('icon')->nullable(); // VD: "Users"
             $table->string('status')->default('ACTIVE');
             $table->string('description')->nullable();
             $table->timestamps();

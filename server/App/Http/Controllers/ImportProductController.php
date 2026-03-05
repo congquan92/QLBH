@@ -2,64 +2,85 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\ImportProduct;
+use App\Http\Service\ImportService;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 
 class ImportProductController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
+    protected ImportService $importService;
+
+    public function __construct(ImportService $importService)
     {
-        //
+        $this->importService = $importService;
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
+    public function index(Request $request): JsonResponse
     {
-        //
+        $result = $this->importService->findAll(
+            $request->query('keyword'),
+            $request->query('sort'),
+            (int)$request->query('page', 1),
+            (int)$request->query('size', 10),
+            $request->query('timeRange'),
+            $request->query('startDate'),
+            $request->query('endDate'),
+            $request->query('supplierId'),
+            $request->query('deliveryStatus')
+        );
+
+        return response()->json($result);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
+    public function store(Request $request): JsonResponse
     {
-        //
+        $request->validate([
+            'product_id' => 'required|exists:products,id',
+            'import_details' => 'required|array|min:1',
+            'import_details.*.product_variant_id' => 'required|integer',
+            'import_details.*.quantity' => 'required|integer|min:1',
+            'import_details.*.unitPrice' => 'required|numeric|min:0',
+        ]);
+
+        $import = $this->importService->save($request->all());
+        return response()->json(['message' => 'Tạo phiếu nhập thành công', 'data' => $import], 201);
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(ImportProduct $importProduct)
+    public function confirm($id): JsonResponse
     {
-        //
+        try {
+            $this->importService->confirmImport((int)$id);
+            return response()->json(['message' => 'Xác nhận nhập kho thành công']);
+        } catch (\Exception $e) {
+            return response()->json(['message' => $e->getMessage()], 400);
+        }
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(ImportProduct $importProduct)
+    public function updateQuantities(Request $request, $id): JsonResponse
     {
-        //
+        $request->validate([
+            'items' => 'required|array',
+            'items.*.importDetailId' => 'required|integer',
+            'items.*.quantity' => 'required|integer|min:1',
+        ]);
+
+        $this->importService->updateQuantityDetailFromPendingImport($request->items, (int)$id);
+        return response()->json(['message' => 'Cập nhật số lượng thành công']);
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, ImportProduct $importProduct)
+    public function cancel($id): JsonResponse
     {
-        //
+        $this->importService->cancelImport((int)$id);
+        return response()->json(['message' => 'Đã hủy phiếu nhập']);
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(ImportProduct $importProduct)
+    public function destroy($id): JsonResponse
     {
-        //
+        try {
+            $this->importService->delete((int)$id);
+            return response()->json(['message' => 'Xóa (ẩn) phiếu nhập thành công']);
+        } catch (\Exception $e) {
+            return response()->json(['message' => $e->getMessage()], 400);
+        }
     }
 }

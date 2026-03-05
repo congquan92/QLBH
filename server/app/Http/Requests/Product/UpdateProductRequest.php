@@ -2,10 +2,12 @@
 
 namespace App\Http\Requests\Product;
 
+use App\Enums\Status;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
-class   UpdateProductRequest extends FormRequest
+class UpdateProductRequest extends FormRequest
 {
     public function authorize(): bool
     {
@@ -19,9 +21,8 @@ class   UpdateProductRequest extends FormRequest
             'id' => 'required|integer',
             'name' => 'nullable|string|max:255',
             'description' => 'nullable|string',
-
             'supplierId' => 'nullable|integer|exists:suppliers,id',
-
+            'status' => ['nullable', Rule::enum(Status::class)],
             // ===== Price =====
             'listPrice' => 'nullable|numeric|gt:0|decimal:0,2',
             'salePrice' => 'nullable|numeric|gt:0|decimal:0,2',

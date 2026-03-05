@@ -8,6 +8,8 @@ class ReviewResponse
     public function __construct(
         public int $id,
         public int $productId,
+        public string $nameProduct,
+        public array $variant,
         public string $avatarUser,
         public string $fullName,
         public int $rating,

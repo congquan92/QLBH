@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Enums\Status;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -18,6 +17,7 @@ class ImportDetail extends Model
     protected $fillable = [
         'quantity',
         'unitPrice',
+        'product_variant_id',
         'nameProductSnapShot',
         'urlImageSnapShot',
         'variantAttributesSnapshot',

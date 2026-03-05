@@ -18,6 +18,7 @@ class CategoryService
     public function findAll()
     {
         $categories = Category::whereNull('parent_id')
+            ->where('status', Status::ACTIVE)
             ->with('childrenRecursive')
             ->get();
 
@@ -26,7 +27,7 @@ class CategoryService
     public function findAllWithPagination(int $page, int $size)
     {
         $query = Category::whereNull('parent_id')
-            ->where('status', Status::ACTIVE)
+            ->where('status !=', Status::DISABLED->value)
             ->with([
                 'childrenRecursive' => function ($q) {
                     $q->where('status', Status::ACTIVE);
@@ -57,10 +58,10 @@ class CategoryService
             $data['status'] = $input['status'];
 
         if ($req->has('parentId')) {
-            $parentId = $input['parentId']; 
+            $parentId = $input['parentId'];
 
             if ($parentId == $category->id) {
-                throw new BusinessException(ErrorCode::BAD_REQUEST,"Danh mục không thể làm con của chính nó.");
+                throw new BusinessException(ErrorCode::BAD_REQUEST, "Danh mục không thể làm con của chính nó.");
             }
 
             $data['parent_id'] = $parentId;

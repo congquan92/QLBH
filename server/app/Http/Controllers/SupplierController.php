@@ -2,74 +2,59 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\supplier\SupplierCreationRequest;
-use App\Http\Service\SupplierService;
-use App\Models\Supplier;
-use Illuminate\Http\Request;
 
+use App\Enums\Status;
+use App\Http\Requests\Supplier\SupplierCreationRequest;
+use App\Http\Service\SupplierService;
+use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 
 class SupplierController extends Controller
 {
-
     protected SupplierService $supplierService;
 
-     public function __construct(SupplierService $supplierService)
+    public function __construct(SupplierService $supplierService)
     {
         $this->supplierService = $supplierService;
     }
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
+
+    public function index(Request $request): JsonResponse
     {
-        //
+        $result = $this->supplierService->findAll(
+            $request->query('keyword'),
+            $request->query('sort'),
+            $request->query('status'),
+            (int)$request->query('page', 1),
+            (int)$request->query('size', 10)
+        );
+        return response()->json($result);
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
-    {
-        //
-    }
-
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(SupplierCreationRequest $request)
+    public function store(SupplierCreationRequest $request): void
     {
         $this->supplierService->create($request);
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(Supplier $supplier)
+    public function show($id): JsonResponse
     {
-        //
+        $supplier = $this->supplierService->getSupplierById($id);
+        return response()->json($supplier);
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(Supplier $supplier)
+    public function update(Request $request, $id): JsonResponse
     {
-        //
+        // Bạn có thể tạo SupplierUpdateRequest nếu cần validate phức tạp hơn
+        $supplier = $this->supplierService->update($id, $request->all());
+        return response()->json([
+            'message' => 'Cập nhật thành công',
+            'data' => $supplier
+        ]);
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, Supplier $supplier)
+    public function destroy($id): JsonResponse
     {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(Supplier $supplier)
-    {
-        //
+        // Chuyển sang DISABLED (Xóa mềm bằng trạng thái)
+        $this->supplierService->update($id, ['status' => Status::DISABLED]);
+        return response()->json(['message' => 'Đã vô hiệu hóa nhà cung cấp']);
     }
 }

@@ -54,6 +54,8 @@ class GroupPermissionService
                 'name' => $data['name'],
                 'description' => $data['description'] ?? null,
                 'status' => $data['status'] ?? 'ACTIVE',
+                'url' => $data['url'],
+                'icon' => $data['icon'],
             ]);
 
             $group->permissions()->sync($data['permission_ids']);
@@ -78,13 +80,9 @@ class GroupPermissionService
 
     public function delete($id)
     {
-        $group = GroupPermission::withCount('roles')->findOrFail($id);
-        if ($group->roles_count > 0) {
-            throw new \Exception("Không thể xóa nhóm quyền này vì nó đang được áp dụng cho {$group->roles_count} vai trò.");
-        }
+        $group = GroupPermission::where('id', $id)->firstOrFail();
 
         return DB::transaction(function () use ($group) {
-            $group->permissions()->detach();
             return $group->delete();
         });
     }

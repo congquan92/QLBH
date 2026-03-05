@@ -12,11 +12,12 @@ use Exception;
 class RoleService
 {
     /**
-     * Lấy danh sách Role có phân trang, search và sort
+     * Lấy danh sách Role có phân trang, search và load quan hệ qua Page
      */
     public function findAll(?string $keyword, ?string $sort, int $page, int $size)
     {
-        $query = Role::with(['groupPermissions.permissions']);
+        // Load quan hệ Role -> Pages -> GroupPermissions
+        $query = Role::with(['pages.groupPermissions.permissions']);
         
         $column = 'id';
         $direction = 'desc';
@@ -43,16 +44,16 @@ class RoleService
     }
 
     /**
-     * Xem chi tiết 1 Role
+     * Xem chi tiết 1 Role kèm các Page đã gán
      */
     public function getById($id)
     {
-        $role = Role::with(['groupPermissions.permissions'])->findOrFail($id);
+        $role = Role::with(['pages.groupPermissions.permissions'])->findOrFail($id);
         return RoleMapper::toRoleResponse($role);
     }
 
     /**
-     * Tạo mới Role và gắn Group Permissions
+     * Tạo mới Role và gắn Pages (Many-to-Many)
      */
     public function create(array $data)
     {
@@ -63,16 +64,17 @@ class RoleService
                 'status' => $data['status'] ?? 'ACTIVE',
             ]);
 
-            if (!empty($data['group_permission_ids'])) {
-                $role->groupPermissions()->sync($data['group_permission_ids']);
+            // Gán danh sách các Page cho Role này qua bảng trung gian roles_pages
+            if (!empty($data['page_ids'])) {
+                $role->pages()->sync($data['page_ids']);
             }
 
-            return RoleMapper::toRoleResponse($role->load('groupPermissions.permissions'));
+            return RoleMapper::toRoleResponse($role->load('pages.groupPermissions.permissions'));
         });
     }
 
     /**
-     * Cập nhật Role (Dùng sync để ghi đè danh sách Group)
+     * Cập nhật Role và cập nhật danh sách Pages
      */
     public function update($id, array $data)
     {
@@ -80,48 +82,42 @@ class RoleService
             $role = Role::findOrFail($id);
             $role->update($data);
 
-            if (isset($data['group_permission_ids'])) {
-                $role->groupPermissions()->sync($data['group_permission_ids']);
+            // Cập nhật lại danh sách Page bằng phương thức sync
+            if (isset($data['page_ids'])) {
+                $role->pages()->sync($data['page_ids']);
             }
 
-            return RoleMapper::toRoleResponse($role->load('groupPermissions.permissions'));
+            return RoleMapper::toRoleResponse($role->load('pages.groupPermissions.permissions'));
         });
     }
 
     /**
-     * HỦY LIÊN KẾT: Gỡ một hoặc nhiều Group Permission ra khỏi Role
-     * Truyền vào mảng [id1, id2, ...]
+     * Gỡ bỏ các Page ra khỏi Role
      */
-    public function detachGroups($roleId, array $groupIds)
+    public function detachPages($roleId, array $pageIds)
     {
         $role = Role::findOrFail($roleId);
+        $role->pages()->detach($pageIds);
         
-        // detach() chỉ xóa các dòng có group_permission_id nằm trong mảng $groupIds
-        $role->groupPermissions()->detach($groupIds);
-        
-        return RoleMapper::toRoleResponse($role->load('groupPermissions.permissions'));
+        return RoleMapper::toRoleResponse($role->load('pages.groupPermissions.permissions'));
     }
 
     /**
-     * XÓA VAI TRÒ: Kiểm tra tham chiếu User trước khi xóa
+     * Xóa Role
      */
     public function delete($id)
     {
         $role = Role::findOrFail($id);
 
-        // Kiểm tra xem có User nào đang sử dụng Role này không
-        // Giả sử quan hệ trong Role model là users()
         $userCount = User::where('role_id', $id)->count();
-
         if ($userCount > 0) {
-            throw new Exception("Không thể xóa vai trò '{$role->name}' vì đang có {$userCount} nhân viên đảm nhiệm vai trò này.");
+            throw new Exception("Không thể xóa vai trò '{$role->name}' vì đang có {$userCount} nhân viên đảm nhiệm.");
         }
 
         return DB::transaction(function () use ($role) {
-            // Hủy toàn bộ liên kết ở bảng trung gian role_group_permission
-            $role->groupPermissions()->detach();
+            // Xóa toàn bộ liên kết trong bảng roles_pages
+            $role->pages()->detach();
             
-            // Xóa bản ghi Role
             return $role->delete();
         });
     }

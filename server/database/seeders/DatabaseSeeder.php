@@ -22,8 +22,16 @@ class DatabaseSeeder extends Seeder
         //     'email' => 'test@example.com',
         // ]);
 
-        $this->call([
-            AppSeeder::class,
+         $this->call([
+            \Database\Seeders\PermissionSeeder::class,
+            \Database\Seeders\RoleSeeder::class,
+            \Database\Seeders\AppSeeder::class,
+            // các seeder còn lại...
+            \Database\Seeders\SalaryScaleSeeder::class,
+            \Database\Seeders\SalaryConfigSeeder::class,
+            \Database\Seeders\ShiftSeeder::class,
+            \Database\Seeders\PositionSeeder::class,
+            \Database\Seeders\HolidaySeeder::class,
         ]);
 
     }
