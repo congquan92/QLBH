@@ -199,7 +199,6 @@ class UserService
     public function verifyAccount($userId, $otp, $isEmail)
     {
         $user = User::where('id', $userId)
-            ->where('status', UserStatus::ACTIVE)
             ->firstOrFail();
         $verifyOTP = $this->brevoService->verifyOTP($user, OTPType::VERIFICATION, $otp);
         if (!$verifyOTP) {
@@ -210,6 +209,8 @@ class UserService
             } else {
                 $user->phone_verified = true;
             }
+            $user->status= UserStatus::ACTIVE;
+            $user->save();
         }
     }
 

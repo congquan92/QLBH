@@ -27,7 +27,6 @@ enum PermissionType: string
     case VIEW_USER_DETAIL = 'VIEW_USER_DETAIL';
     case CREATE_USER = 'CREATE_USER';
     case ASSIGN_ROLE = 'ASSIGN_ROLE';
-    case VERIFY_ACCOUNT = 'VERIFY_ACCOUNT';
 
     // Order
     case VIEW_ORDERS_ADMIN = 'VIEW_ORDERS_ADMIN';

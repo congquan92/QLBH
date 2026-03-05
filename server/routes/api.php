@@ -48,6 +48,10 @@ Route::post('/auth/social/google', [OAuthController::class, 'googleLogin']);
 Route::get('/voucher/list', action: [VoucherController::class, 'findAll']);
 Route::get('/voucher/detail/{id}', [VoucherController::class, 'show']);
 Route::get('/reviews/{id}', action: [ReviewController::class, 'show']);
+Route::post('/otp/verify-otp', [BrevoController::class, 'verify']);
+// Notifications
+Route::post('/otp/send', [BrevoController::class, 'send']);
+ Route::post('/user/{userId}/verify-account', [UserController::class, 'verifyAccount']);
 // ==========================================
 // Route bảo vệ bởi JWT
 // ==========================================
@@ -73,7 +77,6 @@ Route::middleware('auth')->group(function () {
     Route::delete('/user/address/delete/{addressId}', [UserController::class, 'deleteAddress']);
 
     // Account Security
-    Route::post('/user/{userId}/verify-account', [UserController::class, 'verifyAccount'])->middleware('can:VERIFY_ACCOUNT');
     Route::put('/user/change-email', [UserController::class, 'changeEmail']);
     Route::put('/user/change-phone', [UserController::class, 'changePhone']);
     Route::put('/user/change-password', [UserController::class, 'changePassword']);
@@ -128,8 +131,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/order/admin/{id}', [OrderController::class, 'getOrderByIdForAdmin'])->middleware('can:VIEW_ORDERS_ADMIN');
     Route::delete('/order/cancel/{id}', [OrderController::class, 'cancelOrder']);
 
-    // Notifications
-    Route::post('/notifications/send/mail', [BrevoController::class, 'sendOTP']);
+
 
     // Schedules
     Route::prefix('schedules')->group(function () {
@@ -173,7 +175,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/schedule', [ExportController::class, 'exportSchedule'])->middleware('can:EXPORT_DATA');
         Route::get('/my-schedule', [ExportController::class, 'exportMySchedule']);
         Route::get('/export/late-arrivals', [ExportController::class, 'exportLateArrivals'])
-            ->middleware('can:VIEW_STATISTICAL'); 
+            ->middleware('can:VIEW_STATISTICAL');
     });
 
     // Holidays
@@ -324,7 +326,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/{id}', [PageController::class, 'show'])->middleware('can:VIEW_PAGES');
         Route::put('/{id}', [PageController::class, 'update'])->middleware('can:UPDATE_PAGE');
         Route::delete('/{id}', [PageController::class, 'destroy'])->middleware('can:DELETE_PAGE');
-        Route::post('{id}/detach-groups', [PageController::class, 'detachGroups'])->middleware('can:UPDATE_PAGE');;
+        Route::post('{id}/detach-groups', [PageController::class, 'detachGroups'])->middleware('can:UPDATE_PAGE');
+        ;
     });
     // Salaries
     Route::get('salaries/calculate/{userId}', [SalaryController::class, 'calculateMonthlySalary'])->middleware('can:CALCULATE_SALARY');
