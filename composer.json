@@ -1,6 +1,0 @@
-{
-    "require": {
-        "maatwebsite/excel": "^3.1",
-        "barryvdh/laravel-dompdf": "^3.1"
-    }
-}
