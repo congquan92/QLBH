@@ -22,7 +22,7 @@ use ApiResponse;
     public function findAll(Request $request): JsonResponse
     {
         $keyword = $request->query('keyword');
-        $sort = $request->query('sort');
+        $sort = $request->query('sort','min_spent:desc');
         $page = (int) $request->query('page', 1);
         $size = (int) $request->query('size', 10);
 

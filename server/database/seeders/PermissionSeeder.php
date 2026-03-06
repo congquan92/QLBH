@@ -46,7 +46,7 @@ class PermissionSeeder extends Seeder
                 'Quản lý Nhân sự' => [
                     'icon' => 'Users', 'sort' => 3,
                     'groups' => [
-                        'Nhân viên' => ['/admin/employees', 'UserGroup', ['USERS', 'PROMOTE']],
+                        'Nhân viên' => ['/admin/employees', 'UserGroup', ['USERS', 'PROMOTE','ASSIGN']],
                         'Lịch làm việc' => ['/admin/schedules', 'Calendar', ['SCHEDULE', 'SHIFT']],
                         'Nghỉ phép' => ['/admin/leave', 'LogOut', ['LEAVE', 'HOLIDAY']],
                         'Lương & Chức vụ' => ['/admin/salary', 'Coins', ['SALARY', 'SCALE', 'POSITION']],
@@ -57,6 +57,7 @@ class PermissionSeeder extends Seeder
                     'groups' => [
                         'Tài khoản' => ['/admin/users', 'UserCog', ['USERS']],
                         'Phân quyền' => ['/admin/roles', 'ShieldCheck', ['ROLE', 'PERMISSION_GROUPS']],
+                        'Hạng người dùng' => ['/admin/user-ranks', 'Medal', ['USER_RANK']],
                         'Thống kê' => ['/admin/statistical', 'BarChart', ['STATISTICAL', 'EXPORT']],
                     ]
                 ],

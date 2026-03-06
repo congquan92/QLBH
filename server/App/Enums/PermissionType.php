@@ -27,11 +27,16 @@ enum PermissionType: string
     case VIEW_USER_DETAIL = 'VIEW_USER_DETAIL';
     case CREATE_USER = 'CREATE_USER';
     case ASSIGN_ROLE = 'ASSIGN_ROLE';
-    case VERIFY_ACCOUNT = 'VERIFY_ACCOUNT';
+
+    case ASSIGN_STATUS = 'ASSIGN_STATUS';
 
     // Order
     case VIEW_ORDERS_ADMIN = 'VIEW_ORDERS_ADMIN';
     case UPDATE_ORDER_STATUS = 'UPDATE_ORDER_STATUS';
+
+    case VIEW_USER_RANKS = 'VIEW_USER_RANKS';
+    case CREATE_USER_RANK = 'CREATE_USER_RANK';
+    case UPDATE_USER_RANK = 'UPDATE_USER_RANK';
 
 
     // HRM: Schedules

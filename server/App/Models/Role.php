@@ -10,7 +10,7 @@ class Role extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'description', 'status'];
+    protected $fillable = ['id','name', 'description', 'status'];
     protected $casts = ['status' => Status::class];
 
     // 1. Role Many-to-Many với Page

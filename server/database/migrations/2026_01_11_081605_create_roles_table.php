@@ -14,7 +14,7 @@ return new class extends Migration {
             $table->id(); // BIGINT auto-increment
             $table->string('name');
             $table->string('description')->nullable();
-            $table->enum('status', ['ACTIVE', 'INACTIVE'])->default('ACTIVE');
+            $table->string('status')->default('ACTIVE');
             $table->timestamps();
         });
 

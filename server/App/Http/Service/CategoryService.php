@@ -15,30 +15,55 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 class CategoryService
 {
-    public function findAll()
-    {
-        $categories = Category::whereNull('parent_id')
-            ->where('status', Status::ACTIVE)
-            ->with('childrenRecursive')
-            ->get();
+   public function findAll()
+{
+    $categories = Category::whereNull('parent_id')
+        ->where('status', Status::ACTIVE)
+        ->with(['childrenRecursive' => function ($query) {
+            // Lọc danh mục con phải ACTIVE
+            $query->where('status', Status::ACTIVE);
+        }])
+        ->get();
 
-        return $categories->map(fn(Category $cat) => CategoryMapper::toResponse($cat));
-    }
-    public function findAllWithPagination(int $page, int $size)
+    return $categories->map(fn(Category $cat) => CategoryMapper::toResponse($cat));
+}
+    public function findAllWithPagination(int $page, int $size, ?string $keyword, ?string $sort)
     {
         $query = Category::whereNull('parent_id')
-            ->where('status !=', Status::DISABLED->value)
-            ->with([
-                'childrenRecursive' => function ($q) {
-                    $q->where('status', Status::ACTIVE);
-                }
-            ]);
+            ->where('status', '!=', Status::DISABLED->value);
+
+        if (!empty($keyword)) {
+            // Tìm các Category cha MÀ CÓ con thỏa mãn keyword HOẶC chính nó thỏa mãn
+            $query->where(function ($q) use ($keyword) {
+                $q->where('name', 'LIKE', '%' . $keyword . '%')
+                    ->orWhereHas('childrenRecursive', function ($childQuery) use ($keyword) {
+                        $childQuery->where('name', 'LIKE', '%' . $keyword . '%');
+                    });
+            });
+        }
+
+        // 2. Xử lý sắp xếp (Ví dụ: sort=name_asc hoặc name_desc)
+        if (!empty($sort)) {
+            $direction = str_contains($sort, '_desc') ? 'desc' : 'asc';
+            $column = str_replace(['_asc', '_desc'], '', $sort);
+            $query->orderBy($column, $direction);
+        } else {
+            $query->orderBy('id', 'desc');
+        }
+
+        // 3. Load quan hệ (Lưu ý: Bạn chỉ lọc được cấp con trực tiếp)
+        $query->with([
+            'childrenRecursive' => function ($q) {
+                $q->where('status', '!=', Status::DISABLED->value);
+            }
+        ]);
 
         $paginator = $query->paginate($size, ['*'], 'page', $page);
 
         $dtoItems = $paginator->getCollection()->map(function ($category) {
             return CategoryMapper::toResponse($category);
         });
+
         $paginator->setCollection($dtoItems);
         return PageResponse::fromLaravelPaginator($paginator);
     }
@@ -107,19 +132,35 @@ class CategoryService
         $category->status = Status::ACTIVE;
         $category->save();
     }
-    public function moveCategory(MoveCategoryRequest $req)
-    {
-        Gate::authorize('MOVE_CATEGORIES');
-        $current = Category::where('id', $req['categoryId'])->where('status', Status::ACTIVE)->firstOrFail();
+   public function moveCategory(MoveCategoryRequest $req)
+{
+    $current = Category::where('id', $req['categoryId'])
+        ->where('status', Status::ACTIVE)
+        ->firstOrFail();
 
-        if (empty($req['categoryParentId'])) {
-            $current->parent_id = null;
-        } else {
-            Category::where('id', $req['categoryParentId'])->where('status', Status::ACTIVE)->firstOrFail();
-            $current->parent_id = $req['categoryParentId'];
+    $newParentId = $req['categoryParentId'] ?? null;
+
+    if ($newParentId !== null) {
+        // 1. Kiểm tra không được chọn chính mình làm cha
+        if ($newParentId == $current->id) {
+            throw new \Exception('Không thể di chuyển danh mục vào chính nó!');
         }
-        $current->save();
+
+        // 2. Kiểm tra không được chọn con của mình làm cha (Tránh vòng lặp vô hạn)
+        $childIds = $current->getAllChildIds(); // Hàm bạn đã có trong Model
+        if (in_array($newParentId, $childIds)) {
+            throw new \Exception('Không thể di chuyển danh mục vào danh mục con của nó!');
+        }
+
+        // 3. Kiểm tra cha phải tồn tại và đang ACTIVE
+        Category::where('id', $newParentId)
+            ->where('status', Status::ACTIVE)
+            ->firstOrFail();
     }
+
+    $current->parent_id = $newParentId;
+    $current->save();
+}
     public function getCategoryById($id)
     {
         $category = Category::where('id', $id)

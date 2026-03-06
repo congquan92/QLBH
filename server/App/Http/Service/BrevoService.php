@@ -9,12 +9,14 @@ use Brevo\Client\Api\TransactionalSMSApi;
 use Brevo\Client\Configuration;
 use Brevo\Client\Model\SendTransacSms;
 use GuzzleHttp\Client;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Redis;
+use Log;
 class BrevoService
 {
     private function getExpiryMinutes()
     {
-        return config('services.brevo.otp_valid_minutes', 5);
+        return (int) config('services.brevo.otp_valid_minutes', 5);
     }
     private function sendBrevoEmail($user, $otp)
     {
@@ -69,31 +71,61 @@ class BrevoService
 
     public function sendTransacNotifications($user, OTPType $otpType, $isEmail)
     {
-        $redisKey = 'otp:' . strtolower($otpType->name) . ':' . $user->id;
-        $expirySeconds = $this->getExpiryMinutes() * 60;
+        // THỐNG NHẤT: Dùng value thay vì name để tránh rắc rối Enum
+        $redisKey = 'otp:' . strtolower($otpType->value) . ':' . $user->id;
+        \Log::info("Thực hiện lưu OTP vào Cache với Key: " . $redisKey);
+        $expiryMinutes = $this->getExpiryMinutes();
         $code = $this->generateCode();
-        Redis::setex($redisKey, $expirySeconds, $code);
+
+        // SỬA: Dùng Cache::put (tự động xử lý prefix và expiry)
+        Cache::put($redisKey, $code, now()->addMinutes($expiryMinutes));
+
         if ($isEmail)
             return $this->sendBrevoEmail($user, $code);
         else
             return $this->sendSmsOtp($user->phone, $code);
     }
+
     public function verifyOTP($user, OTPType $otpType, string $inputOtp)
     {
         $redisKey = 'otp:' . strtolower($otpType->value) . ':' . $user->id;
+        $attemptKey = $redisKey . ':attempts';
 
-        $cachedOtp = Redis::get($redisKey);
+       
+        // SỬA: Dùng Cache::get để lấy mã (tự khớp với prefix)
+        $cachedOtp = Cache::get($redisKey);
 
+         Log::info("OTP DEBUG", [
+            "cached" => $cachedOtp,
+            "input" => $inputOtp,
+            "redisKey" => $redisKey
+        ]);
         if (!$cachedOtp) {
             throw new BusinessException(ErrorCode::NOT_EXISTED, "Mã OTP đã hết hạn hoặc không tồn tại.");
         }
-        if ($cachedOtp !== $inputOtp) {
-            throw new BusinessException(ErrorCode::NOT_VERIFY, "Mã OTP không chính xác.");
+
+        
+
+        if ((string) $cachedOtp !== (string) $inputOtp) {
+            // SỬA: Logic đếm số lần thử sai qua Cache
+            $attempts = (int) Cache::get($attemptKey, 0) + 1;
+            Cache::put($attemptKey, $attempts, now()->addMinutes(10));
+
+            if ($attempts >= 5) {
+                Cache::forget($redisKey); // Xóa OTP
+                Cache::forget($attemptKey);
+                throw new BusinessException(ErrorCode::TOO_MANY_REQUESTS, "Bạn đã nhập sai quá 5 lần. Mã OTP đã bị hủy.");
+            }
+
+            throw new BusinessException(ErrorCode::NOT_VERIFY, "Mã OTP không chính xác. Bạn còn " . (5 - $attempts) . " lần thử.");
         }
-        Redis::del($redisKey);
+
+        // THÀNH CÔNG: Xóa key
+        Cache::forget($redisKey);
+        Cache::forget($attemptKey);
+
         return true;
     }
-
     private function generateCode()
     {
         return str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);

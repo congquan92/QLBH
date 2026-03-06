@@ -21,6 +21,7 @@ use App\Models\Role;
 use App\Models\UserRank;
 use Carbon\Carbon;
 use DB;
+use Exception;
 use Hash;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Redis;
@@ -47,6 +48,9 @@ class AuthService
 
 
         $user = User::where('username', $request->username())->first();
+        if(!$user){
+            throw new Exception("huyasc");
+        }
 
         if (!$user || !Hash::check($request->password, $user->password)) {
             throw new BusinessException(
@@ -61,6 +65,14 @@ class AuthService
                 ErrorCode::UNAUTHENTICATED
                 ,
                 "Tài khoản chưa được xác thực"
+            );
+        }
+
+        if ($user->status == UserStatus::INACTIVE) {
+            throw new BusinessException(
+                ErrorCode::UNAUTHENTICATED
+                ,
+                "Tài khoản đã bị khoá"
             );
         }
 

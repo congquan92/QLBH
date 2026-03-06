@@ -26,6 +26,7 @@ use App\Models\User;
 use App\Models\UserRank;
 use Hash;
 use Illuminate\Support\Facades\DB;
+use Log;
 class UserService
 {
     protected BrevoService $brevoService;
@@ -135,7 +136,6 @@ class UserService
             'gender' => 'gender',
             'dateOfBirth' => 'date_of_birth',
             'avatar' => 'avatar',
-            'status' => 'status'
         ];
 
         foreach ($map as $reqKey => $dbColumn) {
@@ -199,7 +199,6 @@ class UserService
     public function verifyAccount($userId, $otp, $isEmail)
     {
         $user = User::where('id', $userId)
-            ->where('status', UserStatus::ACTIVE)
             ->firstOrFail();
         $verifyOTP = $this->brevoService->verifyOTP($user, OTPType::VERIFICATION, $otp);
         if (!$verifyOTP) {
@@ -210,20 +209,39 @@ class UserService
             } else {
                 $user->phone_verified = true;
             }
+            $user->status= UserStatus::ACTIVE;
+            $user->save();
         }
     }
 
-    public function getAllUserByEmail($email)
-    {
-        $users = User::where('email', $email);
-        if ($users->count() <= 0) {
-            throw new BusinessException(ErrorCode::NOT_EXISTED, 'Không tìm thấy người dùng !');
-        }
-        return $users->map(function ($user) {
-            return UserMapper::toUserResponse($user);
-        })->toArray();
+   public function getAllUserByEmail($email)
+{
+    // Chỉ lấy các cột cần thiết từ DB để nhẹ memory
+    $users = User::where('email', $email)->get();
 
+    if ($users->isEmpty()) {
+        throw new BusinessException(ErrorCode::NOT_EXISTED, 'Không tìm thấy người dùng !');
     }
+
+    return $users->map(function ($user) {
+        return [
+            "id"              => $user->id,
+            "full_name"       => $user->full_name,
+            "email"           => $user->email,
+            "phone"           => $user->phone,
+            "avatar"          => $user->avatar,
+            // Xử lý Enum: Lấy giá trị chuỗi (ACTIVE, INACTIVE...)
+            "status"          => $user->status?->value ?? $user->status,
+            // Xử lý Enum Gender
+            "gender"          => $user->gender?->value ?? $user->gender,
+            // Ép kiểu boolean
+            "email_verified"  => (bool) $user->email_verified,
+            "phone_verified"  => (bool) $user->phone_verified,
+            // Xử lý ngày sinh: Nếu null thì trả về chuỗi rỗng hoặc format chuẩn Y-m-d
+            "date_of_birth"   => $user->date_of_birth ? $user->date_of_birth->format('Y-m-d') : null,
+        ];
+    })->toArray();
+}
 
     public function changeEmail($newEmail, $otp)
     {
@@ -272,6 +290,7 @@ class UserService
         $currentUser = auth()->user();
         $newAddress = new Address();
         $newAddress->user_id = $currentUser->id;
+        $newAddress->customer_name = $req->customer_name;
         $newAddress->address = $req->address;
         $newAddress->phone_number = $req->phone;
         $newAddress->province = $req->province;
@@ -281,9 +300,9 @@ class UserService
         $newAddress->district_id = $req->district_id;
         $newAddress->ward_id = $req->ward_id;
         $newAddress->address_type = $req->address_type;
-        $newAddress->isDefault = true;
+        $newAddress->is_default = true;
 
-        Address::where('user_id', $currentUser->id)->update(['isDefault' => false]);
+        Address::where('user_id', $currentUser->id)->update(['is_default' => false]);
         $newAddress->save();
     }
     public function updateUserRole($userId, $roleId)
@@ -294,7 +313,7 @@ class UserService
         $role = Role::where('id', $roleId)
             ->where('status', Status::ACTIVE)
             ->firstOrFail();
-        $user->role()->associate($role);
+        $user->role_id = $role->id;
         $user->save();
     }
     public function updateAddress($addressId, UserUpdateAddressRequest $req)
@@ -314,8 +333,8 @@ class UserService
         if ($address->user_id !== $currentUser->id) {
             throw new BusinessException(ErrorCode::BAD_REQUEST, 'Không có quyền chỉnh sửa !');
         }
-        Address::where('user_id', $currentUser->id)->update(['isDefault' => false]);
-        $address->isDefault = true;
+        Address::where('user_id', $currentUser->id)->update(['is_default' => false]);
+        $address->is_default = true;
         $address->save();
     }
     public function deleteAddress($addressId)

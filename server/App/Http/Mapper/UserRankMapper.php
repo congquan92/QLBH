@@ -14,7 +14,7 @@ class UserRankMapper
             $userRank->id,
             $userRank->name,
             $userRank->min_spent,
-            $userRank->status
+            $userRank->status->value
         );
     }
 }

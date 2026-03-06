@@ -1,6 +1,7 @@
 <?php
 namespace App\Http\Mapper;
 
+use App\Enums\Status;
 use App\Http\Responses\Address\AddressResponse;
 use App\Http\Responses\User\UserResponse;
 use App\Models\User;
@@ -23,14 +24,14 @@ class UserMapper
                 $address->district_id,
                 $address->ward_id,
                 $address->address_type,
-                $address->isDefault,
+                $address->is_default,
             );
         })->toArray();
         return new UserResponse(
             $user->id,
             $user->username,
             $user->full_name,
-            $user->gender,
+            $user->gender->value,
             $user->date_of_birth,
             $user->email,
             $user->phone,
@@ -40,9 +41,18 @@ class UserMapper
             $user->email_verified,
             $user->phone_verified,
             $user->total_spent,
-            $user->addresses,
-            UserRankMapper::toUserRankResponse($user->userRank),
-            RoleMapper::toRoleResponse($user->role),
+            $addresses,
+            (
+                ($user->userRank && $user->userRank->status === Status::ACTIVE)
+                ? UserRankMapper::toUserRankResponse($user->userRank)
+                : null
+            ),
+            (
+                ($user->role && $user->role->status === Status::ACTIVE)
+                ? RoleMapper::toRoleResponse($user->role)
+                : null
+            ),
+            
         );
     }
 }

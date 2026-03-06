@@ -25,7 +25,7 @@ class Address extends Model
         'district_id',
         'ward_id',
         'address_type',
-        'isDefault',
+        'is_default',
         'user_id'
     ];
 
