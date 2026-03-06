@@ -17,7 +17,7 @@ return new class extends Migration
 
             $table->string('name');
             $table->decimal('min_spent',15,2)->default(0);
-            $table->string('status')->default(Status::ACTIVE);
+            $table->string('status')->default('ACTIVE');
             $table->timestamps();
         });
     }
