@@ -122,4 +122,19 @@ class UserController extends Controller
         $result = $this->userService->findByUserName($username);
         return $this->success($result,'Get user by username');
     }
+
+    // Thêm vào UserController.php
+
+public function updateStatus(Request $request, $userId)
+{
+    // Validate cơ bản
+    $request->validate([
+        'status' => 'required|string' // Có thể validate theo Enum nếu muốn
+    ]);
+
+    $status = $request->input('status');
+    $result = $this->userService->updateStatus($userId, $status);
+    
+    return $this->success($result, 'Cập nhật trạng thái người dùng thành công');
+}
 }

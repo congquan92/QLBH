@@ -26,6 +26,7 @@ use App\Models\User;
 use App\Models\UserRank;
 use Hash;
 use Illuminate\Support\Facades\DB;
+use Log;
 class UserService
 {
     protected BrevoService $brevoService;
@@ -135,7 +136,6 @@ class UserService
             'gender' => 'gender',
             'dateOfBirth' => 'date_of_birth',
             'avatar' => 'avatar',
-            'status' => 'status'
         ];
 
         foreach ($map as $reqKey => $dbColumn) {
@@ -214,17 +214,34 @@ class UserService
         }
     }
 
-    public function getAllUserByEmail($email)
-    {
-        $users = User::where('email', $email);
-        if ($users->count() <= 0) {
-            throw new BusinessException(ErrorCode::NOT_EXISTED, 'Không tìm thấy người dùng !');
-        }
-        return $users->map(function ($user) {
-            return UserMapper::toUserResponse($user);
-        })->toArray();
+   public function getAllUserByEmail($email)
+{
+    // Chỉ lấy các cột cần thiết từ DB để nhẹ memory
+    $users = User::where('email', $email)->get();
 
+    if ($users->isEmpty()) {
+        throw new BusinessException(ErrorCode::NOT_EXISTED, 'Không tìm thấy người dùng !');
     }
+
+    return $users->map(function ($user) {
+        return [
+            "id"              => $user->id,
+            "full_name"       => $user->full_name,
+            "email"           => $user->email,
+            "phone"           => $user->phone,
+            "avatar"          => $user->avatar,
+            // Xử lý Enum: Lấy giá trị chuỗi (ACTIVE, INACTIVE...)
+            "status"          => $user->status?->value ?? $user->status,
+            // Xử lý Enum Gender
+            "gender"          => $user->gender?->value ?? $user->gender,
+            // Ép kiểu boolean
+            "email_verified"  => (bool) $user->email_verified,
+            "phone_verified"  => (bool) $user->phone_verified,
+            // Xử lý ngày sinh: Nếu null thì trả về chuỗi rỗng hoặc format chuẩn Y-m-d
+            "date_of_birth"   => $user->date_of_birth ? $user->date_of_birth->format('Y-m-d') : null,
+        ];
+    })->toArray();
+}
 
     public function changeEmail($newEmail, $otp)
     {
@@ -296,7 +313,7 @@ class UserService
         $role = Role::where('id', $roleId)
             ->where('status', Status::ACTIVE)
             ->firstOrFail();
-        $user->role()->associate($role);
+        $user->role_id = $role->id;
         $user->save();
     }
     public function updateAddress($addressId, UserUpdateAddressRequest $req)

@@ -64,6 +64,14 @@ class AuthService
             );
         }
 
+        if ($user->status == UserStatus::INACTIVE) {
+            throw new BusinessException(
+                ErrorCode::UNAUTHENTICATED
+                ,
+                "Tài khoản đã bị khoá"
+            );
+        }
+
         $token = $guard->login($user);
         $ttl = (int) config('jwt.ttl');
 

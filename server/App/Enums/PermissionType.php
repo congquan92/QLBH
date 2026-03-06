@@ -28,6 +28,8 @@ enum PermissionType: string
     case CREATE_USER = 'CREATE_USER';
     case ASSIGN_ROLE = 'ASSIGN_ROLE';
 
+    case ASSIGN_STATUS = 'ASSIGN_STATUS';
+
     // Order
     case VIEW_ORDERS_ADMIN = 'VIEW_ORDERS_ADMIN';
     case UPDATE_ORDER_STATUS = 'UPDATE_ORDER_STATUS';

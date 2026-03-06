@@ -49,6 +49,7 @@ Route::get('/voucher/list', action: [VoucherController::class, 'findAll']);
 Route::get('/voucher/detail/{id}', [VoucherController::class, 'show']);
 Route::get('/reviews/{id}', action: [ReviewController::class, 'show']);
 Route::post('/otp/verify-otp', [BrevoController::class, 'verify']);
+ Route::get('/user/email', [UserController::class, 'getUserByEmail']);
 // Notifications
 Route::post('/otp/send', [BrevoController::class, 'send']);
  Route::post('/user/{userId}/verify-account', [UserController::class, 'verifyAccount']);
@@ -68,10 +69,12 @@ Route::middleware('auth')->group(function () {
     Route::get('/user/{userId}', [UserController::class, 'getDetailUser'])->middleware('can:VIEW_USER_DETAIL');
     Route::post('/user/add', [UserController::class, 'createUser'])->middleware('can:CREATE_USER');
     Route::put('/user/{userId}/update/role', [UserController::class, 'updateRoleUser'])->middleware('can:ASSIGN_ROLE');
+    Route::put('user/{userId}/status', [UserController::class, 'updateStatus'])->middleware('can:ASSIGN_STATUS');
 
     // Address (Thường cho phép User tự quản lý)
     Route::post('/user/add/address', [UserController::class, 'createAddress']);
     Route::get('/user/address/list', [UserController::class, 'getAllAddresses']);
+    Route::put('/user/update',[UserController::class,'updateUser']);
     Route::put('/user/address/default/{addressId}', [UserController::class, 'updateDefaultAddress']);
     Route::put('/user/address/update/{addressId}', [UserController::class, 'updateAddress']);
     Route::delete('/user/address/delete/{addressId}', [UserController::class, 'deleteAddress']);
@@ -80,7 +83,6 @@ Route::middleware('auth')->group(function () {
     Route::put('/user/change-email', [UserController::class, 'changeEmail']);
     Route::put('/user/change-phone', [UserController::class, 'changePhone']);
     Route::put('/user/change-password', [UserController::class, 'changePassword']);
-    Route::get('/user/email', [UserController::class, 'getUserByEmail'])->middleware('can:VIEW_USERS');
     Route::post('/user/forgot-password', [UserController::class, 'forgotPassword']);
     Route::get('/user/username', [UserController::class, 'findByUserName'])->middleware('can:VIEW_USERS');
 
