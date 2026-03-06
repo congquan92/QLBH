@@ -273,6 +273,7 @@ class UserService
         $currentUser = auth()->user();
         $newAddress = new Address();
         $newAddress->user_id = $currentUser->id;
+        $newAddress->customer_name = $req->customer_name;
         $newAddress->address = $req->address;
         $newAddress->phone_number = $req->phone;
         $newAddress->province = $req->province;
@@ -282,9 +283,9 @@ class UserService
         $newAddress->district_id = $req->district_id;
         $newAddress->ward_id = $req->ward_id;
         $newAddress->address_type = $req->address_type;
-        $newAddress->isDefault = true;
+        $newAddress->is_default = true;
 
-        Address::where('user_id', $currentUser->id)->update(['isDefault' => false]);
+        Address::where('user_id', $currentUser->id)->update(['is_default' => false]);
         $newAddress->save();
     }
     public function updateUserRole($userId, $roleId)
@@ -315,8 +316,8 @@ class UserService
         if ($address->user_id !== $currentUser->id) {
             throw new BusinessException(ErrorCode::BAD_REQUEST, 'Không có quyền chỉnh sửa !');
         }
-        Address::where('user_id', $currentUser->id)->update(['isDefault' => false]);
-        $address->isDefault = true;
+        Address::where('user_id', $currentUser->id)->update(['is_default' => false]);
+        $address->is_default = true;
         $address->save();
     }
     public function deleteAddress($addressId)

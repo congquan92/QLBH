@@ -13,7 +13,7 @@ class UserResponse {
         public string $dateOfBirth,
         public string $email,
         public string $phone,
-        public string $avatar,
+        public ?string $avatar,
         public string $status,
         public int $point,
         public bool $verifiedEmail,
