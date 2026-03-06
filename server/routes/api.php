@@ -28,6 +28,7 @@ use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\UserRankController;
 use App\Http\Controllers\VoucherController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\RoleController;
@@ -49,10 +50,11 @@ Route::get('/voucher/list', action: [VoucherController::class, 'findAll']);
 Route::get('/voucher/detail/{id}', [VoucherController::class, 'show']);
 Route::get('/reviews/{id}', action: [ReviewController::class, 'show']);
 Route::post('/otp/verify-otp', [BrevoController::class, 'verify']);
- Route::get('/user/email', [UserController::class, 'getUserByEmail']);
+Route::get('/user/email', [UserController::class, 'getUserByEmail']);
 // Notifications
 Route::post('/otp/send', [BrevoController::class, 'send']);
- Route::post('/user/{userId}/verify-account', [UserController::class, 'verifyAccount']);
+Route::post('/user/{userId}/verify-account', [UserController::class, 'verifyAccount']);
+Route::post('/user/forgot-password', [UserController::class, 'forgotPassword']);
 // ==========================================
 // Route bảo vệ bởi JWT
 // ==========================================
@@ -74,7 +76,7 @@ Route::middleware('auth')->group(function () {
     // Address (Thường cho phép User tự quản lý)
     Route::post('/user/add/address', [UserController::class, 'createAddress']);
     Route::get('/user/address/list', [UserController::class, 'getAllAddresses']);
-    Route::put('/user/update',[UserController::class,'updateUser']);
+    Route::put('/user/update', [UserController::class, 'updateUser']);
     Route::put('/user/address/default/{addressId}', [UserController::class, 'updateDefaultAddress']);
     Route::put('/user/address/update/{addressId}', [UserController::class, 'updateAddress']);
     Route::delete('/user/address/delete/{addressId}', [UserController::class, 'deleteAddress']);
@@ -83,7 +85,6 @@ Route::middleware('auth')->group(function () {
     Route::put('/user/change-email', [UserController::class, 'changeEmail']);
     Route::put('/user/change-phone', [UserController::class, 'changePhone']);
     Route::put('/user/change-password', [UserController::class, 'changePassword']);
-    Route::post('/user/forgot-password', [UserController::class, 'forgotPassword']);
     Route::get('/user/username', [UserController::class, 'findByUserName'])->middleware('can:VIEW_USERS');
 
     // Category
@@ -330,6 +331,20 @@ Route::middleware('auth')->group(function () {
         Route::delete('/{id}', [PageController::class, 'destroy'])->middleware('can:DELETE_PAGE');
         Route::post('{id}/detach-groups', [PageController::class, 'detachGroups'])->middleware('can:UPDATE_PAGE');
         ;
+    });
+
+    Route::prefix('user-rank')->group(function () {
+        // Xem danh sách hạng (Dành cho Admin/User có quyền)
+        Route::get('/list', [UserRankController::class, 'findAll'])
+            ->middleware('can:VIEW_USER_RANKS');
+
+        // Tạo mới hạng người dùng
+        Route::post('/add', [UserRankController::class, 'store'])
+            ->middleware('can:CREATE_USER_RANK');
+
+        // Cập nhật hạng
+        Route::put('/{id}/update', action: [UserRankController::class, 'update'])
+            ->middleware('can:UPDATE_USER_RANK');
     });
     // Salaries
     Route::get('salaries/calculate/{userId}', [SalaryController::class, 'calculateMonthlySalary'])->middleware('can:CALCULATE_SALARY');

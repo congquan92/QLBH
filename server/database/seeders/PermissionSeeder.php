@@ -57,6 +57,7 @@ class PermissionSeeder extends Seeder
                     'groups' => [
                         'Tài khoản' => ['/admin/users', 'UserCog', ['USERS']],
                         'Phân quyền' => ['/admin/roles', 'ShieldCheck', ['ROLE', 'PERMISSION_GROUPS']],
+                        'Hạng người dùng' => ['/admin/user-ranks', 'Medal', ['USER_RANK']],
                         'Thống kê' => ['/admin/statistical', 'BarChart', ['STATISTICAL', 'EXPORT']],
                     ]
                 ],

@@ -15,55 +15,55 @@ use DB;
 use Illuminate\Support\Carbon;
 class VoucherService
 {
- public function findAll(?string $sort, int $page, int $size)
-{
-    $user = auth()->user();
+    public function findAll(?string $sort, int $page, int $size)
+    {
+        $user = auth()->user();
 
-    // 1. Chặn Guest ngay lập tức
-    if (!$user) {
-        throw new BusinessException(ErrorCode::BAD_REQUEST, "Vui lòng đăng nhập để hiển thị voucher khả dụng!");
-    }
+        // 1. Chặn Guest ngay lập tức
+        if (!$user) {
+            throw new BusinessException(ErrorCode::BAD_REQUEST, "Vui lòng đăng nhập để hiển thị voucher khả dụng!");
+        }
 
-    $query = Voucher::query();
+        $query = Voucher::query();
 
-    // 2. Logic "getAvailableVouchersForUser" viết thẳng vào đây:
-    // Lấy mức chi tiêu tối thiểu của hạng hiện tại mà User đang đạt được
-    $userMinSpent = $user->userRank->min_spent ?? 0;
+        // 2. Logic "getAvailableVouchersForUser" viết thẳng vào đây:
+        // Lấy mức chi tiêu tối thiểu của hạng hiện tại mà User đang đạt được
+        $userMinSpent = $user->userRank->min_spent ?? 0;
 
-    $query->where('status', 'ACTIVE')
-        ->where('remaining_quantity', '>', 0)
-        ->where('start_date', '<=', now())
-        ->where('end_date', '>=', now())
-        ->where(function ($q) use ($userMinSpent) {
-            $q->whereHas('userRank', function ($sub) use ($userMinSpent) {
-                // Lấy các Voucher có yêu cầu chi tiêu thấp hơn hoặc bằng mức của User
-                $sub->where('min_spent', '<=', $userMinSpent);
-            })
-            ->orWhereNull('user_rank_id'); // Bao gồm cả voucher không yêu cầu hạng (Public)
+        $query->where('status', 'ACTIVE')
+            ->where('remaining_quantity', '>', 0)
+            ->where('start_date', '<=', now())
+            ->where('end_date', '>=', now())
+            ->where(function ($q) use ($userMinSpent) {
+                $q->whereHas('userRank', function ($sub) use ($userMinSpent) {
+                    // Lấy các Voucher có yêu cầu chi tiêu thấp hơn hoặc bằng mức của User
+                    $sub->where('min_spent', '<=', $userMinSpent);
+                })
+                    ->orWhereNull('user_rank_id'); // Bao gồm cả voucher không yêu cầu hạng (Public)
+            });
+
+        // 3. Xử lý Sắp xếp (Sort)
+        $column = 'id';
+        $direction = 'asc';
+        if ($sort && str_contains($sort, ':')) {
+            $parts = explode(':', $sort);
+            $column = $parts[0];
+            $direction = strtolower($parts[1] ?? 'asc') === 'desc' ? 'desc' : 'asc';
+        }
+
+        // 4. Phân trang
+        $paginator = $query->orderBy($column, $direction)
+            ->paginate($size, ['*'], 'page', $page);
+
+        // 5. Mapping dữ liệu (Truyền $user vào nếu Mapper của bạn cần check thêm logic)
+        $dtoItems = $paginator->getCollection()->map(function ($voucher) use ($user) {
+            return VoucherMapper::toVoucherResponse($voucher, $user);
         });
 
-    // 3. Xử lý Sắp xếp (Sort)
-    $column = 'id';
-    $direction = 'asc';
-    if ($sort && str_contains($sort, ':')) {
-        $parts = explode(':', $sort);
-        $column = $parts[0];
-        $direction = strtolower($parts[1] ?? 'asc') === 'desc' ? 'desc' : 'asc';
+        $paginator->setCollection($dtoItems);
+
+        return PageResponse::fromLaravelPaginator($paginator);
     }
-
-    // 4. Phân trang
-    $paginator = $query->orderBy($column, $direction)
-        ->paginate($size, ['*'], 'page', $page);
-
-    // 5. Mapping dữ liệu (Truyền $user vào nếu Mapper của bạn cần check thêm logic)
-    $dtoItems = $paginator->getCollection()->map(function ($voucher) use ($user) {
-        return VoucherMapper::toVoucherResponse($voucher, $user);
-    });
-
-    $paginator->setCollection($dtoItems);
-
-    return PageResponse::fromLaravelPaginator($paginator);
-}
     public function findAllByAdmin(
         ?string $keyword,
         ?string $rank,
@@ -131,6 +131,8 @@ class VoucherService
     public function add(VoucherCreationRequest $request)
     {
         $data = $request->validated();
+        $data['remaining_quantity'] = $data['total_quantity'];
+        $data['used_quantity'] = 0;
         return Voucher::create($data);
     }
     public function update($id, array $data)

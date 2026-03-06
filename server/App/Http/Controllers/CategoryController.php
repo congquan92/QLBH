@@ -28,11 +28,11 @@ class CategoryController extends Controller
     public function findAllWithouPagination(Request $request)
     {
         $keyword = $request->query('keyword');
-        $sort = $request->query('sort');
+        $sort = $request->query('sort','id');
         $page = (int) $request->query('page', 1);
         $size = (int) $request->query('size', 10);
 
-        $result = $this->categoryService->findAllWithPagination($page, $size);
+        $result = $this->categoryService->findAllWithPagination($page, $size,$keyword,$sort);
         return $this->success($result, 'Product list fetched successfully');
     }
     public function updateCategory(CategoryUpdateRequest $request){

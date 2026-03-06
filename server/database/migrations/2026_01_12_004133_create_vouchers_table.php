@@ -17,19 +17,19 @@ return new class extends Migration
 
             $table->string('description');
             $table->string('type');
-            $table->double('discountValue');
-            $table->double('maxDiscountValue');
-            $table->double('minDiscountValue')->default(0.0);
-            $table->unsignedBigInteger('totalQuantity');
-            $table->boolean('isShipping');
-            $table->string('status')->default(VoucherStatus::ACTIVE);
-            $table->unsignedBigInteger('usedQuantity');
-            $table->unsignedBigInteger('remainingQuantity');
-            $table->dateTime('startDate');
-            $table->dateTime('endDate');
-            $table->unsignedBigInteger('usageLimitPerUser');
+            $table->double('discount_value'); // Sửa: discountValue -> discount_value
+            $table->double('max_discount_value'); // Sửa: maxDiscountValue -> max_discount_value
+            $table->double('min_discount_value')->default(0.0); // Sửa: minDiscountValue -> min_discount_value
+            $table->unsignedBigInteger('total_quantity'); // Sửa: totalQuantity -> total_quantity
+            $table->boolean('is_shipping'); // Sửa: isShipping -> is_shipping
+            $table->string('status')->default(VoucherStatus::ACTIVE->value);
+            $table->unsignedBigInteger('used_quantity')->default(0); // Sửa: usedQuantity
+            $table->unsignedBigInteger('remaining_quantity'); // Sửa: remainingQuantity
+            $table->dateTime('start_date'); // Sửa: startDate -> start_date
+            $table->dateTime('end_date'); // Sửa: endDate -> end_date
+            $table->unsignedBigInteger('usage_limit_per_user')->nullable(); // Sửa: usageLimitPerUser
             
-            $table->foreignId('user_rank_id')->constrained();
+            $table->foreignId('user_rank_id')->constrained('user_ranks');
             $table->timestamps();
         });
     }

@@ -1,6 +1,7 @@
 <?php
 namespace App\Http\Service;
 
+use App\Enums\Status;
 use App\Http\Mapper\UserRankMapper;
 use App\Http\Requests\UserRank\UserRankCreationRequest;
 use App\Http\Responses\PageResponse;
@@ -10,7 +11,7 @@ class UserRankService{
    public function findAll(?string $keyword, ?string $sort, int $page, int $size)
     {
         $query = UserRank::query();
-        $query->where('status', '!=', 'DISABLE');
+        $query->where('status', '!=', Status::DISABLED->value);
 
         if (!empty($keyword)) {
             $query->where('name', 'like', "%{$keyword}%");

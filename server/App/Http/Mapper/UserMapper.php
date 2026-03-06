@@ -1,6 +1,7 @@
 <?php
 namespace App\Http\Mapper;
 
+use App\Enums\Status;
 use App\Http\Responses\Address\AddressResponse;
 use App\Http\Responses\User\UserResponse;
 use App\Models\User;
@@ -41,8 +42,17 @@ class UserMapper
             $user->phone_verified,
             $user->total_spent,
             $addresses,
-            UserRankMapper::toUserRankResponse($user->userRank),
-            RoleMapper::toRoleResponse($user->role),
+            (
+                ($user->userRank && $user->userRank->status === Status::ACTIVE)
+                ? UserRankMapper::toUserRankResponse($user->userRank)
+                : null
+            ),
+            (
+                ($user->role && $user->role->status === Status::ACTIVE)
+                ? RoleMapper::toRoleResponse($user->role)
+                : null
+            ),
+            
         );
     }
 }

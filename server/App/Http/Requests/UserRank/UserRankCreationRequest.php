@@ -12,7 +12,7 @@ class UserRankCreationRequest extends FormRequest{
     {
         return [
             'name'       => 'required|string|max:500',
-            'minSpent' => 'required|numeric|gt:0|decimal:0,2'
+            'min_spent' => 'required|numeric|gt:0|decimal:0,2'
         ];
     }
 
@@ -20,7 +20,7 @@ class UserRankCreationRequest extends FormRequest{
     {
         return [
             'name.required'      => 'Mô tả voucher không được để trống.',
-            'minSpent' => 'Mức chi tiêu tối thiểu không được để trống'
+            'min_spent' => 'Mức chi tiêu tối thiểu không được để trống'
         ];
     }
 }
