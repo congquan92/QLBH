@@ -4,6 +4,7 @@ namespace App\Http\Service;
 
 use App\Enums\DeliveryStatus;
 use App\Enums\Status;
+use App\Http\Mapper\ProductVariantMapper;
 use App\Http\Responses\PageResponse;
 use App\Models\ImportProduct;
 use App\Models\ImportDetail;
@@ -70,36 +71,59 @@ class ImportService
         return PageResponse::fromLaravelPaginator($paginator);
     }
 
+    // Trong App\Http\Service\ImportProductService.php
+
+    public function getById(int $id)
+    {
+        // Sử dụng 'with' để nạp sẵn chi tiết phiếu nhập
+        return ImportProduct::with('importDetail','product.supplier')
+            ->findOrFail($id);
+    }
+
     /**
      * Tạo mới phiếu nhập và các chi tiết (Snapshot)
      */
     public function save(array $request)
     {
         return DB::transaction(function () use ($request) {
-            // Tạo phiếu nhập gắn với product_id
+            // Tạo phiếu nhập
             $importProduct = ImportProduct::create([
                 'product_id' => $request['product_id'],
                 'description' => $request['description'] ?? '',
                 'totalAmount' => 0,
-                'status' => DeliveryStatus::PENDING, // Thường khởi tạo là PENDING để chờ duyệt
+                'status' => DeliveryStatus::PENDING,
             ]);
 
             $totalAmount = 0;
 
             foreach ($request['import_details'] as $detailReq) {
-                // Lưu snapshot + product_variant_id (không khóa ngoại)
+                // 1. Lấy thông tin Variant và thông tin Product cha
+                $variant = ProductVariant::with(['product', 'attributeValues.productAttribute.attribute'])
+                    ->findOrFail($detailReq['product_variant_id']);
+
+                // Kiểm tra xem variant có thuộc đúng product không
+                if ($variant->product_id != $request['product_id']) {
+                    throw new \Exception("Biến thể không thuộc sản phẩm này.");
+                }
+
+                // 2. Chuyển đổi Variant sang Response (để lấy format chuẩn)
+                $variantResponse = ProductVariantMapper::toVariantResponse($variant);
+
+                // 3. Tạo snapshot
                 $detail = $importProduct->importDetail()->create([
                     'quantity' => $detailReq['quantity'],
                     'unitPrice' => $detailReq['unitPrice'],
-                    'product_variant_id' => $detailReq['product_variant_id'],
-                    'nameProductSnapShot' => $detailReq['nameSnapshot'],
-                    'urlImageSnapShot' => $detailReq['imageSnapshot'],
-                    'variantAttributesSnapshot' => $detailReq['attributesSnapshot'],
+                    'product_variant_id' => $variant->id,
+                    'nameProductSnapShot' => $variant->product->name . ' - ' . $variant->sku,
+                    // Lấy ảnh từ thuộc tính đầu tiên có ảnh, hoặc ảnh cover của sản phẩm
+                    'urlImageSnapShot' => $variant->product->url_image_cover,
+
+                    // Chuyển toàn bộ thông tin attribute thành JSON
+                    'variantAttributesSnapshot' => json_encode($variantResponse),
                 ]);
 
                 $totalAmount += ($detail->quantity * $detail->unitPrice);
             }
-
             $importProduct->update(['totalAmount' => $totalAmount]);
 
             return $importProduct;
@@ -139,13 +163,19 @@ class ImportService
             $importProduct = ImportProduct::findOrFail($importId);
 
             if ($importProduct->status !== DeliveryStatus::PENDING) {
-                throw new Exception("Phiếu nhập không ở trạng thái PENDING.");
+                throw new \Exception("Phiếu nhập không ở trạng thái PENDING, không thể cập nhật.");
             }
 
             foreach ($requestItems as $item) {
+                // Kiểm tra tồn tại và quyền sở hữu trong cùng 1 query
                 $detail = ImportDetail::where('id', $item['importDetailId'])
                     ->where('import_product_id', $importId)
-                    ->firstOrFail();
+                    ->first();
+
+                // Nếu không tìm thấy, nghĩa là ID sai hoặc không thuộc phiếu nhập này
+                if (!$detail) {
+                    throw new \Exception("Chi tiết phiếu nhập ID {$item['importDetailId']} không tồn tại hoặc không thuộc phiếu nhập này.");
+                }
 
                 $detail->update(['quantity' => $item['quantity']]);
             }
@@ -251,15 +281,20 @@ class ImportService
         return DB::transaction(function () use ($importId) {
             // 1. Tìm phiếu nhập
             $importProduct = ImportProduct::findOrFail($importId);
+
+            // 2. Chỉ cho phép xóa khi đang PENDING
             if ($importProduct->status !== DeliveryStatus::PENDING) {
-                throw new Exception("Không thể xóa phiếu nhập đã hoàn thành nhập kho.");
+                throw new \Exception("Chỉ có thể xóa phiếu nhập khi ở trạng thái PENDING.");
             }
 
-            $importProduct->update([
-                'status' => Status::INACTIVE,
-            ]);
+            // 3. Xóa các chi tiết trước (để đảm bảo tính toàn vẹn)
+            // Nếu database của bạn đã có "ON DELETE CASCADE", dòng này có thể bỏ qua
+            $importProduct->importDetail()->delete();
 
-            return $importProduct;
+            // 4. Xóa phiếu nhập
+            $importProduct->delete();
+
+            return true;
         });
     }
 }

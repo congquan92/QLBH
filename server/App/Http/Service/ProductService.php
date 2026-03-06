@@ -365,53 +365,136 @@ class ProductService
         $product = Product::where('id', $productId)
             ->where('status', Status::ACTIVE)
             ->firstOrFail();
-        foreach ($requests as $req) {
-            $exists = $this->checkVariantExists($product, $req);
-            if ($exists)
-                continue;
-            $variant = $this->makeBaseProductVariant($req, $product);
-            foreach ($req['variantAttributes'] as $item) {
-                $attribute = Attribute::firstOrCreate(['name' => $item['attribute']]);
+
+        \DB::transaction(function () use ($product, $requests) {
+            foreach ($requests as $req) {
+                // Kiểm tra biến thể tồn tại
+                if ($this->checkVariantExists($product, $req)) {
+                    continue;
+                }
+
+                // Tạo biến thể cơ sở
+                $variant = $this->makeBaseProductVariant($req, $product);
+
+                foreach ($req['variantAttributes'] as $item) {
+                    // Sử dụng ID từ request thay vì tìm theo tên
+                    $attributeId = $item['attributeId'];
+
+                    // Tìm hoặc tạo ProductAttribute bằng ID
+                    $productAttribute = ProductAttribute::firstOrCreate([
+                        'product_id' => $product->id,
+                        'attribute_id' => $attributeId
+                    ]);
+
+                    // Tạo giá trị thuộc tính
+                    $value = ProductAttributeValue::create([
+                        'product_attribute_id' => $productAttribute->id,
+                        'value' => $item['value'],
+                        'url_image' => $item['image'] ?? null
+                    ]);
+
+                    // Gắn vào biến thể
+                    $variant->attributeValues()->attach($value->id);
+                }
+            }
+        });
+    }
+    public function updateVariants(int $productId, int $variantId, array $data)
+{
+    \DB::transaction(function () use ($productId, $variantId, $data) {
+        $variant = ProductVariant::where('id', $variantId)
+            ->where('product_id', $productId)
+            ->firstOrFail();
+
+        // 1. Lưu ảnh cũ của biến thể để phục vụ việc dọn dẹp sau này
+        $oldImageUrls = $variant->attributeValues()->pluck('url_image')->filter()->toArray();
+
+        // 2. Cập nhật thông tin cơ bản của biến thể
+        $variant->update([
+            'sku'    => $data['sku'] ?? $variant->sku,
+            'price'  => $data['price'] ?? $variant->price,
+            'weight' => $data['weight'] ?? $variant->weight,
+            'length' => $data['length'] ?? $variant->length,
+            'width'  => $data['width'] ?? $variant->width,
+            'height' => $data['height'] ?? $variant->height,
+        ]);
+
+        // 3. Xử lý thuộc tính (Update tại chỗ)
+        if (isset($data['variantAttributes'])) {
+            $newAttributeValueIds = [];
+
+            foreach ($data['variantAttributes'] as $item) {
+                // Đảm bảo ProductAttribute tồn tại cho sản phẩm này
                 $productAttribute = ProductAttribute::firstOrCreate([
-                    'product_id' => $product->id,
-                    'attribute_id' => $attribute->id
+                    'product_id' => $productId,
+                    'attribute_id' => $item['attributeId']
                 ]);
-                Log::info('image ', $item['image']);
-                $value = ProductAttributeValue::create([
-                    'product_attribute_id' => $productAttribute->id,
-                    'value' => $item['value'],
-                    'url_image' => $item['image']
-                ]);
-                $variant->attributeValues()->attach($value->id);
+
+                // Tìm hoặc cập nhật giá trị thuộc tính. 
+                // Quan trọng: UpdateOrCreate dựa trên cả product_attribute_id VÀ value
+                $value = ProductAttributeValue::updateOrCreate(
+                    [
+                        'product_attribute_id' => $productAttribute->id,
+                        'value' => $item['value'] // Nếu value đổi, nó sẽ tìm bản ghi cũ hoặc tạo mới
+                    ],
+                    [
+                        'url_image' => $item['image'] ?? null
+                    ]
+                );
+                
+                $newAttributeValueIds[] = $value->id;
+            }
+
+            // Sync: Laravel sẽ tự so sánh ID cũ/mới. 
+            // Nó giữ lại liên kết với ID mới và xóa các liên kết cũ không có trong danh sách.
+            $variant->attributeValues()->sync($newAttributeValueIds);
+
+            // 4. Dọn dẹp rác sau khi đã sync
+            $this->cleanupOrphanValues();
+            $this->cleanupUnusedImages($oldImageUrls);
+        }
+    });
+}
+private function cleanupOrphanValues()
+{
+    // Xóa tất cả các bản ghi ProductAttributeValue không còn được liên kết với bất kỳ biến thể nào
+    ProductAttributeValue::whereDoesntHave('productVariants')->delete();
+}
+
+private function cleanupUnusedImages(array $oldImageUrls)
+{
+    foreach ($oldImageUrls as $url) {
+        // Chỉ xóa trên Cloud nếu URL đó không còn tồn tại trong bất kỳ bản ghi nào trong DB
+        if (!ProductAttributeValue::where('url_image', $url)->exists()) {
+            try {
+                app(CloudinaryService::class)->deleteByUrls([$url]);
+            } catch (\Exception $e) {
+                \Log::error("Lỗi xóa ảnh cloud: " . $e->getMessage());
             }
         }
     }
-    public function updateVariants(int $productId, array $requests): void
-    {
-        foreach ($requests as $req) {
-            $productVariant = ProductVariant::where('product_id', $productId)->firstOrFail();
-            $data = [
-                'price' => $req['price'],
-                'height' => $req['height'],
-                'width' => $req['width'],
-                'length' => $req['length'],
-                'weight' => $req['weight'],
-            ];
-            $productVariant->update(array_filter($data, fn($value) => !is_null($value)));
-        }
-    }
+}
     private function checkVariantExists($product, $variantReq): bool
     {
+        // Dùng get() thay vì firstOrFail() để tránh lỗi 404 khi chưa có biến thể nào
         $existingVariants = ProductVariant::where('product_id', $product->id)
-            ->where('status', Status::ACTIVE)->firstOrFail();
+            ->where('status', Status::ACTIVE)
+            ->get();
+
+        // Nếu không có biến thể nào, trả về false ngay (chưa tồn tại)
+        if ($existingVariants->isEmpty()) {
+            return false;
+        }
+
         $reqAttributes = collect($variantReq['variantAttributes'])
-            ->map(fn($item) => trim($item['attribute']) . ':' . trim($item['value']))
+            ->map(fn($item) => trim($item['attributeId']) . ':' . trim($item['value']))
             ->sort()
             ->values()
             ->toArray();
+
         foreach ($existingVariants as $variant) {
             $variantAttributes = $variant->attributeValues->map(function ($av) {
-                return trim($av->productAttribute->attribute->name) . ':' . trim($av->value);
+                return trim($av->productAttribute->attribute_id) . ':' . trim($av->value);
             })->sort()->values()->toArray();
 
             if ($variantAttributes === $reqAttributes) {
@@ -420,7 +503,6 @@ class ProductService
         }
 
         return false;
-
     }
     private function processAttributes(Product $product, array $attributesData)
     {

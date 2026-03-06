@@ -105,7 +105,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/add', [ProductController::class, 'store'])->middleware('can:CREATE_PRODUCT');
         Route::put('/update', [ProductController::class, 'updateProduct'])->middleware('can:UPDATE_PRODUCT');
         Route::post('/{productId}/restore', [ProductController::class, 'restoreProduct'])->middleware('can:RESTORE_PRODUCT');
-        Route::post('/{productId}/variants/add', [ProductController::class, 'addVariants'])->middleware('can:UPDATE_PRODUCT');
+      Route::post('/{id}/variants/add', [ProductController::class, 'addVariants']);
         Route::put('/{productId}/variants/update', [ProductController::class, 'updateVariants'])->middleware('can:UPDATE_PRODUCT');
         Route::delete('/{productId}/delete', [ProductController::class, 'destroy'])->middleware('can:DELETE_PRODUCT');
         Route::delete('/{id}/attribute/delete', [ProductController::class, 'deleteAttribute'])->middleware('can:DELETE_PRODUCT');
@@ -315,6 +315,8 @@ Route::middleware('auth')->group(function () {
 
         Route::post('/{id}/confirm', [ImportProductController::class, 'confirm'])->middleware('can:CONFIRM_IMPORT_PRODUCT');
         Route::post('/{id}/cancel', [ImportProductController::class, 'cancel'])->middleware('can:CANCEL_IMPORT_PRODUCT');
+
+        Route::get('/{id}', [ImportProductController::class, 'show']);
 
         Route::put('/{id}/quantities', [ImportProductController::class, 'updateQuantities'])->middleware('can:UPDATE_IMPORT_PRODUCT');
         Route::delete('/{id}', [ImportProductController::class, 'destroy'])->middleware('can:DELETE_IMPORT_PRODUCT');
