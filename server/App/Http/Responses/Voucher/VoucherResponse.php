@@ -15,12 +15,12 @@ class VoucherResponse
         public string $minDiscountValue,
         public int $totalQuantity,
         public bool $isShipping,
-        public Carbon $startDate,
-        public Carbon $endDate,
+        public string $startDate,
+        public string $endDate,
         public int $usageLimitPerUser,
         public string $used_quantity,
         public string $remaining_quantity,
-        public UserRankResponse $userRankResponse
+        public ?UserRankResponse $userRankResponse
     ) {
     }
 }

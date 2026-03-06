@@ -24,7 +24,7 @@ class UploadFileController extends Controller
         // 1. Validate sơ bộ để đảm bảo có file và đúng định dạng
         $request->validate([
             'files' => 'required',
-            'files.*' => 'image|mimes:jpeg,png,jpg,gif|max:20480', // Max 20MB mỗi file
+            'files.*' => 'required|file|mimes:jpeg,png,jpg,gif,mp4,mov,avi,wmv|max:20480',
         ]);
 
         $files = $request->file('files');

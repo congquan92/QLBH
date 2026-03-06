@@ -36,7 +36,7 @@ class ProductController extends Controller
     {
         $keyword = $request->query('keyword');
         $sort = $request->query('sort');
-        $status = $request->query('status' , Status::ACTIVE->name);
+        $status = $request->query('status');
         $page = (int) $request->query('page', 1);
         $size = (int) $request->query('size', 10);
 
@@ -114,10 +114,6 @@ class ProductController extends Controller
         return $this->success($product, 'Product detail fetched successfully');
     }
 
-    public function getProductByIdForAdmin($productId){
-        $product = $this->productService->getProductByIdForAdmin($productId);
-        return $this->success($product, 'Product detail fetched successfully');
-    }
 
     /**
      * Show the form for editing the specified resource.

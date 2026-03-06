@@ -1,11 +1,16 @@
 <?php
 namespace App\Http\Mapper;
 
+use App\Enums\Status;
 use App\Http\Responses\Voucher\VoucherResponse;
 use App\Models\Voucher;
-class VoucherMapper{
-    public static function toVoucherResponse(Voucher $voucher):VoucherResponse{
-        $userRankResponse = UserRankMapper::toUserRankResponse($voucher->userRank);
+class VoucherMapper
+{
+    public static function toVoucherResponse(Voucher $voucher): VoucherResponse
+    {
+        $userRankResponse = (($voucher->userRank && $voucher->userRank->status === Status::ACTIVE)
+            ? UserRankMapper::toUserRankResponse($voucher->userRank)
+            : null);
         return new VoucherResponse(
             $voucher->id,
             $voucher->type->value,

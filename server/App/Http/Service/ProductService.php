@@ -60,10 +60,18 @@ class ProductService
 
     public function findAllForAdmin(?string $keyword, ?Status $status, ?string $sort, int $page, int $size): PageResponse
     {
+        // Bắt đầu Query
+        $query = Product::query();
 
-        $query = Product::where('status', $status);
+        // 1. Logic lọc theo trạng thái: 
+        // Nếu có truyền $status thì lọc theo đó, nếu không thì lấy tất cả trừ DISABLED
+        if ($status) {
+            $query->where('status', $status->value);
+        } else {
+            $query->where('status', '!=', Status::DISABLED->value);
+        }
 
-
+        // 2. Logic sắp xếp
         $column = 'id';
         $direction = 'asc';
         if ($sort && str_contains($sort, ':')) {
@@ -73,7 +81,7 @@ class ProductService
         }
         $query->orderBy($column, $direction);
 
-
+        // 3. Logic tìm kiếm
         if (!empty($keyword)) {
             $query->where(function ($q) use ($keyword) {
                 $q->where('name', 'like', "%{$keyword}%")
@@ -81,14 +89,13 @@ class ProductService
             });
         }
 
+        // 
 
         $paginator = $query->paginate($size, ['*'], 'page', $page);
-
 
         $dtoItems = $paginator->getCollection()->map(function ($product) {
             return ProductMapper::toBaseResponse($product);
         });
-
 
         $paginator->setCollection($dtoItems);
 
@@ -186,89 +193,115 @@ class ProductService
 
     public function update(UpdateProductRequest $req)
     {
-        $product = Product::where('id', $req->id)->firstOrFail();
+        // 1. Lấy dữ liệu đã validate (nó chỉ chứa các trường bạn đã định nghĩa)
+        $data = $req->validated();
 
-        Log::info("ABCCCC: ");
+        // 2. Tìm sản phẩm
+        $product = Product::where('id', $data['id'])->firstOrFail();
 
-        $data = [
-            'name' => $req->name ?? $product->name,
-            'description' => $req->description ?? $product->description,
-            'list_price' => $req->listPrice ?? $product->list_price,
-            'sale_price' => $req->salePrice ?? $product->sale_price,
-        ];
-        if ($req->has('status')) {
-            $data['status'] = $req->status;
+        // 3. Xử lý logic logic đặc thù (nếu có)
+        // Cập nhật trạng thái nếu request có truyền status
+        if (isset($data['status'])) {
+            $product->status = $data['status'];
         }
 
-        if ($req->has('categoryId')) {
-            $category = Category::where('id', $req->categoryId)
-                ->where('status', Status::ACTIVE)
-                ->firstOrFail();
-            $data['category_id'] = $category->id;
-        }
+        // 4. Xử lý Media (dùng toán tử ba ngôi cho gọn)
+        $product->url_video = $data['removeVideo'] ? null : ($data['video'] ?? $product->url_video);
+        $product->url_image_cover = $data['removeCoverImage'] ? null : ($data['coverImage'] ?? $product->url_image_cover);
 
-        if ($req->has('supplierId')) {
-            $supplier = Supplier::where('id', $req->supplierId)
-                ->where('status', Status::ACTIVE)
-                ->firstOrFail();
-            $data['supplier_id'] = $supplier->id;
-        }
-
-        $data['url_video'] = $req->removeVideo ? null : ($req->video ?? $product->url_video);
-        $data['url_image_cover'] = $req->removeCoverImage ? null : ($req->coverImage ?? $product->url_image_cover);
-
-        $product->update($data);
+        // 5. Cập nhật các trường thông tin cơ bản
+        // Lưu ý: nên dùng tên trường trong DB (snake_case) hoặc ánh xạ mảng data trước khi update
+        $product->update([
+            'name' => $data['name'] ?? $product->name,
+            'description' => $data['description'] ?? $product->description,
+            'list_price' => $data['listPrice'] ?? $product->list_price,
+            'sale_price' => $data['salePrice'] ?? $product->sale_price,
+            'category_id' => $data['categoryId'] ?? $product->category_id,
+            'supplier_id' => $data['supplierId'] ?? $product->supplier_id,
+        ]);
 
         return $product;
     }
 
     public function deleteAttribute(int $productId, array $attributeIds)
     {
-        foreach ($attributeIds as $id) {
-            $productAttribute = ProductAttribute::where('product_id', $productId)
-                ->where('attribute_id', $id)
-                ->first();
+        \DB::transaction(
+            function () use ($productId, $attributeIds) {
+                foreach ($attributeIds as $id) {
+                    $productAttribute = ProductAttribute::where('product_id', $productId)
+                        ->where('attribute_id', $id)
+                        ->first();
 
-            if ($productAttribute) {
-                $attributeValues = ProductAttributeValue::where('product_attribute_id', $productAttribute->id)->get();
-
-                foreach ($attributeValues as $value) {
-                    $valueModel = ProductAttributeValue::find($value->id);
-
-                    if ($valueModel) {
-                        $variantIds = $valueModel->productVariants()->pluck('product_variants.id');
-
-                        if ($variantIds->isNotEmpty()) {
-                            ProductVariant::whereIn('id', $variantIds)->delete();
-                        }
-                        $valueModel->delete();
+                    if (!$productAttribute) {
+                        throw new BusinessException(ErrorCode::BAD_REQUEST, "Thuộc tính ID $id không tồn tại hoặc không thuộc sản phẩm này!");
                     }
+
+                    // Lấy các Value thuộc ProductAttribute này
+                    $valueIds = ProductAttributeValue::where('product_attribute_id', $productAttribute->id)->pluck('id');
+
+                    if ($valueIds->isNotEmpty()) {
+                        // Xóa liên kết trong bảng trung gian (Hard delete link)
+                        \DB::table('product_variant_attribute_value')
+                            ->whereIn('product_attribute_value_id', $valueIds)
+                            ->delete();
+
+                        // Xóa các ProductAttributeValue
+                        ProductAttributeValue::whereIn('id', $valueIds)->delete();
+                    }
+
+                    // Xóa ProductAttribute
+                    $productAttribute->delete();
                 }
-                $productAttribute->delete();
+                $this->cleanupOrphanVariants($productId);
             }
-        }
+        );
     }
 
     public function deleteAttributeValue(int $productId, array $attributeValueIds)
     {
-        foreach ($attributeValueIds as $id) {
-            $attributeValue = ProductAttributeValue::with('productVariants')->find($id);
+        \DB::transaction(function () use ($productId, $attributeValueIds) {
+            foreach ($attributeValueIds as $id) {
+                // Dùng load() để lấy quan hệ productAttribute kèm thông tin product nếu cần
+                $attributeValue = ProductAttributeValue::with('productAttribute', 'productVariants')->find($id);
 
-            if (!$attributeValue)
-                continue;
+                if (!$attributeValue)
+                    continue;
 
-            $productAttribute = $attributeValue->productAttribute;
-            if (!$productAttribute || $productAttribute->product_id !== $productId) {
-                throw new BusinessException(ErrorCode::BAD_REQUEST, "Giá trị ID $id không thuộc sản phẩm này!");
+                // Kiểm tra: Giá trị này có thuộc đúng ProductAttribute của đúng Product không?
+                if ($attributeValue->productAttribute->product_id !== $productId) {
+                    throw new BusinessException(ErrorCode::BAD_REQUEST, "Giá trị ID $id không thuộc sản phẩm này!");
+                }
+
+                // 1. Xóa liên kết bảng trung gian
+                $attributeValue->productVariants()->detach();
+
+                // 2. Xóa các biến thể liên quan (Hard delete)
+                foreach ($attributeValue->productVariants as $variant) {
+                    $variant->delete();
+                }
+
+                // 3. Xóa chính giá trị
+                $attributeValue->delete();
             }
-            foreach ($attributeValue->productVariants as $variant) {
+        });
+    }
+    public function cleanupOrphanVariants(int $productId)
+    {
+        // Lấy tất cả biến thể của sản phẩm
+        $variants = ProductVariant::where('product_id', $productId)->get();
+
+        foreach ($variants as $variant) {
+            // Kiểm tra xem biến thể này còn liên kết với bất kỳ giá trị thuộc tính nào không
+            $hasAttributes = \DB::table('product_variant_attribute_value')
+                ->where('product_variant_id', $variant->id)
+                ->exists();
+
+            // Nếu không còn thuộc tính nào, biến thể này không còn ý nghĩa -> Xóa cứng
+            if (!$hasAttributes) {
                 $variant->delete();
             }
-            $attributeValue->delete();
         }
     }
-
-
 
     private function createBaseProduct($req): Product
     {
@@ -321,14 +354,6 @@ class ProductService
     }
 
     public function getProductById(int $productId): ProductResponse
-    {
-        $product = Product::where('id', $productId)
-            ->where('status', Status::ACTIVE)
-            ->firstOrFail();
-        return ProductMapper::toDetailResponse($product);
-    }
-
-    public function getProductByIdForAdmin(int $productId): ProductResponse
     {
         $product = Product::where('id', $productId)
             ->firstOrFail();

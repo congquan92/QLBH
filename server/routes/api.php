@@ -101,10 +101,9 @@ Route::middleware('auth')->group(function () {
 
     // Product
     Route::prefix('product')->group(function () {
-        Route::get('/list/sale', [ProductController::class, 'findAllForAdmin'])->middleware('can:VIEW_PRODUCTS_ADMIN');
+        Route::get('/admin/list', [ProductController::class, 'findAllForAdmin'])->middleware('can:VIEW_PRODUCTS_ADMIN');
         Route::post('/add', [ProductController::class, 'store'])->middleware('can:CREATE_PRODUCT');
         Route::put('/update', [ProductController::class, 'updateProduct'])->middleware('can:UPDATE_PRODUCT');
-        Route::get('/admin/detail/{productId}', [ProductController::class, 'getProductByIdForAdmin'])->middleware('can:VIEW_PRODUCTS_ADMIN');
         Route::post('/{productId}/restore', [ProductController::class, 'restoreProduct'])->middleware('can:RESTORE_PRODUCT');
         Route::post('/{productId}/variants/add', [ProductController::class, 'addVariants'])->middleware('can:UPDATE_PRODUCT');
         Route::put('/{productId}/variants/update', [ProductController::class, 'updateVariants'])->middleware('can:UPDATE_PRODUCT');
@@ -117,8 +116,6 @@ Route::middleware('auth')->group(function () {
     Route::post('/file/upload', [UploadFileController::class, 'upload']);
     Route::delete('/file/delete', [UploadFileController::class, 'delete']);
 
-    // Supplier
-    Route::post('/supplier/add', [SupplierController::class, 'store'])->middleware('can:ADD_SUPPLIER');
 
     Route::prefix('attendance')->group(function () {
         Route::post('/record', [AttendanceController::class, 'record']);
