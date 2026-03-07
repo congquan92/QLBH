@@ -1,26 +1,23 @@
+import { OrderApi } from "@/api/order.api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Search, Filter } from "lucide-react";
+import { Helper } from "@/lib/helper";
 
-export default function OrdersPage() {
-    const orders = [
-        { id: 1001, customer: "Nguyễn Văn A", date: "2024-02-03", total: "2,500,000đ", status: "Đang xử lý", items: 3 },
-        { id: 1002, customer: "Trần Thị B", date: "2024-02-03", total: "1,800,000đ", status: "Đã giao", items: 2 },
-        { id: 1003, customer: "Lê Văn C", date: "2024-02-02", total: "3,200,000đ", status: "Đang giao", items: 5 },
-        { id: 1004, customer: "Phạm Thị D", date: "2024-02-02", total: "950,000đ", status: "Đã hủy", items: 1 },
-        { id: 1005, customer: "Hoàng Văn E", date: "2024-02-01", total: "4,500,000đ", status: "Đã giao", items: 4 },
-    ];
+export default async function OrdersPage() {
+    const orderRes = await OrderApi.getAdminOrders({ page: 1, size: 20, sort: "id:desc" });
+    const orders = orderRes.data.data;
 
-    const getStatusColor = (status: string) => {
+    const getStatusColor = (status?: string) => {
         switch (status) {
-            case "Đang xử lý":
+            case "PENDING":
                 return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300";
-            case "Đang giao":
+            case "SHIPPING":
                 return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300";
-            case "Đã giao":
+            case "COMPLETED":
                 return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300";
-            case "Đã hủy":
+            case "CANCELLED":
                 return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300";
             default:
                 return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300";
@@ -39,6 +36,8 @@ export default function OrdersPage() {
                     Tạo đơn hàng
                 </Button>
             </div>
+
+            <p className="text-xs text-amber-600">WARNING: Neu backend loi auth/contract, du lieu fallback se duoc hien thi de tranh vo luong.</p>
 
             <Card>
                 <CardHeader>
@@ -76,12 +75,12 @@ export default function OrdersPage() {
                                 {orders.map((order) => (
                                     <tr key={order.id} className="border-b hover:bg-muted/50">
                                         <td className="px-6 py-4 font-medium">#{order.id}</td>
-                                        <td className="px-6 py-4">{order.customer}</td>
-                                        <td className="px-6 py-4">{order.date}</td>
-                                        <td className="px-6 py-4">{order.items} sản phẩm</td>
-                                        <td className="px-6 py-4 font-medium">{order.total}</td>
+                                        <td className="px-6 py-4">{String(order.customer_name ?? order.customerName ?? "Unknown")}</td>
+                                        <td className="px-6 py-4">{order.createdAt ? new Date(String(order.createdAt)).toLocaleDateString("vi-VN") : "-"}</td>
+                                        <td className="px-6 py-4">{Array.isArray(order.orderItem) ? order.orderItem.length : 0} sản phẩm</td>
+                                        <td className="px-6 py-4 font-medium">{Helper.formatPrice(String(order.totalAmount ?? 0))}</td>
                                         <td className="px-6 py-4">
-                                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>{order.status}</span>
+                                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(String(order.orderStatus ?? "UNKNOWN"))}`}>{String(order.orderStatus ?? "UNKNOWN")}</span>
                                         </td>
                                         <td className="px-6 py-4">
                                             <div className="flex gap-2">

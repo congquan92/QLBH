@@ -1,33 +1,46 @@
+import { OrderApi } from "@/api/order.api";
+import { ProductApi } from "@/api/product.api";
+import { UserApi } from "@/api/user.api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Helper } from "@/lib/helper";
 import { Package, ShoppingCart, Users, TrendingUp } from "lucide-react";
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+    const [orderRes, productRes, userRes] = await Promise.all([OrderApi.getAdminOrders({ page: 1, size: 20 }), ProductApi.getAllProducts(1, 20), UserApi.getUsers({ page: 1, size: 20 })]);
+
+    const orders = orderRes.data.data;
+    const products = productRes.data.data;
+    const users = userRes.data.data;
+
+    const totalRevenue = orders.reduce((sum, order) => sum + Number(order.totalAmount ?? 0), 0);
+    const completedOrders = orders.filter((order) => String(order.orderStatus) === "COMPLETED").length;
+
     const stats = [
         {
             title: "Tổng doanh thu",
-            value: "124,500,000đ",
-            description: "+20.1% so với tháng trước",
+            value: Helper.formatPrice(String(totalRevenue)),
+            description: `Tu ${orders.length} don hang gan nhat`,
             icon: TrendingUp,
             trend: "up",
         },
         {
             title: "Đơn hàng",
-            value: "1,234",
-            description: "+15% so với tháng trước",
+            value: String(orders.length),
+            description: `${completedOrders} don da hoan tat`,
             icon: ShoppingCart,
             trend: "up",
         },
         {
             title: "Sản phẩm",
-            value: "256",
-            description: "8 sản phẩm mới",
+            value: String(products.length),
+            description: "Nguon du lieu tu Product API",
             icon: Package,
             trend: "neutral",
         },
         {
             title: "Khách hàng",
-            value: "3,456",
-            description: "+45 khách hàng mới",
+            value: String(users.length),
+            description: "Nguon du lieu tu User API",
             icon: Users,
             trend: "up",
         },
@@ -39,6 +52,8 @@ export default function DashboardPage() {
                 <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
                 <p className="text-muted-foreground">Xin chào! Đây là tổng quan về cửa hàng của bạn.</p>
             </div>
+
+            <p className="text-xs text-amber-600">WARNING: Du lieu dashboard co the den tu fallback static neu backend loi auth/contract.</p>
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 {stats.map((stat) => (
@@ -74,16 +89,16 @@ export default function DashboardPage() {
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-4">
-                            {[1, 2, 3, 4, 5].map((i) => (
-                                <div key={i} className="flex items-center">
+                            {orders.slice(0, 5).map((order) => (
+                                <div key={order.id} className="flex items-center">
                                     <div className="h-9 w-9 rounded-full bg-muted flex items-center justify-center">
                                         <Package className="h-4 w-4" />
                                     </div>
                                     <div className="ml-4 space-y-1">
-                                        <p className="text-sm font-medium leading-none">Đơn hàng #{1000 + i}</p>
-                                        <p className="text-sm text-muted-foreground">{i} giờ trước</p>
+                                        <p className="text-sm font-medium leading-none">Đơn hàng #{order.id}</p>
+                                        <p className="text-sm text-muted-foreground">{order.createdAt ? new Date(String(order.createdAt)).toLocaleString("vi-VN") : "-"}</p>
                                     </div>
-                                    <div className="ml-auto font-medium">100.000đ</div>
+                                    <div className="ml-auto font-medium">{Helper.formatPrice(String(order.totalAmount ?? 0))}</div>
                                 </div>
                             ))}
                         </div>

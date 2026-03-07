@@ -13,13 +13,14 @@ import "yet-another-react-lightbox/styles.css";
 import Zoom from "yet-another-react-lightbox/plugins/zoom";
 
 export default function ListProductDetail({ products }: { products: ProductDetail }) {
+    const productImages = products.imageProduct.length > 0 ? products.imageProduct : [products.coverImage || "/window.svg"];
     const [selectedImage, setSelectedImage] = useState(0);
     const [lightboxOpen, setLightboxOpen] = useState(false);
     const [quantity, setQuantity] = useState(1);
     const [selectedAttributes, setSelectedAttributes] = useState<Record<string, string>>({});
 
     // Lightbox slides
-    const slides = products.imageProduct.map((img) => ({ src: img }));
+    const slides = productImages.map((img) => ({ src: img }));
 
     // Handle attribute selection
     const handleAttributeSelect = (attributeName: string, value: string) => {
@@ -40,11 +41,11 @@ export default function ListProductDetail({ products }: { products: ProductDetai
 
     // Handle image navigation
     const handlePrevImage = () => {
-        setSelectedImage((prev) => (prev === 0 ? products.imageProduct.length - 1 : prev - 1));
+        setSelectedImage((prev) => (prev === 0 ? productImages.length - 1 : prev - 1));
     };
 
     const handleNextImage = () => {
-        setSelectedImage((prev) => (prev === products.imageProduct.length - 1 ? 0 : prev + 1));
+        setSelectedImage((prev) => (prev === productImages.length - 1 ? 0 : prev + 1));
     };
 
     const [activeTab, setActiveTab] = useState<"description" | "reviews">("description");
@@ -56,7 +57,7 @@ export default function ListProductDetail({ products }: { products: ProductDetai
                 <div className="space-y-4">
                     {/* Main Image */}
                     <div className="relative aspect-square bg-gray-100 border border-gray-200 overflow-hidden cursor-zoom-in group" onClick={() => setLightboxOpen(true)}>
-                        <Image src={products.imageProduct[selectedImage]} alt={products.name} fill className="object-cover" sizes="(max-width: 768px) 100vw, 50vw" priority />
+                        <Image src={productImages[selectedImage]} alt={products.name} fill className="object-cover" sizes="(max-width: 768px) 100vw, 50vw" priority />
                         {products.status === "ACTIVE" && (
                             <Badge variant="destructive" className="absolute top-4 left-4 text-sm font-semibold">
                                 Còn hàng
@@ -64,7 +65,7 @@ export default function ListProductDetail({ products }: { products: ProductDetai
                         )}
 
                         {/* Navigation Arrows */}
-                        {products.imageProduct.length > 1 && (
+                        {productImages.length > 1 && (
                             <>
                                 <button
                                     onClick={(e) => {
@@ -90,7 +91,7 @@ export default function ListProductDetail({ products }: { products: ProductDetai
 
                     {/* Thumbnail Images */}
                     <div className="grid grid-cols-4 gap-2">
-                        {products.imageProduct.map((img, index) => (
+                        {productImages.map((img, index) => (
                             <button
                                 key={index}
                                 onClick={() => setSelectedImage(index)}

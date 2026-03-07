@@ -1,16 +1,13 @@
+import { ProductApi } from "@/api/product.api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Search, Filter } from "lucide-react";
+import { Helper } from "@/lib/helper";
 
-export default function ProductsPage() {
-    const products = [
-        { id: 1, name: "Sản phẩm mẫu 1", category: "Điện tử", price: "1,500,000đ", stock: 50, status: "Còn hàng" },
-        { id: 2, name: "Sản phẩm mẫu 2", category: "Thời trang", price: "500,000đ", stock: 120, status: "Còn hàng" },
-        { id: 3, name: "Sản phẩm mẫu 3", category: "Gia dụng", price: "750,000đ", stock: 0, status: "Hết hàng" },
-        { id: 4, name: "Sản phẩm mẫu 4", category: "Điện tử", price: "2,500,000đ", stock: 30, status: "Còn hàng" },
-        { id: 5, name: "Sản phẩm mẫu 5", category: "Mỹ phẩm", price: "350,000đ", stock: 85, status: "Còn hàng" },
-    ];
+export default async function ProductsPage() {
+    const productRes = await ProductApi.getAllProducts(1, 20);
+    const products = productRes.data.data;
 
     return (
         <div className="space-y-4">
@@ -24,6 +21,8 @@ export default function ProductsPage() {
                     Thêm sản phẩm
                 </Button>
             </div>
+
+            <p className="text-xs text-amber-600">WARNING: Danh sach nay tu API + fallback tinh neu backend loi auth/contract.</p>
 
             <Card>
                 <CardHeader>
@@ -50,9 +49,9 @@ export default function ProductsPage() {
                                 <tr>
                                     <th className="px-6 py-3">Mã SP</th>
                                     <th className="px-6 py-3">Tên sản phẩm</th>
-                                    <th className="px-6 py-3">Danh mục</th>
+                                    <th className="px-6 py-3">Mô tả</th>
                                     <th className="px-6 py-3">Giá</th>
-                                    <th className="px-6 py-3">Tồn kho</th>
+                                    <th className="px-6 py-3">Đã bán</th>
                                     <th className="px-6 py-3">Trạng thái</th>
                                     <th className="px-6 py-3">Thao tác</th>
                                 </tr>
@@ -62,13 +61,13 @@ export default function ProductsPage() {
                                     <tr key={product.id} className="border-b hover:bg-muted/50">
                                         <td className="px-6 py-4 font-medium">#{product.id}</td>
                                         <td className="px-6 py-4">{product.name}</td>
-                                        <td className="px-6 py-4">{product.category}</td>
-                                        <td className="px-6 py-4">{product.price}</td>
-                                        <td className="px-6 py-4">{product.stock}</td>
+                                        <td className="px-6 py-4 max-w-[260px] truncate">{product.description}</td>
+                                        <td className="px-6 py-4">{Helper.formatPrice(product.salePrice)}</td>
+                                        <td className="px-6 py-4">{product.soldQuantity}</td>
                                         <td className="px-6 py-4">
                                             <span
                                                 className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                                    product.status === "Còn hàng" ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300" : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300"
+                                                    product.status === "ACTIVE" ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300" : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300"
                                                 }`}
                                             >
                                                 {product.status}

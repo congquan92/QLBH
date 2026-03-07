@@ -1,96 +1,112 @@
 ### 1. Khởi tạo & Chạy Project
 
-- **Cài đặt dependencies:**
+- **Cài đặt thư viện:**
 
 ```bash
 composer install
 
 ```
 
+- **Cấu hình môi trường:** Copy file `.env.example` thành `.env` và cấu hình Database.
 - **Chạy dự án:**
 
 ```bash
 php artisan serve
 
+# Hoặc chỉ định host
 php artisan serve --host=localhost
 ```
 
-- **Vân tay:**
+- **Xác thực vân tay (WebAuthn):**
 
 ```bash
 composer require laragear/webauthn
+
 ```
 
-- **Swagger:**
+- **Cập nhật Swagger API Doc:**
 
 ```bash
 php artisan l5-swagger:generate
-```
-
-- **Xem log hệ thống (Real-time):**
-
-```bash
-tail -f storage/logs/laravel.log
 
 ```
+
+---
 
 ### 2. Database & Migration
 
-- **Tạo file migration mới:**
+| Lệnh                               | Ý nghĩa                                                               |
+| ---------------------------------- | --------------------------------------------------------------------- |
+| `php artisan make:migration Name`  | Tạo file migration mới                                                |
+| `php artisan migrate`              | Cập nhật bảng mới vào Database                                        |
+| `php artisan migrate:fresh --seed` | **Làm sạch DB:** Xóa hết bảng + Chạy lại migration + Seed dữ liệu mẫu |
 
-```bash
-php artisan make:migration name_of_file
+---
 
-```
+### 3. Model, Controller & Scaffolding
 
-- **Cập nhật DB (chạy các file migration mới):**
-
-```bash
-php artisan migrate
-
-```
-
-- **Làm sạch DB (Xóa hết bảng + Chạy lại từ đầu + Seed):**
-
-```bash
-php artisan migrate:fresh --seed
-
-```
-
-### 3. Model & Controller (Scaffolding)
-
-- **Tạo full bộ Model, Factory, Migration, Controller (Resource):**
+Để tạo nhanh một chức năng (bao gồm cả database, dữ liệu mẫu và logic), dùng lệnh:
 
 ```bash
 php artisan make:model Name -mfcr
 
 ```
 
-_(Giải thích: `-m` migration, `-f` factory, `-c` controller, `-r` resource)_
+_Giải thích flag:_
 
-### 4. Seeding & Data
+- `-m`: Tạo file **Migration** (tạo bảng).
+- `-f`: Tạo file **Factory** (định nghĩa dữ liệu ảo).
+- `-c`: Tạo **Controller**.
+- `-r`: Biến Controller thành **Resource** (có sẵn các hàm index, store, update, destroy).
 
-- **Chạy file Seed (Tạo dữ liệu mẫu/Admin/Roles):**
+---
+
+### 4. Seeding & Data (Dữ liệu mẫu)
+
+- **Tạo file Seeder mới:**
+
+```bash
+php artisan make:seeder FileName
+
+```
+
+- **Chạy Seeder mặc định (Admin, Role, Permission...):**
 
 ```bash
 php artisan db:seed
 
 ```
 
+- **Chạy duy nhất một file Seeder cụ thể:**
+
+```bash
+php artisan db:seed --class=FileName
+
+```
+
 ---
 
-### Các lệnh hữu ích khác:
+### 5. Debug & Hệ thống
 
-- **Clear Cache:** Nếu sửa code/config mãi không nhận
+- **Xem Log Real-time:** Theo dõi lỗi ngay khi nó xảy ra.
+
+```bash
+tail -f storage/logs/laravel.log
+
+```
+
+- **Kiểm tra danh sách Routes:** Xem tất cả các đường dẫn API/Web hiện có.
+
+```bash
+php artisan route:list
+
+```
+
+- **Clear Cache:** Dùng khi sửa code/config
 
 ```bash
 php artisan optimize:clear
 
 ```
 
-- **List Routes:** Muốn xem API mình vừa tạo đường dẫn như nào:
-
-```bash
-php artisan route:list
-
-```
+---

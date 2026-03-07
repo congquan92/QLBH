@@ -1,64 +1,16 @@
+import { UserApi } from "@/api/user.api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Search, Filter, Mail, Phone } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Helper } from "@/lib/helper";
 
-export default function CustomersPage() {
-    const customers = [
-        {
-            id: 1,
-            name: "Nguyễn Văn A",
-            email: "nguyenvana@email.com",
-            phone: "0123456789",
-            rank: "Vàng",
-            orders: 15,
-            spent: "12,500,000đ",
-            status: "Hoạt động",
-        },
-        {
-            id: 2,
-            name: "Trần Thị B",
-            email: "tranthib@email.com",
-            phone: "0987654321",
-            rank: "Bạc",
-            orders: 8,
-            spent: "6,800,000đ",
-            status: "Hoạt động",
-        },
-        {
-            id: 3,
-            name: "Lê Văn C",
-            email: "levanc@email.com",
-            phone: "0369852147",
-            rank: "Đồng",
-            orders: 3,
-            spent: "2,300,000đ",
-            status: "Hoạt động",
-        },
-        {
-            id: 4,
-            name: "Phạm Thị D",
-            email: "phamthid@email.com",
-            phone: "0258963147",
-            rank: "Kim cương",
-            orders: 25,
-            spent: "28,500,000đ",
-            status: "VIP",
-        },
-        {
-            id: 5,
-            name: "Hoàng Văn E",
-            email: "hoangvane@email.com",
-            phone: "0147258369",
-            rank: "Bạc",
-            orders: 6,
-            spent: "4,200,000đ",
-            status: "Hoạt động",
-        },
-    ];
+export default async function CustomersPage() {
+    const usersRes = await UserApi.getUsers({ page: 1, size: 20, sort: "id:desc" });
+    const customers = usersRes.data.data;
 
-    const getRankColor = (rank: string) => {
+    const getRankColor = (rank?: string) => {
         switch (rank) {
             case "Kim cương":
                 return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300";
@@ -85,6 +37,8 @@ export default function CustomersPage() {
                     Thêm khách hàng
                 </Button>
             </div>
+
+            <p className="text-xs text-amber-600">WARNING: Endpoint user list co kha nang mismatch method backend; khi loi se hien fallback static.</p>
 
             <Card>
                 <CardHeader>
@@ -124,11 +78,11 @@ export default function CustomersPage() {
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-3">
                                                 <Avatar className="h-9 w-9">
-                                                    <AvatarImage src={`/avatars/${customer.id}.png`} alt={customer.name} />
-                                                    <AvatarFallback>{customer.name.charAt(0)}</AvatarFallback>
+                                                    <AvatarImage src={`/avatars/${customer.id}.png`} alt={String(customer.fullName ?? customer.username ?? "U")} />
+                                                    <AvatarFallback>{String(customer.fullName ?? customer.username ?? "U").charAt(0)}</AvatarFallback>
                                                 </Avatar>
                                                 <div>
-                                                    <div className="font-medium">{customer.name}</div>
+                                                    <div className="font-medium">{String(customer.fullName ?? customer.username ?? "Unknown")}</div>
                                                     <div className="text-xs text-muted-foreground">ID: #{customer.id}</div>
                                                 </div>
                                             </div>
@@ -137,26 +91,26 @@ export default function CustomersPage() {
                                             <div className="space-y-1">
                                                 <div className="flex items-center gap-1 text-xs">
                                                     <Mail className="h-3 w-3" />
-                                                    {customer.email}
+                                                    {String(customer.email ?? "-")}
                                                 </div>
                                                 <div className="flex items-center gap-1 text-xs">
                                                     <Phone className="h-3 w-3" />
-                                                    {customer.phone}
+                                                    {String(customer.phone ?? "-")}
                                                 </div>
                                             </div>
                                         </td>
                                         <td className="px-6 py-4">
-                                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${getRankColor(customer.rank)}`}>{customer.rank}</span>
+                                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${getRankColor(String((customer as { rank?: string }).rank ?? "Đồng"))}`}>{String((customer as { rank?: string }).rank ?? "Đồng")}</span>
                                         </td>
-                                        <td className="px-6 py-4">{customer.orders} đơn</td>
-                                        <td className="px-6 py-4 font-medium">{customer.spent}</td>
+                                        <td className="px-6 py-4">{Number((customer as { orderCount?: number }).orderCount ?? 0)} đơn</td>
+                                        <td className="px-6 py-4 font-medium">{Helper.formatPrice(String((customer as { totalSpent?: number }).totalSpent ?? 0))}</td>
                                         <td className="px-6 py-4">
                                             <span
                                                 className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                                    customer.status === "VIP" ? "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300" : "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
+                                                    String(customer.status ?? "ACTIVE") === "VIP" ? "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300" : "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
                                                 }`}
                                             >
-                                                {customer.status}
+                                                {String(customer.status ?? "ACTIVE")}
                                             </span>
                                         </td>
                                         <td className="px-6 py-4">

@@ -5,12 +5,7 @@ import { ProductListResponse } from "@/types/product";
 import Link from "next/link";
 
 async function getAllProducts(page: number, pageSize: number) {
-    try {
-        const res = await ProductApi.getAllProducts(page, pageSize);
-        return res.data;
-    } catch (err) {
-        console.log(err);
-    }
+    return ProductApi.getAllProducts(page, pageSize);
 }
 
 interface PageProps {
@@ -23,7 +18,6 @@ export default async function ProductPage({ searchParams }: PageProps) {
     const pageSize = Number(params.pageSize) || 10;
 
     const data: ProductListResponse = await getAllProducts(currentPage, pageSize);
-    // console.log(data);
 
     return (
         <div className="min-h-screen bg-white">

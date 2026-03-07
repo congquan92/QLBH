@@ -8,17 +8,12 @@ interface ProductDetailProps {
     params: Promise<{ id: string[] }>;
 }
 async function getProductDetail(id: string) {
-    try {
-        const res = await ProductApi.getProductDetail(id);
-        return res.data.data;
-    } catch (err) {
-        console.log(err);
-    }
+    const res = await ProductApi.getProductDetail(id);
+    return res.data;
 }
 export default async function ProductDetailPage({ params }: ProductDetailProps) {
     const { id } = await params;
     const data: ProductDetail = await getProductDetail(id[0]);
-    console.log("ProductDetail data:", data);
 
     if (!data) {
         notFound();
