@@ -1,6 +1,6 @@
 import { axiosInstance } from "@/lib/axios";
 import type { ApiResponse, PageResponse } from "@/types/api";
-import type { RbacGroupPermission, RbacRole } from "@/types/rbac";
+import type { RbacGroupPermission, RbacGroupPermissionPayload, RbacPageCatalogItem, RbacRole, RbacRolePayload } from "@/types/rbac";
 
 const WARNING_PREFIX = "[WARNING][RbacApi]";
 
@@ -38,6 +38,15 @@ function normalizeList<T>(payload: unknown, fallbackMessage: string): ApiRespons
     };
 }
 
+function normalizeEntity<T>(payload: unknown): T | null {
+    if (!payload || typeof payload !== "object") return null;
+    const wrapped = payload as ApiResponse<T>;
+    if (wrapped.data && typeof wrapped.data === "object") {
+        return wrapped.data;
+    }
+    return payload as T;
+}
+
 export const RbacApi = {
     getRoles: async (query?: { keyword?: string; sort?: string; page?: number; size?: number }) => {
         try {
@@ -57,5 +66,45 @@ export const RbacApi = {
             console.warn(`${WARNING_PREFIX} /group-permissions failed.`, error);
             return normalizeList<RbacGroupPermission>(null, "Group permission list fallback");
         }
+    },
+
+    getPages: async (query?: { keyword?: string; sort?: string; page?: number; size?: number }) => {
+        try {
+            const res = await axiosInstance.get("/pages", { params: query });
+            return normalizeList<RbacPageCatalogItem>(res.data, "Page catalog fetched");
+        } catch (error) {
+            console.warn(`${WARNING_PREFIX} /pages failed.`, error);
+            return normalizeList<RbacPageCatalogItem>(null, "Page catalog fallback");
+        }
+    },
+
+    createRole: async (payload: RbacRolePayload) => {
+        const res = await axiosInstance.post("/roles", payload);
+        return normalizeEntity<RbacRole>(res.data);
+    },
+
+    updateRole: async (id: number, payload: RbacRolePayload) => {
+        const res = await axiosInstance.put(`/roles/${id}`, payload);
+        return normalizeEntity<RbacRole>(res.data);
+    },
+
+    deleteRole: async (id: number) => {
+        const res = await axiosInstance.delete(`/roles/${id}`);
+        return res.data;
+    },
+
+    createGroupPermission: async (payload: RbacGroupPermissionPayload) => {
+        const res = await axiosInstance.post("/group-permissions", payload);
+        return normalizeEntity<RbacGroupPermission>(res.data);
+    },
+
+    updateGroupPermission: async (id: number, payload: Partial<RbacGroupPermissionPayload>) => {
+        const res = await axiosInstance.put(`/group-permissions/${id}`, payload);
+        return normalizeEntity<RbacGroupPermission>(res.data);
+    },
+
+    deleteGroupPermission: async (id: number) => {
+        const res = await axiosInstance.delete(`/group-permissions/${id}`);
+        return res.data;
     },
 };

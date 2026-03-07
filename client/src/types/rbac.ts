@@ -32,5 +32,29 @@ export interface RbacRole {
     page?: RbacPage[];
 }
 
+export interface RbacRolePayload {
+    name: string;
+    description?: string;
+    status?: "ACTIVE" | "INACTIVE" | string;
+    page_ids?: number[];
+}
+
+export interface RbacGroupPermissionPayload {
+    name: string;
+    description?: string;
+    status?: string;
+    url?: string;
+    icon?: string;
+    permission_ids: number[];
+}
+
+export interface RbacPageCatalogItem {
+    id: number;
+    title: string;
+    icon?: string;
+    sort_order?: number;
+    items?: RbacGroupPermission[];
+}
+
 export type RoleListResponse = ApiResponse<PageResponse<RbacRole>>;
 export type GroupPermissionListResponse = ApiResponse<PageResponse<RbacGroupPermission>>;
