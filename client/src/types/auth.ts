@@ -1,11 +1,34 @@
 export type UserRole = "ADMIN" | "MANAGER" | "STAFF" | "USER";
 
+export interface RolePermission {
+    id: number;
+    name: string;
+    description?: string | null;
+}
+
+export interface RoleGroupPermission {
+    id: number;
+    name: string;
+    url?: string;
+    icon?: string;
+    status?: string;
+    permissions?: RolePermission[];
+}
+
+export interface RolePage {
+    id: number;
+    title: string;
+    icon?: string;
+    sort_order?: number;
+    items?: RoleGroupPermission[];
+}
+
 export interface LoginRole {
     id: number;
     name: UserRole | string;
     description?: string | null;
     status: string;
-    page: Array<unknown>;
+    page: RolePage[];
 }
 
 export interface LoginResponse {

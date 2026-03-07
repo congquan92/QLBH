@@ -5,8 +5,8 @@ async function main() {
 
     await runRequest("POST /auth/login", () =>
         client.post("/auth/login", {
-            username: process.env.TEST_USERNAME || "admin",
-            password: process.env.TEST_PASSWORD || "123456",
+            username: process.env.TEST_USERNAME,
+            password: process.env.TEST_PASSWORD,
         }),
     );
 

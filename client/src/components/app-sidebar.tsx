@@ -1,5 +1,6 @@
 "use client";
 
+import { useAdminAuth } from "@/components/feature/admin-auth-provider";
 import {
     Sidebar,
     SidebarContent,
@@ -19,217 +20,106 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ChevronRight, LogOut, Settings, User2 } from "lucide-react";
-import { menuData } from "@/data/admin";
+import { adminDashboardItem, adminMenuSections, type AdminMenuItem } from "@/data/admin";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { toast } from "sonner";
+
+function canRenderMenuItem(item: AdminMenuItem, canAccessPath: (path: string) => boolean, hasAnyPermission: (permissionList: string[]) => boolean) {
+    const canByPath = canAccessPath(item.url);
+    if (!canByPath) return false;
+
+    if (!item.permissions || item.permissions.length === 0) return true;
+    return hasAnyPermission(item.permissions);
+}
 
 export function AppSidebar() {
+    const pathname = usePathname();
+    const { session, canAccessPath, hasAnyPermission, logout } = useAdminAuth();
+
+    const visibleDashboard = canRenderMenuItem(adminDashboardItem, canAccessPath, hasAnyPermission);
+    const visibleSections = adminMenuSections
+        .map((section) => ({
+            ...section,
+            groups: section.groups
+                .map((group) => ({
+                    ...group,
+                    items: group.items.filter((item) => canRenderMenuItem(item, canAccessPath, hasAnyPermission)),
+                }))
+                .filter((group) => group.items.length > 0),
+        }))
+        .filter((section) => section.groups.length > 0);
+
+    const profileName = session?.email ? session.email.split("@")[0] : "Admin";
+    const profileEmail = session?.email ?? "Chưa có thông tin email";
+    const profileRole = session?.roleName ?? "ADMIN";
+
     return (
         <Sidebar collapsible="icon" suppressHydrationWarning>
             <SidebarHeader className="border-b border-sidebar-border">
-                <a href="/admin/dashboard" className="flex items-center gap-1">
+                <Link href="/admin/dashboard" className="flex items-center gap-1">
                     <Avatar className="size-16 rounded-none">
                         <AvatarImage src="/ARES_CLUB.png" alt="AresClub" className="object-contain" />
                         <AvatarFallback className="bg-transparent font-bold">ARES</AvatarFallback>
                     </Avatar>
                     <span className="text-lg font-semibold">Ares Club</span>
-                </a>
+                </Link>
             </SidebarHeader>
 
             <SidebarContent>
-                {/* Dashboard */}
-                <SidebarGroup>
-                    <SidebarGroupContent>
-                        <SidebarMenu>
-                            <SidebarMenuItem>
-                                <SidebarMenuButton asChild tooltip={menuData.dashboard.title}>
-                                    <a href={menuData.dashboard.url}>
-                                        <menuData.dashboard.icon />
-                                        <span>{menuData.dashboard.title}</span>
-                                    </a>
-                                </SidebarMenuButton>
-                            </SidebarMenuItem>
-                        </SidebarMenu>
-                    </SidebarGroupContent>
-                </SidebarGroup>
-
-                {/* Products */}
-                <SidebarGroup>
-                    <SidebarGroupLabel>Quản lý cửa hàng</SidebarGroupLabel>
-                    <SidebarGroupContent>
-                        <SidebarMenu>
-                            <Collapsible className="group/collapsible">
+                {visibleDashboard && (
+                    <SidebarGroup>
+                        <SidebarGroupContent>
+                            <SidebarMenu>
                                 <SidebarMenuItem>
-                                    <CollapsibleTrigger asChild>
-                                        <SidebarMenuButton tooltip={menuData.products.title}>
-                                            <menuData.products.icon />
-                                            <span className="cursor-pointer">{menuData.products.title}</span>
-                                            <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
-                                        </SidebarMenuButton>
-                                    </CollapsibleTrigger>
-                                    <CollapsibleContent>
-                                        <SidebarMenuSub>
-                                            {menuData.products.items.map((item) => (
-                                                <SidebarMenuSubItem key={item.title}>
-                                                    <SidebarMenuSubButton asChild>
-                                                        <a href={item.url}>
-                                                            <item.icon className="h-4 w-4" />
-                                                            <span>{item.title}</span>
-                                                        </a>
-                                                    </SidebarMenuSubButton>
-                                                </SidebarMenuSubItem>
-                                            ))}
-                                        </SidebarMenuSub>
-                                    </CollapsibleContent>
+                                    <SidebarMenuButton asChild tooltip={adminDashboardItem.title} isActive={pathname === adminDashboardItem.url}>
+                                        <Link href={adminDashboardItem.url}>
+                                            <adminDashboardItem.icon />
+                                            <span>{adminDashboardItem.title}</span>
+                                        </Link>
+                                    </SidebarMenuButton>
                                 </SidebarMenuItem>
-                            </Collapsible>
+                            </SidebarMenu>
+                        </SidebarGroupContent>
+                    </SidebarGroup>
+                )}
 
-                            <Collapsible className="group/collapsible">
-                                <SidebarMenuItem>
-                                    <CollapsibleTrigger asChild>
-                                        <SidebarMenuButton tooltip={menuData.orders.title}>
-                                            <menuData.orders.icon />
-                                            <span className="cursor-pointer">{menuData.orders.title}</span>
-                                            <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
-                                        </SidebarMenuButton>
-                                    </CollapsibleTrigger>
-                                    <CollapsibleContent>
-                                        <SidebarMenuSub>
-                                            {menuData.orders.items.map((item) => (
-                                                <SidebarMenuSubItem key={item.title}>
-                                                    <SidebarMenuSubButton asChild>
-                                                        <a href={item.url}>
-                                                            <item.icon className="h-4 w-4" />
-                                                            <span>{item.title}</span>
-                                                        </a>
-                                                    </SidebarMenuSubButton>
-                                                </SidebarMenuSubItem>
-                                            ))}
-                                        </SidebarMenuSub>
-                                    </CollapsibleContent>
-                                </SidebarMenuItem>
-                            </Collapsible>
-
-                            <Collapsible className="group/collapsible">
-                                <SidebarMenuItem>
-                                    <CollapsibleTrigger asChild>
-                                        <SidebarMenuButton tooltip={menuData.customers.title}>
-                                            <menuData.customers.icon />
-                                            <span className="cursor-pointer">{menuData.customers.title}</span>
-                                            <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
-                                        </SidebarMenuButton>
-                                    </CollapsibleTrigger>
-                                    <CollapsibleContent>
-                                        <SidebarMenuSub>
-                                            {menuData.customers.items.map((item) => (
-                                                <SidebarMenuSubItem key={item.title}>
-                                                    <SidebarMenuSubButton asChild>
-                                                        <a href={item.url}>
-                                                            <item.icon className="h-4 w-4" />
-                                                            <span>{item.title}</span>
-                                                        </a>
-                                                    </SidebarMenuSubButton>
-                                                </SidebarMenuSubItem>
-                                            ))}
-                                        </SidebarMenuSub>
-                                    </CollapsibleContent>
-                                </SidebarMenuItem>
-                            </Collapsible>
-
-                            <Collapsible className="group/collapsible">
-                                <SidebarMenuItem>
-                                    <CollapsibleTrigger asChild>
-                                        <SidebarMenuButton tooltip={menuData.marketing.title}>
-                                            <menuData.marketing.icon />
-                                            <span className="cursor-pointer">{menuData.marketing.title}</span>
-                                            <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
-                                        </SidebarMenuButton>
-                                    </CollapsibleTrigger>
-                                    <CollapsibleContent>
-                                        <SidebarMenuSub>
-                                            {menuData.marketing.items.map((item) => (
-                                                <SidebarMenuSubItem key={item.title}>
-                                                    <SidebarMenuSubButton asChild>
-                                                        <a href={item.url}>
-                                                            <item.icon className="h-4 w-4" />
-                                                            <span>{item.title}</span>
-                                                        </a>
-                                                    </SidebarMenuSubButton>
-                                                </SidebarMenuSubItem>
-                                            ))}
-                                        </SidebarMenuSub>
-                                    </CollapsibleContent>
-                                </SidebarMenuItem>
-                            </Collapsible>
-                        </SidebarMenu>
-                    </SidebarGroupContent>
-                </SidebarGroup>
-
-                {/* HRM */}
-                <SidebarGroup>
-                    <SidebarGroupLabel>Quản lý nhân sự</SidebarGroupLabel>
-                    <SidebarGroupContent>
-                        <SidebarMenu>
-                            <Collapsible className="group/collapsible">
-                                <SidebarMenuItem>
-                                    <CollapsibleTrigger asChild>
-                                        <SidebarMenuButton tooltip={menuData.hrm.title}>
-                                            <menuData.hrm.icon />
-                                            <span className="cursor-pointer">{menuData.hrm.title}</span>
-                                            <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
-                                        </SidebarMenuButton>
-                                    </CollapsibleTrigger>
-                                    <CollapsibleContent>
-                                        <SidebarMenuSub>
-                                            {menuData.hrm.items.map((item) => (
-                                                <SidebarMenuSubItem key={item.title}>
-                                                    <SidebarMenuSubButton asChild>
-                                                        <a href={item.url}>
-                                                            <item.icon className="h-4 w-4" />
-                                                            <span>{item.title}</span>
-                                                        </a>
-                                                    </SidebarMenuSubButton>
-                                                </SidebarMenuSubItem>
-                                            ))}
-                                        </SidebarMenuSub>
-                                    </CollapsibleContent>
-                                </SidebarMenuItem>
-                            </Collapsible>
-                        </SidebarMenu>
-                    </SidebarGroupContent>
-                </SidebarGroup>
-
-                {/* System */}
-                <SidebarGroup>
-                    <SidebarGroupLabel>Hệ thống</SidebarGroupLabel>
-                    <SidebarGroupContent>
-                        <SidebarMenu>
-                            <Collapsible className="group/collapsible">
-                                <SidebarMenuItem>
-                                    <CollapsibleTrigger asChild>
-                                        <SidebarMenuButton tooltip={menuData.system.title}>
-                                            <menuData.system.icon />
-                                            <span className="cursor-pointer">{menuData.system.title}</span>
-                                            <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
-                                        </SidebarMenuButton>
-                                    </CollapsibleTrigger>
-                                    <CollapsibleContent>
-                                        <SidebarMenuSub>
-                                            {menuData.system.items.map((item) => (
-                                                <SidebarMenuSubItem key={item.title}>
-                                                    <SidebarMenuSubButton asChild>
-                                                        <a href={item.url}>
-                                                            <item.icon className="h-4 w-4" />
-                                                            <span>{item.title}</span>
-                                                        </a>
-                                                    </SidebarMenuSubButton>
-                                                </SidebarMenuSubItem>
-                                            ))}
-                                        </SidebarMenuSub>
-                                    </CollapsibleContent>
-                                </SidebarMenuItem>
-                            </Collapsible>
-                        </SidebarMenu>
-                    </SidebarGroupContent>
-                </SidebarGroup>
+                {visibleSections.map((section) => (
+                    <SidebarGroup key={section.label}>
+                        <SidebarGroupLabel>{section.label}</SidebarGroupLabel>
+                        <SidebarGroupContent>
+                            <SidebarMenu>
+                                {section.groups.map((group) => (
+                                    <Collapsible className="group/collapsible" key={group.title} defaultOpen>
+                                        <SidebarMenuItem>
+                                            <CollapsibleTrigger asChild>
+                                                <SidebarMenuButton tooltip={group.title}>
+                                                    <group.icon />
+                                                    <span className="cursor-pointer">{group.title}</span>
+                                                    <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                                                </SidebarMenuButton>
+                                            </CollapsibleTrigger>
+                                            <CollapsibleContent>
+                                                <SidebarMenuSub>
+                                                    {group.items.map((item) => (
+                                                        <SidebarMenuSubItem key={item.url}>
+                                                            <SidebarMenuSubButton asChild isActive={pathname === item.url}>
+                                                                <Link href={item.url}>
+                                                                    <item.icon className="h-4 w-4" />
+                                                                    <span>{item.title}</span>
+                                                                </Link>
+                                                            </SidebarMenuSubButton>
+                                                        </SidebarMenuSubItem>
+                                                    ))}
+                                                </SidebarMenuSub>
+                                            </CollapsibleContent>
+                                        </SidebarMenuItem>
+                                    </Collapsible>
+                                ))}
+                            </SidebarMenu>
+                        </SidebarGroupContent>
+                    </SidebarGroup>
+                ))}
             </SidebarContent>
 
             <SidebarFooter className="border-t border-sidebar-border">
@@ -243,8 +133,9 @@ export function AppSidebar() {
                                         <AvatarFallback className="rounded-lg bg-primary text-primary-foreground">AD</AvatarFallback>
                                     </Avatar>
                                     <div className="grid flex-1 text-left text-sm leading-tight">
-                                        <span className="truncate font-semibold">Admin User</span>
-                                        <span className="truncate text-xs text-muted-foreground">admin@aresclub.com</span>
+                                        <span className="truncate font-semibold">{profileName}</span>
+                                        <span className="truncate text-xs text-muted-foreground">{profileEmail}</span>
+                                        <span className="truncate text-[11px] text-primary/80">{profileRole}</span>
                                     </div>
                                 </SidebarMenuButton>
                             </DropdownMenuTrigger>
@@ -258,7 +149,13 @@ export function AppSidebar() {
                                     <span>Cài đặt</span>
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
-                                <DropdownMenuItem className="cursor-pointer text-destructive focus:text-destructive">
+                                <DropdownMenuItem
+                                    className="cursor-pointer text-destructive focus:text-destructive"
+                                    onClick={async () => {
+                                        await logout();
+                                        toast.success("Đăng xuất thành công.");
+                                    }}
+                                >
                                     <LogOut className="mr-2 h-4 w-4" />
                                     <span>Đăng xuất</span>
                                 </DropdownMenuItem>
