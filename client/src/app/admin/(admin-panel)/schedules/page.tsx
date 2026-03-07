@@ -1,0 +1,228 @@
+"use client";
+
+import { useAdminAuth } from "@/components/feature/admin-auth-provider";
+import { ScheduleApi, type WeeklyReport, type DailyStaff, type MySchedule } from "@/api/schedule.api";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Calendar, Users, Clock, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
+
+type ViewMode = "weekly-report" | "daily-staff" | "my-schedule";
+
+export default function SchedulePage() {
+    const { hasPermission } = useAdminAuth();
+    const [viewMode, setViewMode] = useState<ViewMode>("my-schedule");
+    const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0]);
+    const [weeklyData, setWeeklyData] = useState<WeeklyReport | null>(null);
+    const [dailyData, setDailyData] = useState<DailyStaff | null>(null);
+    const [mySchedule, setMySchedule] = useState<MySchedule | null>(null);
+    const [isLoading, setIsLoading] = useState(false);
+
+    const canViewReport = hasPermission("VIEW_SCHEDULE_REPORT");
+    const canViewDaily = hasPermission("VIEW_DAILY_SCHEDULE");
+
+    async function fetchData() {
+        setIsLoading(true);
+        try {
+            if (viewMode === "weekly-report" && canViewReport) {
+                const res = await ScheduleApi.getWeeklyReport(selectedDate);
+                setWeeklyData(res.data);
+            } else if (viewMode === "daily-staff" && canViewDaily) {
+                const res = await ScheduleApi.getDailyStaff(selectedDate);
+                setDailyData(res.data);
+            } else if (viewMode === "my-schedule") {
+                const res = await ScheduleApi.getMySchedule(selectedDate);
+                setMySchedule(res.data);
+            }
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : "Không thể tải dữ liệu lịch làm việc");
+        } finally {
+            setIsLoading(false);
+        }
+    }
+
+    useEffect(() => {
+        void fetchData();
+    }, [viewMode, selectedDate]);
+
+    function changeDate(days: number) {
+        const date = new Date(selectedDate);
+        date.setDate(date.getDate() + days);
+        setSelectedDate(date.toISOString().split("T")[0]);
+    }
+
+    return (
+        <div className="space-y-4">
+            <div className="flex items-center justify-between">
+                <div>
+                    <h1 className="text-3xl font-bold tracking-tight">Lịch làm việc</h1>
+                    <p className="text-muted-foreground">Xem lịch và phân ca làm việc</p>
+                </div>
+            </div>
+
+            {/* View Mode Selector */}
+            <Card>
+                <CardHeader>
+                    <CardTitle>Chế độ xem</CardTitle>
+                    <CardDescription>Chọn loại thông tin lịch làm việc bạn muốn xem</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <div className="flex gap-2">
+                        <Button variant={viewMode === "my-schedule" ? "default" : "outline"} onClick={() => setViewMode("my-schedule")}>
+                            <Clock className="mr-2 h-4 w-4" />
+                            Lịch của tôi
+                        </Button>
+                        {canViewDaily && (
+                            <Button variant={viewMode === "daily-staff" ? "default" : "outline"} onClick={() => setViewMode("daily-staff")}>
+                                <Users className="mr-2 h-4 w-4" />
+                                Lịch theo ngày
+                            </Button>
+                        )}
+                        {canViewReport && (
+                            <Button variant={viewMode === "weekly-report" ? "default" : "outline"} onClick={() => setViewMode("weekly-report")}>
+                                <Calendar className="mr-2 h-4 w-4" />
+                                Báo cáo tuần
+                            </Button>
+                        )}
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* Date Selector */}
+            <Card>
+                <CardContent className="pt-6">
+                    <div className="flex items-center gap-4">
+                        <Button variant="outline" size="icon" onClick={() => changeDate(-1)}>
+                            <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <Input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="max-w-xs" />
+                        <Button variant="outline" size="icon" onClick={() => changeDate(1)}>
+                            <ChevronRight className="h-4 w-4" />
+                        </Button>
+                        <Button variant="outline" onClick={() => setSelectedDate(new Date().toISOString().split("T")[0])}>
+                            Hôm nay
+                        </Button>
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* Content */}
+            {isLoading ? (
+                <Card>
+                    <CardContent className="flex items-center justify-center py-12">
+                        <Loader2 className="mr-2 h-6 w-6 animate-spin" />
+                        <span className="text-muted-foreground">Đang tải...</span>
+                    </CardContent>
+                </Card>
+            ) : (
+                <>
+                    {/* My Schedule */}
+                    {viewMode === "my-schedule" && mySchedule && (
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Lịch làm việc của {mySchedule.employee}</CardTitle>
+                                <CardDescription>
+                                    {mySchedule.position} - Tuần từ {mySchedule.week_start}
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="space-y-2">
+                                    {mySchedule.schedule?.map((day, idx) => (
+                                        <div key={idx} className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50">
+                                            <div>
+                                                <div className="font-semibold">{day.day_name}</div>
+                                                <div className="text-sm text-muted-foreground">{new Date(day.date).toLocaleDateString("vi-VN")}</div>
+                                            </div>
+                                            <div className="text-right">
+                                                <div className="font-medium">{day.shift_name}</div>
+                                                <div className="text-sm text-muted-foreground">
+                                                    {day.start_time} - {day.end_time}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                    {(!mySchedule.schedule || mySchedule.schedule.length === 0) && <div className="text-center py-8 text-muted-foreground">Không có lịch làm việc trong tuần này</div>}
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
+
+                    {/* Daily Staff */}
+                    {viewMode === "daily-staff" && dailyData && canViewDaily && (
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Lịch làm việc ngày {new Date(selectedDate).toLocaleDateString("vi-VN")}</CardTitle>
+                                <CardDescription>Danh sách nhân viên theo ca làm việc</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="space-y-4">
+                                    {dailyData.shifts?.map((shift, idx) => (
+                                        <div key={idx} className="border rounded-lg p-4">
+                                            <div className="font-semibold text-lg mb-2">
+                                                {shift.shift_name} ({shift.employees?.length || 0} người)
+                                            </div>
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                                                {shift.employees?.map((emp, empIdx) => (
+                                                    <div key={empIdx} className="flex items-center gap-2 p-2 bg-muted rounded">
+                                                        <Users className="h-4 w-4" />
+                                                        <div>
+                                                            <div className="text-sm font-medium">{emp.full_name}</div>
+                                                            <div className="text-xs text-muted-foreground">{emp.position}</div>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    ))}
+                                    {(!dailyData.shifts || dailyData.shifts.length === 0) && <div className="text-center py-8 text-muted-foreground">Không có dữ liệu lịch làm việc</div>}
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
+
+                    {/* Weekly Report */}
+                    {viewMode === "weekly-report" && weeklyData && canViewReport && (
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>
+                                    Báo cáo tuần: {weeklyData.week_start} - {weeklyData.week_end}
+                                </CardTitle>
+                                <CardDescription>Thống kê quân số và phân ca trong tuần</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="space-y-4">
+                                    {weeklyData.days?.map((day, idx) => (
+                                        <div key={idx} className="border rounded-lg p-4">
+                                            <div className="flex items-center justify-between mb-2">
+                                                <div>
+                                                    <div className="font-semibold">{day.day_name}</div>
+                                                    <div className="text-sm text-muted-foreground">{new Date(day.date).toLocaleDateString("vi-VN")}</div>
+                                                </div>
+                                                <div className="text-right">
+                                                    <div className="text-2xl font-bold">{day.total_employees}</div>
+                                                    <div className="text-xs text-muted-foreground">Nhân viên</div>
+                                                </div>
+                                            </div>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
+                                                {day.shifts?.map((shift, shiftIdx) => (
+                                                    <div key={shiftIdx} className="p-2 bg-muted rounded">
+                                                        <div className="font-medium text-sm">
+                                                            {shift.shift_name} ({shift.count})
+                                                        </div>
+                                                        <div className="text-xs text-muted-foreground">{shift.employees?.join(", ") || "Không có nhân viên"}</div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
+                </>
+            )}
+        </div>
+    );
+}
