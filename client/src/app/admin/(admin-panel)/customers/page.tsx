@@ -5,43 +5,66 @@ import { UserApi } from "@/api/user.api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, Filter, Mail, Phone, Loader2 } from "lucide-react";
+import { Plus, Search, Loader2, Mail, Phone, UserCheck, UserX } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Helper } from "@/lib/helper";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import type { UserProfile } from "@/types/user";
 
 export default function CustomersPage() {
     const { hasPermission } = useAdminAuth();
     const [customers, setCustomers] = useState<UserProfile[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [isSaving, setIsSaving] = useState(false);
+    const [searchKeyword, setSearchKeyword] = useState("");
 
     const canViewCustomers = hasPermission("VIEW_USERS");
+    const canUpdateStatus = hasPermission("ASSIGN_STATUS");
 
-    useEffect(() => {
-        let mounted = true;
-
-        async function fetchCustomers() {
-            if (!canViewCustomers) {
-                setCustomers([]);
-                setIsLoading(false);
-                return;
-            }
-
-            setIsLoading(true);
-            const usersRes = await UserApi.getUsers({ page: 1, size: 20, sort: "id:desc" });
-            if (!mounted) return;
-
-            setCustomers(usersRes.data.data);
+    async function fetchCustomers() {
+        if (!canViewCustomers) {
+            setCustomers([]);
             setIsLoading(false);
+            return;
         }
 
-        void fetchCustomers();
+        setIsLoading(true);
+        const usersRes = await UserApi.getUsers({ page: 1, size: 100, sort: "id:desc" });
+        setCustomers(usersRes.data.data);
+        setIsLoading(false);
+    }
 
-        return () => {
-            mounted = false;
-        };
+    useEffect(() => {
+        void fetchCustomers();
     }, [canViewCustomers]);
+
+    async function handleToggleStatus(userId: number, currentStatus: string) {
+        const newStatus = currentStatus === "ACTIVE" ? "INACTIVE" : "ACTIVE";
+        setIsSaving(true);
+        try {
+            await UserApi.updateUserStatus(userId, { status: newStatus });
+            toast.success(`Đã ${newStatus === "ACTIVE" ? "kích hoạt" : "vô hiệu hóa"} tài khoản.`);
+            await fetchCustomers();
+        } catch (error) {
+            const msg = error instanceof Error ? error.message : "Thao tác thất bại";
+            toast.error(msg);
+        } finally {
+            setIsSaving(false);
+        }
+    }
+
+    const filteredCustomers = searchKeyword.trim()
+        ? customers.filter(
+              (c) =>
+                  String(c.fullName ?? c.username ?? "")
+                      .toLowerCase()
+                      .includes(searchKeyword.toLowerCase()) ||
+                  String(c.email ?? "")
+                      .toLowerCase()
+                      .includes(searchKeyword.toLowerCase()),
+          )
+        : customers;
 
     const getRankColor = (rank?: string) => {
         switch (rank) {
@@ -65,10 +88,6 @@ export default function CustomersPage() {
                     <h1 className="text-3xl font-bold tracking-tight">Khách hàng</h1>
                     <p className="text-muted-foreground">Quản lý thông tin khách hàng</p>
                 </div>
-                <Button>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Thêm khách hàng
-                </Button>
             </div>
 
             {isLoading && (
@@ -83,16 +102,16 @@ export default function CustomersPage() {
                     <div className="flex items-center justify-between">
                         <div>
                             <CardTitle>Danh sách khách hàng</CardTitle>
-                            <CardDescription>{canViewCustomers ? "Quản lý và theo dõi thông tin khách hàng" : "Bạn chưa có quyền VIEW_USERS"}</CardDescription>
+                            <CardDescription>{canViewCustomers ? `${filteredCustomers.length} khách hàng` : "Bạn chưa có quyền VIEW_USERS"}</CardDescription>
                         </div>
-                        <div className="flex items-center gap-2">
-                            <div className="relative">
-                                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                                <Input placeholder="Tìm kiếm khách hàng..." className="pl-8 w-62.5" />
-                            </div>
-                            <Button variant="outline" size="icon">
-                                <Filter className="h-4 w-4" />
-                            </Button>
+                        <div className="relative">
+                            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                            <Input
+                                placeholder="Tìm kiếm khách hàng..."
+                                className="pl-8 w-62.5"
+                                value={searchKeyword}
+                                onChange={(e) => setSearchKeyword(e.target.value)}
+                            />
                         </div>
                     </div>
                 </CardHeader>
@@ -112,58 +131,66 @@ export default function CustomersPage() {
                             </thead>
                             <tbody>
                                 {canViewCustomers &&
-                                    customers.map((customer) => (
-                                        <tr key={customer.id} className="border-b hover:bg-muted/50">
-                                            <td className="px-6 py-4">
-                                                <div className="flex items-center gap-3">
-                                                    <Avatar className="h-9 w-9">
-                                                        <AvatarImage src={`/avatars/${customer.id}.png`} alt={String(customer.fullName ?? customer.username ?? "U")} />
-                                                        <AvatarFallback>{String(customer.fullName ?? customer.username ?? "U").charAt(0)}</AvatarFallback>
-                                                    </Avatar>
-                                                    <div>
-                                                        <div className="font-medium">{String(customer.fullName ?? customer.username ?? "Unknown")}</div>
-                                                        <div className="text-xs text-muted-foreground">ID: #{customer.id}</div>
+                                    filteredCustomers.map((customer) => {
+                                        const status = String(customer.status ?? "ACTIVE");
+                                        return (
+                                            <tr key={customer.id} className="border-b hover:bg-muted/50">
+                                                <td className="px-6 py-4">
+                                                    <div className="flex items-center gap-3">
+                                                        <Avatar className="h-9 w-9">
+                                                            <AvatarImage src={`/avatars/${customer.id}.png`} alt={String(customer.fullName ?? customer.username ?? "U")} />
+                                                            <AvatarFallback>{String(customer.fullName ?? customer.username ?? "U").charAt(0)}</AvatarFallback>
+                                                        </Avatar>
+                                                        <div>
+                                                            <div className="font-medium">{String(customer.fullName ?? customer.username ?? "Unknown")}</div>
+                                                            <div className="text-xs text-muted-foreground">ID: #{customer.id}</div>
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <div className="space-y-1">
-                                                    <div className="flex items-center gap-1 text-xs">
-                                                        <Mail className="h-3 w-3" />
-                                                        {String(customer.email ?? "-")}
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <div className="space-y-1">
+                                                        <div className="flex items-center gap-1 text-xs">
+                                                            <Mail className="h-3 w-3" />
+                                                            {String(customer.email ?? "-")}
+                                                        </div>
+                                                        <div className="flex items-center gap-1 text-xs">
+                                                            <Phone className="h-3 w-3" />
+                                                            {String(customer.phone ?? "-")}
+                                                        </div>
                                                     </div>
-                                                    <div className="flex items-center gap-1 text-xs">
-                                                        <Phone className="h-3 w-3" />
-                                                        {String(customer.phone ?? "-")}
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getRankColor(String((customer as { rank?: string }).rank ?? "Đồng"))}`}>{String((customer as { rank?: string }).rank ?? "Đồng")}</span>
+                                                </td>
+                                                <td className="px-6 py-4">{Number((customer as { orderCount?: number }).orderCount ?? 0)} đơn</td>
+                                                <td className="px-6 py-4 font-medium">{Helper.formatPrice(String((customer as { totalSpent?: number }).totalSpent ?? 0))}</td>
+                                                <td className="px-6 py-4">
+                                                    <span
+                                                        className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                                            status === "ACTIVE" ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300" : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300"
+                                                        }`}
+                                                    >
+                                                        {status}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <div className="flex gap-2">
+                                                        {canUpdateStatus && (
+                                                            <Button
+                                                                variant="outline"
+                                                                size="sm"
+                                                                onClick={() => void handleToggleStatus(customer.id, status)}
+                                                                disabled={isSaving}
+                                                                title={status === "ACTIVE" ? "Vô hiệu hóa" : "Kích hoạt"}
+                                                            >
+                                                                {status === "ACTIVE" ? <UserX className="h-4 w-4" /> : <UserCheck className="h-4 w-4" />}
+                                                            </Button>
+                                                        )}
                                                     </div>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${getRankColor(String((customer as { rank?: string }).rank ?? "Đồng"))}`}>{String((customer as { rank?: string }).rank ?? "Đồng")}</span>
-                                            </td>
-                                            <td className="px-6 py-4">{Number((customer as { orderCount?: number }).orderCount ?? 0)} đơn</td>
-                                            <td className="px-6 py-4 font-medium">{Helper.formatPrice(String((customer as { totalSpent?: number }).totalSpent ?? 0))}</td>
-                                            <td className="px-6 py-4">
-                                                <span
-                                                    className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                                        String(customer.status ?? "ACTIVE") === "VIP" ? "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300" : "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
-                                                    }`}
-                                                >
-                                                    {String(customer.status ?? "ACTIVE")}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <div className="flex gap-2">
-                                                    <Button variant="outline" size="sm">
-                                                        Xem
-                                                    </Button>
-                                                    <Button variant="outline" size="sm">
-                                                        Sửa
-                                                    </Button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
                                 {!canViewCustomers && (
                                     <tr>
                                         <td className="px-6 py-8 text-muted-foreground" colSpan={7}>
@@ -171,7 +198,7 @@ export default function CustomersPage() {
                                         </td>
                                     </tr>
                                 )}
-                                {canViewCustomers && customers.length === 0 && !isLoading && (
+                                {canViewCustomers && filteredCustomers.length === 0 && !isLoading && (
                                     <tr>
                                         <td className="px-6 py-8 text-muted-foreground" colSpan={7}>
                                             Chưa có dữ liệu khách hàng.

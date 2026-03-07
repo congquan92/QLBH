@@ -143,4 +143,49 @@ export const UserApi = {
             return { status: 500, message: "Forgot password failed", data: null };
         }
     },
+
+    /** POST /user/add — Create new user (Admin) */
+    createUser: async (payload: Record<string, unknown>) => {
+        try {
+            const res = await axiosInstance.post("/user/add", payload);
+            return res.data;
+        } catch (error) {
+            console.warn(`${WARNING_PREFIX} /user/add failed.`, error);
+            throw error;
+        }
+    },
+
+    /** PUT /user/{userId}/update/role — Update user role (Admin) */
+    updateRoleUser: async (userId: number, payload: Record<string, unknown>) => {
+        try {
+            const res = await axiosInstance.put(`/user/${userId}/update/role`, payload);
+            return res.data;
+        } catch (error) {
+            console.warn(`${WARNING_PREFIX} /user/{userId}/update/role failed.`, error);
+            throw error;
+        }
+    },
+
+    /** PUT /user/{userId}/status — Update user status (Admin) */
+    updateUserStatus: async (userId: number, payload: Record<string, unknown>) => {
+        try {
+            const res = await axiosInstance.put(`/user/${userId}/status`, payload);
+            return res.data;
+        } catch (error) {
+            console.warn(`${WARNING_PREFIX} /user/{userId}/status failed.`, error);
+            throw error;
+        }
+    },
+
+    /** GET /user/username — Find user by username (Admin) */
+    findByUsername: async (username: string) => {
+        try {
+            const res = await axiosInstance.get("/user/username", { params: { username } });
+            return res.data;
+        } catch (error) {
+            console.warn(`${WARNING_PREFIX} /user/username failed.`, error);
+            throw error;
+        }
+    },
 };
+

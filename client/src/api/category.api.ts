@@ -67,4 +67,71 @@ export const CategoryApi = {
             return { status: 200, message: "Fallback category detail", data: fallback };
         }
     },
+
+    /** POST /category/add — Create new category */
+    addCategory: async (payload: Record<string, unknown>) => {
+        try {
+            const res = await axiosInstance.post("/category/add", payload);
+            return res.data;
+        } catch (error) {
+            console.warn(`${WARNING_PREFIX} /category/add failed.`, error);
+            throw error;
+        }
+    },
+
+    /** PUT /category/update — Update category */
+    updateCategory: async (payload: Record<string, unknown>) => {
+        try {
+            const res = await axiosInstance.put("/category/update", payload);
+            return res.data;
+        } catch (error) {
+            console.warn(`${WARNING_PREFIX} /category/update failed.`, error);
+            throw error;
+        }
+    },
+
+    /** DELETE /category/{id}/delete — Delete category */
+    deleteCategory: async (categoryId: number) => {
+        try {
+            const res = await axiosInstance.delete(`/category/${categoryId}/delete`);
+            return res.data;
+        } catch (error) {
+            console.warn(`${WARNING_PREFIX} /category/{id}/delete failed.`, error);
+            throw error;
+        }
+    },
+
+    /** POST /category/{id}/restore — Restore deleted category */
+    restoreCategory: async (categoryId: number) => {
+        try {
+            const res = await axiosInstance.post(`/category/${categoryId}/restore`);
+            return res.data;
+        } catch (error) {
+            console.warn(`${WARNING_PREFIX} /category/{id}/restore failed.`, error);
+            throw error;
+        }
+    },
+
+    /** POST /category/move — Move category (change parent) */
+    moveCategory: async (payload: Record<string, unknown>) => {
+        try {
+            const res = await axiosInstance.post("/category/move", payload);
+            return res.data;
+        } catch (error) {
+            console.warn(`${WARNING_PREFIX} /category/move failed.`, error);
+            throw error;
+        }
+    },
+
+    /** GET /category/{id}/parents — Get parent categories */
+    getParentCategory: async (categoryId: number) => {
+        try {
+            const res = await axiosInstance.get(`/category/${categoryId}/parents`);
+            return res.data;
+        } catch (error) {
+            console.warn(`${WARNING_PREFIX} /category/{id}/parents failed.`, error);
+            throw error;
+        }
+    },
 };
+

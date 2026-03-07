@@ -121,4 +121,62 @@ export const ScheduleApi = {
             throw new Error(toErrorMessage(error));
         }
     },
+
+    /** GET /schedules/weekly/{userId} — Get weekly schedule for a specific employee */
+    getWeeklyEmployee: async (userId: number, date?: string): Promise<ApiResponse<unknown>> => {
+        try {
+            const res = await axiosInstance.get(`/schedules/weekly/${userId}`, {
+                params: { date: date || new Date().toISOString().split("T")[0] },
+            });
+            return res.data;
+        } catch (error) {
+            console.warn("[ScheduleApi] /schedules/weekly/{userId} failed", error);
+            throw new Error(toErrorMessage(error));
+        }
+    },
+
+    /** POST /schedules/positions/{positionId}/default — Set default schedule for a position */
+    setPositionDefaultSchedule: async (positionId: number, payload: Record<string, unknown>): Promise<ApiResponse<unknown>> => {
+        try {
+            const res = await axiosInstance.post(`/schedules/positions/${positionId}/default`, payload);
+            return res.data;
+        } catch (error) {
+            console.warn("[ScheduleApi] /schedules/positions/{id}/default failed", error);
+            throw new Error(toErrorMessage(error));
+        }
+    },
+
+    /** POST /schedules/assignments — Create schedule assignment */
+    createAssignment: async (payload: Record<string, unknown>): Promise<ApiResponse<unknown>> => {
+        try {
+            const res = await axiosInstance.post("/schedules/assignments", payload);
+            return res.data;
+        } catch (error) {
+            console.warn("[ScheduleApi] /schedules/assignments [POST] failed", error);
+            throw new Error(toErrorMessage(error));
+        }
+    },
+
+    /** PUT /schedules/{id} — Update schedule assignment */
+    updateAssignment: async (id: number, payload: Record<string, unknown>): Promise<ApiResponse<unknown>> => {
+        try {
+            const res = await axiosInstance.put(`/schedules/${id}`, payload);
+            return res.data;
+        } catch (error) {
+            console.warn("[ScheduleApi] /schedules/{id} [PUT] failed", error);
+            throw new Error(toErrorMessage(error));
+        }
+    },
+
+    /** DELETE /schedules/assignments — Delete schedule assignment(s) */
+    deleteAssignment: async (payload: Record<string, unknown>): Promise<ApiResponse<unknown>> => {
+        try {
+            const res = await axiosInstance.delete("/schedules/assignments", { data: payload });
+            return res.data;
+        } catch (error) {
+            console.warn("[ScheduleApi] /schedules/assignments [DELETE] failed", error);
+            throw new Error(toErrorMessage(error));
+        }
+    },
 };
+
