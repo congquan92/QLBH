@@ -40,6 +40,7 @@ class Order extends Model
         'order_status',
         'payment_type',
         'voucher_snapshot',
+        'voucher_discount_value',
         'payment_status',
         'delivered_at',
         'completed_at',
@@ -61,5 +62,9 @@ class Order extends Model
 
     public function orderItem(){
         return $this->hasMany(OrderItem::class);
+    }
+    public function voucherUsage()
+    {
+        return $this->hasOne(VoucherUsage::class, 'order_id', 'id');
     }
 }

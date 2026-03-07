@@ -125,8 +125,8 @@ Route::middleware('auth')->group(function () {
     // Order
     Route::get("/order/list", [OrderController::class, 'findAll']);
     Route::get("/order/admin/list", [OrderController::class, 'findAllByAdmin'])->middleware('can:VIEW_ORDERS_ADMIN');
-    Route::post("/order/changestatus/{id}/{status}", [OrderController::class, 'updateStatus'])->middleware('can:UPDATE_ORDER_STATUS');
-    Route::put("/complete/{id}", [OrderController::class, 'completeOrder'])->middleware('can:UPDATE_ORDER_STATUS');
+    Route::post("/order/changestatus/{id}", [OrderController::class, 'updateStatus'])->middleware('can:UPDATE_ORDER_STATUS');
+    Route::put("/order/complete/{id}", [OrderController::class, 'completeOrder']);
     Route::get("/order/{id}", [OrderController::class, 'getOrderById']);
     Route::get('/order/admin/{id}', [OrderController::class, 'getOrderByIdForAdmin'])->middleware('can:VIEW_ORDERS_ADMIN');
     Route::delete('/order/cancel/{id}', [OrderController::class, 'cancelOrder']);

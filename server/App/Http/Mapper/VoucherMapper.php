@@ -6,7 +6,7 @@ use App\Http\Responses\Voucher\VoucherResponse;
 use App\Models\Voucher;
 class VoucherMapper
 {
-    public static function toVoucherResponse(Voucher $voucher): VoucherResponse
+    public static function toVoucherResponse($voucher): VoucherResponse
     {
         $userRankResponse = (($voucher->userRank && $voucher->userRank->status === Status::ACTIVE)
             ? UserRankMapper::toUserRankResponse($voucher->userRank)

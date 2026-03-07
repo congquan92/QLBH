@@ -13,13 +13,13 @@ use App\Http\Mapper\ProductVariantMapper;
 use App\Http\Responses\PageResponse;
 use App\Http\Service\GhnService;
 use App\Http\Service\VoucherService;
+use App\Http\States\OrderStateFactory;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\ProductVariant;
 use App\Models\User;
 use App\Models\Voucher;
 use App\Models\VoucherUsage;
-use App\State\OrderStateFactory;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use App\Http\Requests\orders\OrderCreationRequest;
@@ -125,7 +125,7 @@ class OrderService
 
         return PageResponse::fromLaravelPaginator($paginator);
     }
-    public function changeStatus($orderId, DeliveryStatus $status)
+    public function changeStatus($orderId, $status)
     {
         return DB::transaction(function () use ($orderId, $status) {
             $order = Order::where('id', $orderId)
@@ -133,8 +133,9 @@ class OrderService
             if ($order->payment_type == PaymentType::BANK_TRANSFER && $order->payment_status == PaymentStatus::UNPAID) {
                 throw new BusinessException(ErrorCode::BAD_REQUEST, 'Không thể chuyển trạng thái cho đơn chưa thanh toán !');
             }
+            $nextStatus = DeliveryStatus::tryFrom($status);
             $currentState = OrderStateFactory::getState($order->order_status);
-            $currentState->changeState($order, $status, $this->firebaseService);
+            $currentState->changeState($order, $nextStatus, $this->firebaseService);
             $order->save();
         });
     }
@@ -143,13 +144,11 @@ class OrderService
         $currentUser = auth()->user();
         $order = Order::where('id', $orderId)
             ->firstOrFail();
+       Log::info("DEBUG - Current Order Status: " . $order->order_status->value);
         if ($order->user_id !== $currentUser->id) {
             throw new BusinessException(ErrorCode::BAD_REQUEST, 'Đơn này không thuộc về bạn !');
         }
-        if ($order->order_status == DeliveryStatus::CANCELLED) {
-            throw new BusinessException(ErrorCode::BAD_REQUEST, 'Không thể xác nhận cho đơn bị huỷ !');
-        }
-        if ($order->order_status == DeliveryStatus::COMPLETED) {
+        if ($order->order_status !== DeliveryStatus::COMPLETED) {
             throw new BusinessException(ErrorCode::BAD_REQUEST, 'Đơn chưa hoàn thành !');
         }
         if ($order->payment_status == PaymentStatus::UNPAID) {
@@ -201,15 +200,12 @@ class OrderService
                     foreach ($order->orderItem as $item) {
                         $variant = ProductVariant::where('id', $item->product_variant_id)->firstOrFail();
                         $variant->increment('quantity', $item->quantity);
+                        $variant->save();
                     }
                 }
 
                 $order->order_status = DeliveryStatus::CANCELLED;
                 $order->save();
-
-                $voucherUsage = VoucherUsage::where('order_id', $order->id)->firstOrFail();
-                $voucherUsage->delete();
-
                 return $order;
             } else {
                 throw new BusinessException(ErrorCode::BAD_REQUEST, "Không thể hủy đơn hàng ở trạng thái này");
@@ -421,12 +417,13 @@ class OrderService
             }
             $this->updateSoldQuantity($orderItems);
 
-
+            $orderResponse = OrderMapper::toOrderResponse($order);
             $this->firebaseService->sendNotification(RoleType::ORDER_STAFF->value, [
                 'title' => '📦 Đơn hàng mới!',
-                'body' => 'Khách hàng vừa đặt đơn #ORD-999',
+                'body' => 'Khách hàng vừa đặt đơn {$order->id} ',
                 'order_id' => $order->id,
-                'type' => 'new_order'
+                'type' => 'new_order',
+                'order_data' => json_encode($orderResponse),
             ]);
 
             return $order->id;

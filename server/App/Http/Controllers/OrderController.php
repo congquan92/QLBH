@@ -67,8 +67,9 @@ class OrderController extends Controller
         $this->orderService->create($request);
     }
 
-    public function updateStatus($id, DeliveryStatus $status)
+    public function updateStatus($id, Request $request)
     {
+        $status = $request->query('status');
         $this->orderService->changeStatus($id, $status);
     }
 
@@ -77,11 +78,13 @@ class OrderController extends Controller
     }
 
     public function getOrderById($id){
-        $this->orderService->getOrderById($id);
+        $result = $this->orderService->getOrderById($id);
+        return $this->success($result,"Get by id user");
     }
 
     public function getOrderByIdForAdmin($id){
-        $this->orderService->getOrderByIdForAdmin($id);
+        $result = $this->orderService->getOrderByIdForAdmin($id);
+         return $this->success($result,"Get by id user");
     }
 
     public function cancelOrder($id){

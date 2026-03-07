@@ -99,6 +99,7 @@ class FirebaseService
         'order_id'   => $data['order_id'] ?? null,
         'type'       => $data['type'], // 'order_status', 'new_order', 'system'
         'created_at' => now()->getTimestampMs(), // Dùng timestamp để FE dễ sắp xếp
+        'order_data' => $data['order_data'] ?? null,
     ];
 
     return Http::post($url, $payload);
