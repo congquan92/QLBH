@@ -162,7 +162,7 @@ class OrderService
         $currentUser->total_spent = $order->total_spent + $order->total_amount;
         $this->userSerive->updateRank($currentUser);
         $order->completed_at = Carbon::now();
-
+        $order->save();
     }
     private function updateSoldQuantity(array $orderItems)
     {

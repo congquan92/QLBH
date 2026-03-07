@@ -10,8 +10,6 @@ class ReviewResponse
         public int $productId,
         public string $nameProduct,
         public array $variant,
-        public string $avatarUser,
-        public string $fullName,
         public int $rating,
         public string $comment,
         public array $imageResponse,

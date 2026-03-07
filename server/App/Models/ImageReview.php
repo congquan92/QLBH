@@ -17,7 +17,8 @@ class ImageReview extends Model
 
     protected $fillable = [
         'id',
-        'urlImage',
+        'url_image',
+        'review_id'
     ];
 
     public function review(){

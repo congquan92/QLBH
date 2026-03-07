@@ -28,6 +28,7 @@ class Cart extends Model
     // Tự động convert string json từ DB sang array khi sử dụng
     protected $casts = [
         'status' => Status::class,
+        'variant_attributes_snapshot'=>'array'
     ];
 
     public function user() {

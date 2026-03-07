@@ -34,13 +34,13 @@ class PaymentService
 
         // Kiểm tra logic nghiệp vụ
         if ($order->user_id !== $user->id) {
-            throw new BusinessException(ErrorCode::NOT_EXISTED,"Bạn không có quyền thanh toán đơn hàng này.");
+            throw new BusinessException(ErrorCode::NOT_EXISTED, "Bạn không có quyền thanh toán đơn hàng này.");
         }
         if ($order->payment_type !== PaymentType::BANK_TRANSFER) {
-            throw new BusinessException(ErrorCode::BAD_REQUEST,"Phương thức thanh toán của đơn hàng không phải là chuyển khoản ngân hàng.");
+            throw new BusinessException(ErrorCode::BAD_REQUEST, "Phương thức thanh toán của đơn hàng không phải là chuyển khoản ngân hàng.");
         }
         if ($order->payment_status === PaymentStatus::PAID) {
-            throw new BusinessException(ErrorCode::BAD_REQUEST,"Đơn hàng này đã được thanh toán trước đó.");
+            throw new BusinessException(ErrorCode::BAD_REQUEST, "Đơn hàng này đã được thanh toán trước đó.");
         }
 
         $vnp_TmnCode = config('vnpay.vnp_TmnCode');
@@ -70,30 +70,27 @@ class PaymentService
         // Sắp xếp dữ liệu theo Alphabet (giống Collections.sort trong Java)
         ksort($vnp_Params);
 
+        $hashData = "";
         $query = "";
         $i = 0;
-        $hashdata = "";
+
         foreach ($vnp_Params as $key => $value) {
             if ($i == 1) {
-                $hashdata .= '&' . urlencode($key) . "=" . urlencode($value);
+                $hashData .= '&' . urlencode($key) . "=" . urlencode($value);
             } else {
-                $hashdata .= urlencode($key) . "=" . urlencode($value);
+                $hashData .= urlencode($key) . "=" . urlencode($value);
                 $i = 1;
             }
             $query .= urlencode($key) . "=" . urlencode($value) . '&';
         }
 
+        $query = rtrim($query, '&'); // QUAN TRỌNG: Loại bỏ dấu & thừa cuối cùng
         $vnp_Url = $vnp_Url . "?" . $query;
-        if (isset($vnp_HashSecret)) {
-            $vnpSecureHash = hash_hmac('sha512', $hashdata, $vnp_HashSecret);
-            $vnp_Url .= 'vnp_SecureHash=' . $vnpSecureHash;
-        }
 
-        // Lưu Redis giống Java (Hết hạn sau 5 phút)
+        $vnpSecureHash = hash_hmac('sha512', $hashData, $vnp_HashSecret);
+        $vnp_Url .= '&vnp_SecureHash=' . $vnpSecureHash;
+
         Redis::setex($vnp_TxnRef, 300, $orderId);
-
-        Log::channel('payment')->info("✅ VNPay URL generated: " . $vnp_Url);
-
         return $vnp_Url;
     }
 
@@ -139,13 +136,13 @@ class PaymentService
         if ($vnp_ResponseCode === "00") {
             // Logic xử lý thành công
             $orderId = explode('_', str_replace('ORD', '', $vnp_TxnRef))[0];
-            
+
             $this->orderService->completePayment($orderId);
             Redis::del($vnp_TxnRef);
-            
+
             $order = Order::find($orderId);
             $this->fireBaseService->updateOrderStatus($order);
-            
+
             Log::info("✅ Thanh toán thành công đơn hàng: " . $orderId);
             return true;
         }

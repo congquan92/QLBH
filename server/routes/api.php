@@ -264,20 +264,20 @@ Route::middleware('auth')->group(function () {
     Route::prefix('reviews')->group(function () {
         Route::post('/', [ReviewController::class, 'store']); // Tạo review
         Route::get('/me/{productId}', [ReviewController::class, 'getMyReviewByProduct']); // Lấy review của mình theo SP
-        Route::put('/{id}', [ReviewController::class, 'update']); // Cập nhật text/rating
+        // Route::put('/{id}', [ReviewController::class, 'update']); // Cập nhật text/rating
 
-        // Quản lý ảnh của bài Review
-        Route::post('/{reviewId}/images', [ReviewController::class, 'addImages']);
-        Route::delete('/{reviewId}/images', [ReviewController::class, 'deleteImages']);
+        // // Quản lý ảnh của bài Review
+        // Route::post('/{reviewId}/images', [ReviewController::class, 'addImages']);
+        // Route::delete('/{reviewId}/images', [ReviewController::class, 'deleteImages']);
     });
 
     // Nhóm hành động dành cho Quản trị viên
     Route::prefix('reviews')->group(function () {
         Route::get('/', [ReviewController::class, 'index'])->middleware('can:VIEW_REVIEWS_ADMIN');
 
-        // Nếu bạn thêm hàm xóa review vi phạm
-        Route::delete('/{id}', [ReviewController::class, 'destroy'])
-            ->middleware('can:DELETE_REVIEWS_ADMIN');
+        // // Nếu bạn thêm hàm xóa review vi phạm
+        // Route::delete('/{id}', [ReviewController::class, 'destroy'])
+        //     ->middleware('can:DELETE_REVIEWS_ADMIN');
     });
 
     Route::prefix('suppliers')->group(function () {
