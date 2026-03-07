@@ -10,6 +10,7 @@ use App\Exceptions\BusinessException;
 use App\Exceptions\ErrorCode;
 use App\Http\Mapper\OrderMapper;
 use App\Http\Mapper\ProductVariantMapper;
+use App\Http\Mapper\VoucherMapper;
 use App\Http\Responses\PageResponse;
 use App\Http\Service\GhnService;
 use App\Http\Service\VoucherService;
@@ -372,7 +373,7 @@ class OrderService
 
                 $this->voucherService->decreaseVoucherQuantity($voucher);
 
-                $order->voucher_snapshot = $voucher->toArray();
+                $order->voucher_snapshot = json_encode(VoucherMapper::toVoucherResponse($voucher));
                 $order->voucher_id = $voucher->id;
                 $order->voucher_discount_value = $discountValue;
             }
@@ -407,7 +408,8 @@ class OrderService
                 VoucherUsage::create([
                     'voucher_id' => $voucher->id,
                     'user_id' => $currentUser->id,
-                    'order_id' => $order->id
+                    'order_id' => $order->id,
+                    'usedAt'     => now(),
                 ]);
             }
             if ($order->payment_type === PaymentType::COD) {

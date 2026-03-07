@@ -17,7 +17,8 @@ class VoucherUsage extends Model
     protected $fillable = [
         'usedAt',
         'voucher_id',
-        'order_id'
+        'order_id',
+        'user_id'
     ];
 
     public function voucher()
