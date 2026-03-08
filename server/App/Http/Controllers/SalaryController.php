@@ -2,7 +2,8 @@
 namespace App\Http\Controllers;
 
 use App\Http\Responses\ApiResponse;
-use App\Services\SalaryService;
+
+use App\Http\Service\SalaryService;
 use Illuminate\Http\Request;
 class SalaryController extends Controller
 {

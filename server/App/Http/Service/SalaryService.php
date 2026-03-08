@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services;
+namespace App\Http\Service;
 
 use App\Enums\EmploymentType;
 use App\Models\{Attendance, JobHistory, User, SalaryConfig};
