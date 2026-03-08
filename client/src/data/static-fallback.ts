@@ -8,7 +8,6 @@ import type { UserAddress, UserProfile } from "@/types/user";
 import type { Voucher } from "@/types/voucher";
 
 const nowIso = new Date().toISOString();
-
 export const FALLBACK_PRODUCTS: Product[] = [
     {
         id: 999001,

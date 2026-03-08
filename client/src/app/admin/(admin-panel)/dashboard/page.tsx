@@ -4,7 +4,7 @@ import { useAdminAuth } from "@/components/feature/admin-auth-provider";
 import { OrderApi } from "@/api/order.api";
 import { ProductApi } from "@/api/product.api";
 import { UserApi } from "@/api/user.api";
-import { StatisticsApi, type ActiveUserStats, type OrderStats, type MonthlyRevenue, type TopProduct } from "@/api/statistics.api";
+import { StatisticsApi } from "@/api/statistics.api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -13,6 +13,7 @@ import { Loader2, Package, ShoppingCart, Users, TrendingUp, BarChart3, PieChart 
 import { useEffect, useMemo, useState } from "react";
 import type { OrderSummary } from "@/types/order";
 import type { Product } from "@/types/product";
+import type { ActiveUserStats, MonthlyRevenue, OrderStats, TopProduct } from "@/types/statistics";
 import type { UserProfile } from "@/types/user";
 
 export default function DashboardPage() {
@@ -43,7 +44,7 @@ export default function DashboardPage() {
 
             const [orderRes, productRes, userRes] = await Promise.all([
                 canViewOrders ? OrderApi.getAdminOrders({ page: 1, size: 20 }) : Promise.resolve(null),
-                canViewProducts ? ProductApi.getAllProducts(1, 20) : Promise.resolve(null),
+                canViewProducts ? ProductApi.getAdminProducts(1, 20) : Promise.resolve(null),
                 canViewUsers ? UserApi.getUsers({ page: 1, size: 20 }) : Promise.resolve(null),
             ]);
 

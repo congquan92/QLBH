@@ -1,7 +1,7 @@
 "use client";
 
 import { useAdminAuth } from "@/components/feature/admin-auth-provider";
-import { LeaveApi, type LeaveRequest } from "@/api/leave.api";
+import { LeaveApi } from "@/api/leave.api";
 import { AdminCrudApi } from "@/api/admin-crud.api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import { Plus, Loader2, CheckCircle, XCircle, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import type { Shift } from "@/types/admin-crud";
+import type { LeaveRequest } from "@/types/leave";
 
 type LeaveForm = {
     id?: number;

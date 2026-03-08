@@ -39,17 +39,17 @@ export const ExportApi = {
 
     /**
      * Export late arrivals report
-     * GET /export/export/late-arrivals
+     * GET /export/late-arrivals
      * Returns file blob for download
      */
     exportLateArrivals: async (): Promise<Blob> => {
         try {
-            const res = await axiosInstance.get("/export/export/late-arrivals", {
+            const res = await axiosInstance.get("/export/late-arrivals", {
                 responseType: "blob",
             });
             return res.data;
         } catch (error) {
-            console.warn(`${WARNING_PREFIX} /export/export/late-arrivals failed.`, error);
+            console.warn(`${WARNING_PREFIX} /export/late-arrivals failed.`, error);
             throw error;
         }
     },

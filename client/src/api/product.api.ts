@@ -53,34 +53,55 @@ export const ProductApi = {
         }
     },
 
-    /** GET /product/list/sale — Admin product list with full info */
-    getAdminProducts: async (page = 1, size = 20): Promise<ApiResponse<PageResponse<Product>>> => {
+    getProductsByCategory: async (categoryId: number, page = 1, size = 10): Promise<ApiResponse<PageResponse<Product>>> => {
         try {
-            const res = await axiosInstance.get<ApiResponse<PageResponse<Product>>>("/product/list/sale", {
+            const res = await axiosInstance.get<ApiResponse<PageResponse<Product>>>(`/product/category/${categoryId}`, {
                 params: { page, size },
             });
+
             if (!isValidProductListResponse(res.data)) {
-                console.warn(`${WARNING_PREFIX} Invalid /product/list/sale response shape. Fallback static data is used.`);
+                console.warn(`${WARNING_PREFIX} Invalid /product/category/{id} response shape. Fallback static data is used.`);
                 return createFallbackProductListResponse(page, size);
             }
+
             return res.data;
         } catch (error) {
-            console.warn(`${WARNING_PREFIX} /product/list/sale failed. Fallback static data is used.`, error);
+            console.warn(`${WARNING_PREFIX} /product/category/{id} failed. Fallback static data is used.`, error);
             return createFallbackProductListResponse(page, size);
         }
     },
 
-    /** GET /product/admin/detail/{id} — Admin product detail */
+    /** GET /product/admin/list — Admin product list with full info */
+    getAdminProducts: async (page = 1, size = 20): Promise<ApiResponse<PageResponse<Product>>> => {
+        try {
+            const res = await axiosInstance.get<ApiResponse<PageResponse<Product>>>("/product/admin/list", {
+                params: { page, size },
+            });
+            if (!isValidProductListResponse(res.data)) {
+                console.warn(`${WARNING_PREFIX} Invalid /product/admin/list response shape. Fallback static data is used.`);
+                return createFallbackProductListResponse(page, size);
+            }
+            return res.data;
+        } catch (error) {
+            console.warn(`${WARNING_PREFIX} /product/admin/list failed. Fallback static data is used.`, error);
+            return createFallbackProductListResponse(page, size);
+        }
+    },
+
+    /**
+     * Admin detail currently shares public detail route.
+     * Backend does not expose /product/admin/detail/{id} in routes/api.php.
+     */
     getAdminProductDetail: async (id: number): Promise<ApiResponse<ProductDetail>> => {
         try {
-            const res = await axiosInstance.get<ApiResponse<ProductDetail>>(`/product/admin/detail/${id}`);
+            const res = await axiosInstance.get<ApiResponse<ProductDetail>>(`/product/detail/${id}`);
             if (!isValidProductDetailResponse(res.data)) {
-                console.warn(`${WARNING_PREFIX} Invalid /product/admin/detail/{id} response shape. Fallback static data is used.`);
+                console.warn(`${WARNING_PREFIX} Invalid /product/detail/{id} response shape. Fallback static data is used.`);
                 return createFallbackProductDetailResponse();
             }
             return res.data;
         } catch (error) {
-            console.warn(`${WARNING_PREFIX} /product/admin/detail/{id} failed. Fallback static data is used.`, error);
+            console.warn(`${WARNING_PREFIX} /product/detail/{id} failed. Fallback static data is used.`, error);
             return createFallbackProductDetailResponse();
         }
     },

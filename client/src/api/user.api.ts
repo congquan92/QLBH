@@ -22,6 +22,16 @@ function isWrapped<T>(value: unknown): value is ApiResponse<T> {
 }
 
 export const UserApi = {
+    getUserByEmail: async (email: string) => {
+        try {
+            const res = await axiosInstance.get("/user/email", { params: { email } });
+            return res.data;
+        } catch (error) {
+            console.warn(`${WARNING_PREFIX} /user/email failed.`, error);
+            return { status: 500, message: "Get user by email failed", data: null };
+        }
+    },
+
     getMyInfo: async (): Promise<ApiResponse<UserProfile>> => {
         try {
             const res = await axiosInstance.get("/user/me");
@@ -94,6 +104,46 @@ export const UserApi = {
         }
     },
 
+    addAddress: async (payload: Record<string, unknown>) => {
+        try {
+            const res = await axiosInstance.post("/user/add/address", payload);
+            return res.data;
+        } catch (error) {
+            console.warn(`${WARNING_PREFIX} /user/add/address failed.`, error);
+            return { status: 500, message: "Add address failed", data: null };
+        }
+    },
+
+    setDefaultAddress: async (addressId: number) => {
+        try {
+            const res = await axiosInstance.put(`/user/address/default/${addressId}`);
+            return res.data;
+        } catch (error) {
+            console.warn(`${WARNING_PREFIX} /user/address/default/{addressId} failed.`, error);
+            return { status: 500, message: "Set default address failed", data: null };
+        }
+    },
+
+    updateAddress: async (addressId: number, payload: Record<string, unknown>) => {
+        try {
+            const res = await axiosInstance.put(`/user/address/update/${addressId}`, payload);
+            return res.data;
+        } catch (error) {
+            console.warn(`${WARNING_PREFIX} /user/address/update/{addressId} failed.`, error);
+            return { status: 500, message: "Update address failed", data: null };
+        }
+    },
+
+    deleteAddress: async (addressId: number) => {
+        try {
+            const res = await axiosInstance.delete(`/user/address/delete/${addressId}`);
+            return res.data;
+        } catch (error) {
+            console.warn(`${WARNING_PREFIX} /user/address/delete/{addressId} failed.`, error);
+            return { status: 500, message: "Delete address failed", data: null };
+        }
+    },
+
     updateProfile: async (payload: Record<string, unknown>) => {
         try {
             const res = await axiosInstance.put("/user/update", payload);
@@ -144,6 +194,16 @@ export const UserApi = {
         }
     },
 
+    verifyAccount: async (userId: number, payload: { otp: string; email?: string }) => {
+        try {
+            const res = await axiosInstance.post(`/user/${userId}/verify-account`, payload);
+            return res.data;
+        } catch (error) {
+            console.warn(`${WARNING_PREFIX} /user/{userId}/verify-account failed.`, error);
+            return { status: 500, message: "Verify account failed", data: null };
+        }
+    },
+
     /** POST /user/add — Create new user (Admin) */
     createUser: async (payload: Record<string, unknown>) => {
         try {
@@ -188,4 +248,3 @@ export const UserApi = {
         }
     },
 };
-

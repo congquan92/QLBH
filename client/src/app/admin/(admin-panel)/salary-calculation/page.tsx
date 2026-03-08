@@ -1,7 +1,7 @@
 "use client";
 
 import { useAdminAuth } from "@/components/feature/admin-auth-provider";
-import { SalaryApi, type SalaryCalculation } from "@/api/salary.api";
+import { SalaryApi } from "@/api/salary.api";
 import { UserApi } from "@/api/user.api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import { DollarSign, Loader2, Calculator, TrendingUp, Clock, AlertCircle } from 
 import { Helper } from "@/lib/helper";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import type { SalaryCalculation } from "@/types/salary";
 import type { UserProfile } from "@/types/user";
 
 export default function SalaryCalculationPage() {

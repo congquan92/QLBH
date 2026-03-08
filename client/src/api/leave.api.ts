@@ -1,18 +1,6 @@
 import { axiosInstance } from "@/lib/axios";
 import type { ApiResponse, PageResponse } from "@/types/api";
-
-export interface LeaveRequest {
-    id: number;
-    leave_date: string;
-    shift_id: number;
-    shift_name?: string;
-    reason?: string;
-    status: "PENDING" | "APPROVED" | "REJECTED";
-    employee_name?: string;
-    employee_id?: number;
-    created_at?: string;
-    [key: string]: unknown;
-}
+import type { CreateLeavePayload, LeaveRequest } from "@/types/leave";
 
 function toErrorMessage(error: unknown): string {
     if (error && typeof error === "object" && "message" in error) {
@@ -23,8 +11,8 @@ function toErrorMessage(error: unknown): string {
 
 function normalizeList(payload: unknown): PageResponse<LeaveRequest> {
     if (payload && typeof payload === "object") {
-        const data = payload as any;
-        if (data.data && Array.isArray(data.data)) {
+        const data = payload as Partial<PageResponse<LeaveRequest>>;
+        if (Array.isArray(data.data)) {
             return data as PageResponse<LeaveRequest>;
         }
     }
@@ -72,7 +60,7 @@ export const LeaveApi = {
      * Create leave request
      * POST /leave-requests/
      */
-    create: async (payload: { leave_date: string; shift_id: number; reason?: string }): Promise<ApiResponse<LeaveRequest>> => {
+    create: async (payload: CreateLeavePayload): Promise<ApiResponse<LeaveRequest>> => {
         try {
             const res = await axiosInstance.post("/leave-requests/", payload);
             return res.data;

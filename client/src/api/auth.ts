@@ -11,6 +11,11 @@ export const AuthApi = {
         await axiosInstance.post("/auth/register", payload);
     },
 
+    socialGoogleLogin: async (idToken: string): Promise<LoginResponse> => {
+        const res = await axiosInstance.post<LoginResponse>("/auth/social/google", { idToken });
+        return res.data;
+    },
+
     logout: async (token?: string): Promise<{ message: string }> => {
         const res = await axiosInstance.post<{ message: string }>(
             "/auth/logout",

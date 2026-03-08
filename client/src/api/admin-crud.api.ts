@@ -61,6 +61,11 @@ export const AdminCrudApi = {
         await axiosInstance.post("/suppliers", payload);
     },
 
+    getSupplierDetail: async (id: number) => {
+        const res = await axiosInstance.get(`/suppliers/${id}`);
+        return res.data;
+    },
+
     updateSupplier: async (id: number, payload: Record<string, unknown>) => {
         await axiosInstance.put(`/suppliers/${id}`, payload);
     },
@@ -89,6 +94,11 @@ export const AdminCrudApi = {
 
     deletePosition: async (id: number) => {
         await axiosInstance.delete(`/positions/${id}`);
+    },
+
+    getPositionEmployees: async (id: number, query?: { keyword?: string; sort?: string; page?: number; size?: number }) => {
+        const res = await axiosInstance.get(`/positions/${id}/employees`, { params: query });
+        return res.data;
     },
 
     getShifts: async (query?: { keyword?: string; sort?: string; page?: number; size?: number }) => {
@@ -217,6 +227,11 @@ export const AdminCrudApi = {
 
     cancelImportProduct: async (id: number) => {
         await axiosInstance.post(`/import-products/${id}/cancel`);
+    },
+
+    getImportProductDetail: async (id: number) => {
+        const res = await axiosInstance.get(`/import-products/${id}`);
+        return res.data;
     },
 
     updateImportQuantities: async (id: number, payload: { items: Array<{ importDetailId: number; quantity: number }> }) => {

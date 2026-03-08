@@ -83,6 +83,11 @@ export const RbacApi = {
         return normalizeEntity<RbacRole>(res.data);
     },
 
+    getRoleDetail: async (id: number) => {
+        const res = await axiosInstance.get(`/roles/${id}`);
+        return normalizeEntity<RbacRole>(res.data);
+    },
+
     updateRole: async (id: number, payload: RbacRolePayload) => {
         const res = await axiosInstance.put(`/roles/${id}`, payload);
         return normalizeEntity<RbacRole>(res.data);
@@ -93,8 +98,18 @@ export const RbacApi = {
         return res.data;
     },
 
+    detachRoleGroups: async (id: number, payload: { group_ids: number[] }) => {
+        const res = await axiosInstance.post(`/roles/${id}/detach-groups`, payload);
+        return res.data;
+    },
+
     createGroupPermission: async (payload: RbacGroupPermissionPayload) => {
         const res = await axiosInstance.post("/group-permissions", payload);
+        return normalizeEntity<RbacGroupPermission>(res.data);
+    },
+
+    getGroupPermissionDetail: async (id: number) => {
+        const res = await axiosInstance.get(`/group-permissions/${id}`);
         return normalizeEntity<RbacGroupPermission>(res.data);
     },
 
@@ -105,6 +120,36 @@ export const RbacApi = {
 
     deleteGroupPermission: async (id: number) => {
         const res = await axiosInstance.delete(`/group-permissions/${id}`);
+        return res.data;
+    },
+
+    detachPermissionsFromGroup: async (id: number, payload: { permission_ids: number[] }) => {
+        const res = await axiosInstance.post(`/group-permissions/${id}/detach-permissions`, payload);
+        return res.data;
+    },
+
+    getPageDetail: async (id: number) => {
+        const res = await axiosInstance.get(`/pages/${id}`);
+        return normalizeEntity<RbacPageCatalogItem>(res.data);
+    },
+
+    createPage: async (payload: Record<string, unknown>) => {
+        const res = await axiosInstance.post("/pages", payload);
+        return res.data;
+    },
+
+    updatePage: async (id: number, payload: Record<string, unknown>) => {
+        const res = await axiosInstance.put(`/pages/${id}`, payload);
+        return res.data;
+    },
+
+    deletePage: async (id: number) => {
+        const res = await axiosInstance.delete(`/pages/${id}`);
+        return res.data;
+    },
+
+    detachGroupsFromPage: async (id: number, payload: { group_ids: number[] }) => {
+        const res = await axiosInstance.post(`/pages/${id}/detach-groups`, payload);
         return res.data;
     },
 };

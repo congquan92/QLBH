@@ -106,44 +106,28 @@ export const ReviewApi = {
     },
 
     update: async (id: number, payload: UpdateReviewPayload) => {
-        try {
-            const res = await axiosInstance.put(`/reviews/${id}`, payload);
-            return res.data;
-        } catch (error) {
-            console.warn(`${WARNING_PREFIX} /reviews/{id} [PUT] failed.`, error);
-            return { status: 500, message: "Update review failed", data: null };
-        }
+        console.warn(`${WARNING_PREFIX} /reviews/{id} [PUT] is not exposed in backend routes.`, { id, payload });
+        return { status: 501, message: "Update review endpoint is not available", data: null };
     },
 
     addImages: async (reviewId: number, imageUrls: string[]) => {
-        try {
-            const res = await axiosInstance.post(`/reviews/${reviewId}/images`, { image_urls: imageUrls });
-            return res.data;
-        } catch (error) {
-            console.warn(`${WARNING_PREFIX} /reviews/{reviewId}/images [POST] failed.`, error);
-            return { status: 500, message: "Add review images failed", data: null };
-        }
+        console.warn(`${WARNING_PREFIX} /reviews/{reviewId}/images [POST] is not exposed in backend routes.`, {
+            reviewId,
+            imageUrls,
+        });
+        return { status: 501, message: "Add review images endpoint is not available", data: null };
     },
 
     deleteImages: async (reviewId: number, imageIds: number[]) => {
-        try {
-            const res = await axiosInstance.delete(`/reviews/${reviewId}/images`, {
-                data: { image_ids: imageIds },
-            });
-            return res.data;
-        } catch (error) {
-            console.warn(`${WARNING_PREFIX} /reviews/{reviewId}/images [DELETE] failed.`, error);
-            return { status: 500, message: "Delete review images failed", data: null };
-        }
+        console.warn(`${WARNING_PREFIX} /reviews/{reviewId}/images [DELETE] is not exposed in backend routes.`, {
+            reviewId,
+            imageIds,
+        });
+        return { status: 501, message: "Delete review images endpoint is not available", data: null };
     },
 
     deleteByAdmin: async (id: number) => {
-        try {
-            const res = await axiosInstance.delete(`/reviews/${id}`);
-            return res.data;
-        } catch (error) {
-            console.warn(`${WARNING_PREFIX} /reviews/{id} [DELETE] failed.`, error);
-            return { status: 500, message: "Delete review failed", data: null };
-        }
+        console.warn(`${WARNING_PREFIX} /reviews/{id} [DELETE] is not exposed in backend routes.`, { id });
+        return { status: 501, message: "Delete review endpoint is not available", data: null };
     },
 };

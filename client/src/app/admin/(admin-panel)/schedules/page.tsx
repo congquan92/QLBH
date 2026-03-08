@@ -1,7 +1,7 @@
 "use client";
 
 import { useAdminAuth } from "@/components/feature/admin-auth-provider";
-import { ScheduleApi, type WeeklyReport, type DailyStaff, type MySchedule } from "@/api/schedule.api";
+import { ScheduleApi } from "@/api/schedule.api";
 import { AdminCrudApi } from "@/api/admin-crud.api";
 import { UserApi } from "@/api/user.api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,6 +12,7 @@ import { Calendar, Users, Clock, Loader2, ChevronLeft, ChevronRight, Plus, Trash
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import type { Shift } from "@/types/admin-crud";
+import type { DailyStaff, MySchedule, WeeklyReport } from "@/types/schedule";
 import type { UserProfile } from "@/types/user";
 
 type ViewMode = "weekly-report" | "daily-staff" | "my-schedule" | "assign";
@@ -58,10 +59,7 @@ export default function SchedulePage() {
                 const res = await ScheduleApi.getMySchedule(selectedDate);
                 setMySchedule(res.data);
             } else if (viewMode === "assign" && canManageSchedule) {
-                const [shiftsRes, usersRes] = await Promise.all([
-                    AdminCrudApi.getShifts({ page: 1, size: 100 }),
-                    UserApi.getUsers({ page: 1, size: 100 }),
-                ]);
+                const [shiftsRes, usersRes] = await Promise.all([AdminCrudApi.getShifts({ page: 1, size: 100 }), UserApi.getUsers({ page: 1, size: 100 })]);
                 setShifts(shiftsRes.data.data);
                 setEmployees(usersRes.data.data);
             }
@@ -203,11 +201,7 @@ export default function SchedulePage() {
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                                     <div className="space-y-2">
                                         <Label>Nhân viên</Label>
-                                        <select
-                                            className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                                            value={assignForm.user_id}
-                                            onChange={(e) => setAssignForm((prev) => ({ ...prev, user_id: e.target.value }))}
-                                        >
+                                        <select className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={assignForm.user_id} onChange={(e) => setAssignForm((prev) => ({ ...prev, user_id: e.target.value }))}>
                                             <option value="">Chọn nhân viên</option>
                                             {employees.map((emp) => (
                                                 <option key={emp.id} value={String(emp.id)}>
@@ -218,11 +212,7 @@ export default function SchedulePage() {
                                     </div>
                                     <div className="space-y-2">
                                         <Label>Ca làm việc</Label>
-                                        <select
-                                            className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                                            value={assignForm.shift_id}
-                                            onChange={(e) => setAssignForm((prev) => ({ ...prev, shift_id: e.target.value }))}
-                                        >
+                                        <select className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={assignForm.shift_id} onChange={(e) => setAssignForm((prev) => ({ ...prev, shift_id: e.target.value }))}>
                                             <option value="">Chọn ca</option>
                                             {shifts.map((shift) => (
                                                 <option key={shift.id} value={String(shift.id)}>
@@ -300,12 +290,7 @@ export default function SchedulePage() {
                                                             </div>
                                                         </div>
                                                         {canManageSchedule && (emp as { assignment_id?: number }).assignment_id && (
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="sm"
-                                                                onClick={() => void handleDeleteAssignment((emp as { assignment_id: number }).assignment_id)}
-                                                                disabled={isSaving}
-                                                            >
+                                                            <Button variant="ghost" size="sm" onClick={() => void handleDeleteAssignment((emp as { assignment_id: number }).assignment_id)} disabled={isSaving}>
                                                                 <Trash2 className="h-3 w-3" />
                                                             </Button>
                                                         )}

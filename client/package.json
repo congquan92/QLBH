@@ -6,16 +6,7 @@
         "dev": "next dev",
         "build": "next build",
         "start": "next start",
-        "lint": "eslint",
-        "test:api:auth": "node test/auth.test.mjs",
-        "test:api:product": "node test/product.test.mjs",
-        "test:api:category": "node test/category-navbar.test.mjs",
-        "test:api:hello": "node test/hello.test.mjs",
-        "test:api:order": "node test/order.test.mjs",
-        "test:api:voucher": "node test/voucher.test.mjs",
-        "test:api:review": "node test/review.test.mjs",
-        "test:api:cart": "node test/cart.test.mjs",
-        "test:api:user": "node test/user.test.mjs"
+        "lint": "eslint"
     },
     "dependencies": {
         "@hookform/resolvers": "^5.2.2",

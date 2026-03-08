@@ -1,7 +1,7 @@
 "use client";
 
 import { useAdminAuth } from "@/components/feature/admin-auth-provider";
-import { JobHistoryApi, type CareerPath } from "@/api/job-history.api";
+import { JobHistoryApi } from "@/api/job-history.api";
 import { UserApi } from "@/api/user.api";
 import { AdminCrudApi } from "@/api/admin-crud.api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,6 +14,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import type { UserProfile } from "@/types/user";
 import type { Position } from "@/types/admin-crud";
+import type { CareerPath } from "@/types/job-history";
 
 type PromotionForm = {
     userId: string;

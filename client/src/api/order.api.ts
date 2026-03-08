@@ -111,20 +111,20 @@ export const OrderApi = {
 
     changeStatus: async (id: number, status: string) => {
         try {
-            const res = await axiosInstance.post(`/order/changestatus/${id}/${status}`);
+            const res = await axiosInstance.post(`/order/changestatus/${id}`, { status });
             return res.data;
         } catch (error) {
-            console.warn(`${WARNING_PREFIX} /order/changestatus/{id}/{status} failed.`, error);
+            console.warn(`${WARNING_PREFIX} /order/changestatus/{id} failed.`, error);
             return { status: 500, message: "Change order status failed", data: null };
         }
     },
 
     complete: async (id: number) => {
         try {
-            const res = await axiosInstance.put(`/complete/${id}`);
+            const res = await axiosInstance.put(`/order/complete/${id}`);
             return res.data;
         } catch (error) {
-            console.warn(`${WARNING_PREFIX} /complete/{id} failed.`, error);
+            console.warn(`${WARNING_PREFIX} /order/complete/{id} failed.`, error);
             return { status: 500, message: "Complete order failed", data: null };
         }
     },
