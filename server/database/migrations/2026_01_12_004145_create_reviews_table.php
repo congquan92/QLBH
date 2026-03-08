@@ -15,8 +15,8 @@ return new class extends Migration {
 
             $table->double('rating');
             $table->string('comment');
-
             $table->foreignId('user_id')->constrained();
+            $table->foreignId('product_id')->constrained();
             $table->foreignId('order_item_id')->constrained();
             $table->timestamps();
         });

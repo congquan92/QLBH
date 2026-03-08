@@ -6,8 +6,9 @@ use App\Http\Responses\Order\OrderResponse;
 use App\Models\Order;
 use App\Http\Mapper\UserMapper;
 use App\Http\Mapper\OrderItemMapper;
+use JsonSerializable;
 
-class OrderMapper
+class OrderMapper implements JsonSerializable
 {
     public static function toOrderResponse(Order $order): OrderResponse
     {
@@ -27,17 +28,24 @@ class OrderMapper
             note: $order->note,
             isConfirmed: (bool) $order->is_confirmed,
             totalFeeShip: (float) $order->total_fee_ship,
-            discountValue: (float) $order->discount_value,
+            discountValue: (float) $order->voucher_discount_value,
             originalOrderAmount: (float) $order->original_order_amount,
-            deliveryStatus: $order->delivery_status, 
-            paymentStatus: $order->payment_status,  
-            paymentType: $order->payment_type,   
+            deliveryStatus: $order->order_status->value,
+            paymentStatus: $order->payment_status->value,
+            paymentType: $order->payment_type->value,
             orderTrackingCode: $order->order_tracking_code,
-            createdAt: $order->created_at, 
+            createdAt: $order->created_at,
             updatedAt: $order->updated_at,
-            orderItemResponses: $order->orderItems->map(function ($item) {
+            voucherResponse: $order->voucherUsage && $order->voucherUsage->voucher
+            ? VoucherMapper::toVoucherResponse($order->voucherUsage->voucher)
+            : null,
+            orderItemResponses: $order->orderItem->map(function ($item) {
                 return OrderItemMapper::toOrderItemResponse($item);
             })->toArray()
         );
+    }
+    public function jsonSerialize(): mixed
+    {
+        return get_object_vars($this);
     }
 }

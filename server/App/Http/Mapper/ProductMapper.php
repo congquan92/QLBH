@@ -58,17 +58,31 @@ class ProductMapper
         );
 
     }
-    private static function mapCategoryParents(?Category $category): array
-    {
-        $parents = [];
-        $current = $category;
-        while ($current) {
-            array_unshift($parents, [
-                'id' => $current->id,
-                'name' => $current->name
-            ]);
-            $current = $current->parent;
-        }
-        return $parents;
+    // Trong ProductMapper.php, chỉnh sửa hàm mapCategoryParents
+private static function mapCategoryParents(?Category $category): array
+{
+    $parents = [];
+    $current = $category;
+    
+    // Thu thập danh sách vào một mảng tạm trước
+    $temp = [];
+    while ($current) {
+        $temp[] = $current;
+        $current = $current->parent;
     }
+    
+    // Đảo ngược mảng để Cha nằm ở đầu (index 0)
+    $temp = array_reverse($temp);
+    
+    // Gán level dựa trên index
+    foreach ($temp as $index => $cat) {
+        $parents[] = [
+            'id'    => $cat->id,
+            'name'  => $cat->name,
+            'level' => $index // 0: Cha, 1: Con, 2: Cháu...
+        ];
+    }
+    
+    return $parents;
+}
 }

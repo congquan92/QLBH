@@ -52,57 +52,57 @@ class ReviewController extends Controller
         return response()->json($review);
     }
 
-    /**
-     * Lấy các đánh giá của bản thân cho một sản phẩm cụ thể
-     */
-    public function getMyReviewByProduct(int $productId): JsonResponse
-    {
-        $reviews = $this->reviewService->getReviewMeByProduct($productId);
-        return response()->json($reviews);
-    }
+    // /**
+    //  * Lấy các đánh giá của bản thân cho một sản phẩm cụ thể
+    //  */
+    // public function getMyReviewByProduct(int $productId): JsonResponse
+    // {
+    //     $reviews = $this->reviewService->getReviewMeByProduct($productId);
+    //     return response()->json($reviews);
+    // }
 
-    /**
-     * Thêm ảnh vào bài review đã có (Dành cho chức năng cập nhật ảnh)
-     */
-    public function addImages(Request $request, int $reviewId): JsonResponse
-    {
-        $request->validate([
-            'image_urls' => 'required|array',
-            'image_urls.*' => 'string|url'
-        ]);
+    // /**
+    //  * Thêm ảnh vào bài review đã có (Dành cho chức năng cập nhật ảnh)
+    //  */
+    // public function addImages(Request $request, int $reviewId): JsonResponse
+    // {
+    //     $request->validate([
+    //         'image_urls' => 'required|array',
+    //         'image_urls.*' => 'string|url'
+    //     ]);
 
-        $this->reviewService->addImage($request->image_urls, $reviewId);
-        return response()->json(['message' => 'Thêm hình ảnh thành công.']);
-    }
+    //     $this->reviewService->addImage($request->image_urls, $reviewId);
+    //     return response()->json(['message' => 'Thêm hình ảnh thành công.']);
+    // }
 
-    /**
-     * Xóa danh sách ảnh khỏi bài review
-     */
-    public function deleteImages(Request $request, int $reviewId): JsonResponse
-    {
-        $request->validate([
-            'image_ids' => 'required|array',
-            'image_ids.*' => 'integer'
-        ]);
+    // /**
+    //  * Xóa danh sách ảnh khỏi bài review
+    //  */
+    // public function deleteImages(Request $request, int $reviewId): JsonResponse
+    // {
+    //     $request->validate([
+    //         'image_ids' => 'required|array',
+    //         'image_ids.*' => 'integer'
+    //     ]);
 
-        $this->reviewService->deleteImage($request->image_ids, $reviewId);
-        return response()->json(['message' => 'Xóa hình ảnh thành công.']);
-    }
+    //     $this->reviewService->deleteImage($request->image_ids, $reviewId);
+    //     return response()->json(['message' => 'Xóa hình ảnh thành công.']);
+    // }
 
-    /**
-     * Cập nhật nội dung bài đánh giá
-     */
-    public function update(Request $request, int $id): JsonResponse
-    {
-        // Bạn có thể tạo ReviewUpdateRequest riêng nếu cần validate sâu hơn
-        $this->reviewService->update($id, $request->all());
-        return response()->json(['message' => 'Cập nhật đánh giá thành công.']);
-    }
+    // /**
+    //  * Cập nhật nội dung bài đánh giá
+    //  */
+    // public function update(Request $request, int $id): JsonResponse
+    // {
+    //     // Bạn có thể tạo ReviewUpdateRequest riêng nếu cần validate sâu hơn
+    //     $this->reviewService->update($id, $request->all());
+    //     return response()->json(['message' => 'Cập nhật đánh giá thành công.']);
+    // }
 
-    public function destroy($id): void
-    {
+    // public function destroy($id): void
+    // {
 
-        $this->reviewService->delete($id);
+    //     $this->reviewService->delete($id);
 
-    }
+    // }
 }

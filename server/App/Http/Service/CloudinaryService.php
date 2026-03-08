@@ -23,7 +23,7 @@ class CloudinaryService
     {
         try {
             $uploadApi = new UploadApi();
-            
+
             // Tận dụng getRealPath() để lấy đường dẫn file tạm trên server
             $response = $uploadApi->upload($file->getRealPath(), [
                 'resource_type' => 'auto', // Tự động nhận diện ảnh/video/file
@@ -47,7 +47,15 @@ class CloudinaryService
             foreach ($urls as $url) {
                 if ($url && str_contains($url, 'cloudinary.com')) {
                     $publicId = $this->extractPublicId($url);
-                    $uploadApi->destroy($publicId);
+
+                    // Xác định resource_type dựa trên URL
+                    $resourceType = str_contains($url, '/video/upload/') ? 'video' : 'image';
+
+                    $uploadApi->destroy($publicId, [
+                        'resource_type' => $resourceType
+                    ]);
+
+                    Log::info("Đã xóa file ($resourceType): " . $publicId);
                 }
             }
         } catch (\Exception $e) {
@@ -60,22 +68,29 @@ class CloudinaryService
      */
     private function extractPublicId(string $url): string
     {
-        // Cắt chuỗi để lấy phần sau 'upload/' và bỏ phần đuôi mở rộng
+        // 1. Tách lấy phần sau '/upload/'
         $parts = explode('/upload/', $url);
-        if (isset($parts[1])) {
-            $pathAfterUpload = $parts[1];
-            // Bỏ phần version (ví dụ: v1234567/) nếu có
-            $segments = explode('/', $pathAfterUpload);
-            
-            // Nếu segment đầu tiên bắt đầu bằng 'v' và là số, thì đó là version
-            if (preg_match('/^v\d+$/', $segments[0])) {
-                array_shift($segments);
-            }
-            
-            $filenameWithExtension = implode('/', $segments);
-            return pathinfo($filenameWithExtension, PATHINFO_FILENAME);
+        if (!isset($parts[1]))
+            return "";
+
+        $pathAfterUpload = $parts[1];
+
+        // 2. Tách các thành phần
+        $segments = explode('/', $pathAfterUpload);
+
+        // 3. Nếu có version (v12345...), bỏ nó đi
+        if (preg_match('/^v\d+$/', $segments[0])) {
+            array_shift($segments);
         }
-        
-        return pathinfo(basename($url), PATHINFO_FILENAME);
+
+        // 4. Lấy phần còn lại làm Public ID
+        $publicIdWithExtension = implode('/', $segments);
+
+        // 5. BỎ pathinfo(..., PATHINFO_FILENAME) đi. 
+        // Chúng ta cần cả đuôi file và giữ nguyên folder (ví dụ: qlbh_uploads/abc.jpg)
+        // Cloudinary yêu cầu public_id không chứa đuôi mở rộng (.jpg, .png)
+        $pathInfo = pathinfo($publicIdWithExtension);
+
+        return $pathInfo['dirname'] !== '.' ? $pathInfo['dirname'] . '/' . $pathInfo['filename'] : $pathInfo['filename'];
     }
 }

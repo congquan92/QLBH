@@ -1,6 +1,7 @@
 <?php
 namespace App\Http\Service;
 
+use App\Enums\DeliveryStatus;
 use App\Http\Mapper\ReviewMapper;
 use App\Http\Requests\ReviewProduct\ReviewCreationRequest;
 use App\Http\Responses\PageResponse;
@@ -50,11 +51,11 @@ class ReviewSerivce
         return DB::transaction(function () use ($data) {
             $user = auth()->user();
 
-            // 1. Kiểm tra nghiệp vụ (Chỉ Service mới làm việc này)
             $orderItem = OrderItem::where('id', $data['order_item_id'])
                 ->whereHas('order', function ($query) use ($user) {
                     $query->where('user_id', $user->id)
-                        ->where('status', 'COMPLETED')
+
+                        ->where('order_status', DeliveryStatus::COMPLETED)
                         ->where('is_confirmed', true);
                 })->firstOrFail();
 
@@ -77,7 +78,6 @@ class ReviewSerivce
             if (!empty($data['image_url'])) {
                 $images = collect($data['image_url'])->map(fn($url) => [
                     'url_image' => $url,
-                    'status' => 'ACTIVE'
                 ])->toArray();
 
                 $review->image()->createMany($images);
@@ -96,7 +96,6 @@ class ReviewSerivce
     private function updateProductAvgRating($productId)
     {
         $avgRating = Review::where('product_id', $productId)
-            ->where('status', 'ACTIVE')
             ->avg('rating');
 
         Product::where('id', $productId)->update([
@@ -181,7 +180,6 @@ class ReviewSerivce
         $reviews = Review::with(['user', 'image', 'product', 'OrderItem'])
             ->where('product_id', $productId)
             ->where('user_id', $user->id)
-            ->where('status', 'ACTIVE')
             ->get();
 
         return $reviews->map(function ($review) {

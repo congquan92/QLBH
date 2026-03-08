@@ -1,5 +1,5 @@
 <?php
-namespace App\States;
+namespace App\Http\States;
 
 use App\Enums\DeliveryStatus;
 use App\Http\Service\FirebaseService;

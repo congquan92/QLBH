@@ -21,8 +21,9 @@ class CartController extends Controller
     {
         $result = $this->cartService->getCarts(
             $request->query('sort'),
-            (int)$request->query('page', 1),
-            (int)$request->query('size', 10)
+            (int) $request->query('page', 1),
+            (int) $request->query('size', 10),
+            $request->query('keyword') // Lấy keyword từ query string
         );
 
         return response()->json($result);
@@ -59,7 +60,7 @@ class CartController extends Controller
         ]);
 
         try {
-            $cart = $this->cartService->update((int)$id, $request->only('quantity'));
+            $cart = $this->cartService->update((int) $id, $request->only('quantity'));
             return response()->json([
                 'message' => 'Cập nhật số lượng thành công',
                 'data' => $cart
@@ -75,7 +76,7 @@ class CartController extends Controller
     public function destroy($id): JsonResponse
     {
         try {
-            $this->cartService->delete((int)$id);
+            $this->cartService->delete((int) $id);
             return response()->json(['message' => 'Đã xóa sản phẩm khỏi giỏ hàng']);
         } catch (\Exception $e) {
             return response()->json(['message' => $e->getMessage()], 400);

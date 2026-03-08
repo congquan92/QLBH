@@ -51,6 +51,7 @@ Route::get('/voucher/detail/{id}', [VoucherController::class, 'show']);
 Route::get('/reviews/{id}', action: [ReviewController::class, 'show']);
 Route::post('/otp/verify-otp', [BrevoController::class, 'verify']);
 Route::get('/user/email', [UserController::class, 'getUserByEmail']);
+ Route::get('/payment/vnpay-return', [PaymentController::class, 'returnPayment'])->name('vnpay.return');
 // Notifications
 Route::post('/otp/send', [BrevoController::class, 'send']);
 Route::post('/user/{userId}/verify-account', [UserController::class, 'verifyAccount']);
@@ -101,12 +102,11 @@ Route::middleware('auth')->group(function () {
 
     // Product
     Route::prefix('product')->group(function () {
-        Route::get('/list/sale', [ProductController::class, 'findAllForAdmin'])->middleware('can:VIEW_PRODUCTS_ADMIN');
+        Route::get('/admin/list', [ProductController::class, 'findAllForAdmin'])->middleware('can:VIEW_PRODUCTS_ADMIN');
         Route::post('/add', [ProductController::class, 'store'])->middleware('can:CREATE_PRODUCT');
         Route::put('/update', [ProductController::class, 'updateProduct'])->middleware('can:UPDATE_PRODUCT');
-        Route::get('/admin/detail/{productId}', [ProductController::class, 'getProductByIdForAdmin'])->middleware('can:VIEW_PRODUCTS_ADMIN');
         Route::post('/{productId}/restore', [ProductController::class, 'restoreProduct'])->middleware('can:RESTORE_PRODUCT');
-        Route::post('/{productId}/variants/add', [ProductController::class, 'addVariants'])->middleware('can:UPDATE_PRODUCT');
+      Route::post('/{id}/variants/add', [ProductController::class, 'addVariants']);
         Route::put('/{productId}/variants/update', [ProductController::class, 'updateVariants'])->middleware('can:UPDATE_PRODUCT');
         Route::delete('/{productId}/delete', [ProductController::class, 'destroy'])->middleware('can:DELETE_PRODUCT');
         Route::delete('/{id}/attribute/delete', [ProductController::class, 'deleteAttribute'])->middleware('can:DELETE_PRODUCT');
@@ -117,8 +117,6 @@ Route::middleware('auth')->group(function () {
     Route::post('/file/upload', [UploadFileController::class, 'upload']);
     Route::delete('/file/delete', [UploadFileController::class, 'delete']);
 
-    // Supplier
-    Route::post('/supplier/add', [SupplierController::class, 'store'])->middleware('can:ADD_SUPPLIER');
 
     Route::prefix('attendance')->group(function () {
         Route::post('/record', [AttendanceController::class, 'record']);
@@ -128,8 +126,8 @@ Route::middleware('auth')->group(function () {
     // Order
     Route::get("/order/list", [OrderController::class, 'findAll']);
     Route::get("/order/admin/list", [OrderController::class, 'findAllByAdmin'])->middleware('can:VIEW_ORDERS_ADMIN');
-    Route::post("/order/changestatus/{id}/{status}", [OrderController::class, 'updateStatus'])->middleware('can:UPDATE_ORDER_STATUS');
-    Route::put("/complete/{id}", [OrderController::class, 'completeOrder'])->middleware('can:UPDATE_ORDER_STATUS');
+    Route::post("/order/changestatus/{id}", [OrderController::class, 'updateStatus'])->middleware('can:UPDATE_ORDER_STATUS');
+    Route::put("/order/complete/{id}", [OrderController::class, 'completeOrder']);
     Route::get("/order/{id}", [OrderController::class, 'getOrderById']);
     Route::get('/order/admin/{id}', [OrderController::class, 'getOrderByIdForAdmin'])->middleware('can:VIEW_ORDERS_ADMIN');
     Route::delete('/order/cancel/{id}', [OrderController::class, 'cancelOrder']);
@@ -177,7 +175,7 @@ Route::middleware('auth')->group(function () {
     Route::prefix('export')->group(function () {
         Route::get('/schedule', [ExportController::class, 'exportSchedule'])->middleware('can:EXPORT_DATA');
         Route::get('/my-schedule', [ExportController::class, 'exportMySchedule']);
-        Route::get('/export/late-arrivals', [ExportController::class, 'exportLateArrivals'])
+        Route::get('/late-arrivals', [ExportController::class, 'exportLateArrivals'])
             ->middleware('can:VIEW_STATISTICAL');
     });
 
@@ -217,7 +215,6 @@ Route::middleware('auth')->group(function () {
     // Payment
     Route::prefix('payment')->group(function () {
         Route::post('/{orderId}/add', [PaymentController::class, 'addPayment']);
-        Route::get('/vnpay-return', [PaymentController::class, 'returnPayment'])->name('vnpay.return');
     });
 
     // RBAC: Roles
@@ -267,20 +264,20 @@ Route::middleware('auth')->group(function () {
     Route::prefix('reviews')->group(function () {
         Route::post('/', [ReviewController::class, 'store']); // Tạo review
         Route::get('/me/{productId}', [ReviewController::class, 'getMyReviewByProduct']); // Lấy review của mình theo SP
-        Route::put('/{id}', [ReviewController::class, 'update']); // Cập nhật text/rating
+        // Route::put('/{id}', [ReviewController::class, 'update']); // Cập nhật text/rating
 
-        // Quản lý ảnh của bài Review
-        Route::post('/{reviewId}/images', [ReviewController::class, 'addImages']);
-        Route::delete('/{reviewId}/images', [ReviewController::class, 'deleteImages']);
+        // // Quản lý ảnh của bài Review
+        // Route::post('/{reviewId}/images', [ReviewController::class, 'addImages']);
+        // Route::delete('/{reviewId}/images', [ReviewController::class, 'deleteImages']);
     });
 
     // Nhóm hành động dành cho Quản trị viên
     Route::prefix('reviews')->group(function () {
         Route::get('/', [ReviewController::class, 'index'])->middleware('can:VIEW_REVIEWS_ADMIN');
 
-        // Nếu bạn thêm hàm xóa review vi phạm
-        Route::delete('/{id}', [ReviewController::class, 'destroy'])
-            ->middleware('can:DELETE_REVIEWS_ADMIN');
+        // // Nếu bạn thêm hàm xóa review vi phạm
+        // Route::delete('/{id}', [ReviewController::class, 'destroy'])
+        //     ->middleware('can:DELETE_REVIEWS_ADMIN');
     });
 
     Route::prefix('suppliers')->group(function () {
@@ -318,6 +315,8 @@ Route::middleware('auth')->group(function () {
 
         Route::post('/{id}/confirm', [ImportProductController::class, 'confirm'])->middleware('can:CONFIRM_IMPORT_PRODUCT');
         Route::post('/{id}/cancel', [ImportProductController::class, 'cancel'])->middleware('can:CANCEL_IMPORT_PRODUCT');
+
+        Route::get('/{id}', [ImportProductController::class, 'show']);
 
         Route::put('/{id}/quantities', [ImportProductController::class, 'updateQuantities'])->middleware('can:UPDATE_IMPORT_PRODUCT');
         Route::delete('/{id}', [ImportProductController::class, 'destroy'])->middleware('can:DELETE_IMPORT_PRODUCT');

@@ -111,7 +111,7 @@ class GhnService
      */
     private function buildGhnPayload($order, $requiredNote)
     {
-        $items = $order->orderItems->map(function ($item) {
+        $items = $order->orderItem->map(function ($item) {
             return [
                 "name" => $item->name_product_snapshot,
                 "code" => $item->productVariant->sku ?? "SKU",
