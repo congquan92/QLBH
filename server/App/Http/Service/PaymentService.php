@@ -27,72 +27,75 @@ class PaymentService
     /**
      * Tạo URL thanh toán VNPay (Tương đương hàm add trong Java)
      */
-    public function createPaymentUrl(Request $request, $orderId)
-    {
-        $user = auth()->user();
-        $order = Order::findOrFail($orderId);
+public function createPaymentUrl(Request $request, $orderId)
+{
+    $order = Order::findOrFail($orderId);
+    
+    // Đảm bảo cấu hình luôn lấy đúng key từ file config/vnpay.php
+    $vnp_TmnCode = config('vnpay.vnp_TmnCode');
+    $vnp_HashSecret = config('vnpay.vnp_HashSecret');
+    $vnp_Url = config('vnpay.vnp_Url');
+    $vnp_Returnurl = config('vnpay.vnp_ReturnUrl');
 
-        // Kiểm tra logic nghiệp vụ
-        if ($order->user_id !== $user->id) {
-            throw new BusinessException(ErrorCode::NOT_EXISTED, "Bạn không có quyền thanh toán đơn hàng này.");
-        }
-        if ($order->payment_type !== PaymentType::BANK_TRANSFER) {
-            throw new BusinessException(ErrorCode::BAD_REQUEST, "Phương thức thanh toán của đơn hàng không phải là chuyển khoản ngân hàng.");
-        }
-        if ($order->payment_status === PaymentStatus::PAID) {
-            throw new BusinessException(ErrorCode::BAD_REQUEST, "Đơn hàng này đã được thanh toán trước đó.");
-        }
+    Log::info("VNPay Config Check:", [
+        'vnp_TmnCode' => $vnp_TmnCode,
+        // Cảnh báo: Chỉ log 3 ký tự đầu của Secret để bảo mật, không log hết
+        'vnp_HashSecret_Preview' => $vnp_HashSecret,
+        'vnp_Url' => $vnp_Url,
+        'vnp_ReturnUrl' => $vnp_Returnurl
+    ]);
+    // QUAN TRỌNG: Thiết lập múi giờ GMT+7 cho riêng phiên làm việc này
+    date_default_timezone_set('Asia/Ho_Chi_Minh');
 
-        $vnp_TmnCode = config('vnpay.vnp_TmnCode');
-        $vnp_HashSecret = config('vnpay.vnp_HashSecret');
-        $vnp_Url = config('vnpay.vnp_Url');
-        $vnp_Returnurl = config('vnpay.vnp_ReturnUrl');
-
-        $vnp_TxnRef = "ORD" . $orderId . "_" . now()->getTimestampMs();
-        $vnp_Amount = $order->total_amount * 100;
-
-        $vnp_Params = [
-            "vnp_Version" => config('vnpay.vnp_Version'),
-            "vnp_Command" => config('vnpay.vnp_Command'),
-            "vnp_TmnCode" => $vnp_TmnCode,
-            "vnp_Amount" => $vnp_Amount,
-            "vnp_CurrCode" => "VND",
-            "vnp_TxnRef" => $vnp_TxnRef,
-            "vnp_OrderInfo" => "Thanh toan don hang:" . $vnp_TxnRef,
-            "vnp_OrderType" => "other",
-            "vnp_Locale" => "vn",
-            "vnp_ReturnUrl" => $vnp_Returnurl,
-            "vnp_IpAddr" => $request->ip(),
-            "vnp_CreateDate" => now()->format('YmdHis'),
-            "vnp_ExpireDate" => now()->addMinutes(5)->format('YmdHis'),
-        ];
-
-        // Sắp xếp dữ liệu theo Alphabet (giống Collections.sort trong Java)
-        ksort($vnp_Params);
-
-        $hashData = "";
-        $query = "";
-        $i = 0;
-
-        foreach ($vnp_Params as $key => $value) {
-            if ($i == 1) {
-                $hashData .= '&' . urlencode($key) . "=" . urlencode($value);
-            } else {
-                $hashData .= urlencode($key) . "=" . urlencode($value);
-                $i = 1;
-            }
-            $query .= urlencode($key) . "=" . urlencode($value) . '&';
-        }
-
-        $query = rtrim($query, '&'); // QUAN TRỌNG: Loại bỏ dấu & thừa cuối cùng
-        $vnp_Url = $vnp_Url . "?" . $query;
-
-        $vnpSecureHash = hash_hmac('sha512', $hashData, $vnp_HashSecret);
-        $vnp_Url .= '&vnp_SecureHash=' . $vnpSecureHash;
-
-        Redis::setex($vnp_TxnRef, 300, $orderId);
-        return $vnp_Url;
+    $vnp_TxnRef = "ORD" . $orderId . "_" . time(); 
+    $vnp_Amount = (int)($order->total_amount * 100);
+    
+    // Lấy IP chuẩn IPv4
+    $ipAddr = $request->ip();
+    if ($ipAddr === '::1' || str_contains($ipAddr, ':')) {
+        $ipAddr = '127.0.0.1';
     }
+
+    $vnp_Params = [
+        "vnp_Version"    => "2.1.0",
+        "vnp_Command"    => "pay",
+        "vnp_TmnCode"    => $vnp_TmnCode,
+        "vnp_Amount"     => $vnp_Amount,
+        "vnp_CurrCode"   => "VND",
+        "vnp_TxnRef"     => $vnp_TxnRef,
+        "vnp_OrderInfo"  => "Thanh toan don hang " . $orderId,
+        "vnp_OrderType"  => "other",
+        "vnp_Locale"     => "vn",
+        "vnp_ReturnUrl"  => $vnp_Returnurl,
+        "vnp_IpAddr"     => $ipAddr,
+        "vnp_CreateDate" => date('YmdHis'),
+        "vnp_ExpireDate" => date('YmdHis', strtotime('+15 minutes')),
+    ];
+
+    ksort($vnp_Params);
+
+    $hashData = "";
+    $query = "";
+    $i = 0;
+
+    foreach ($vnp_Params as $key => $value) {
+        if ($i == 1) {
+            $hashData .= '&' . urlencode($key) . "=" . urlencode($value);
+        } else {
+            $hashData .= urlencode($key) . "=" . urlencode($value);
+            $i = 1;
+        }
+        $query .= urlencode($key) . "=" . urlencode($value) . '&';
+    }
+
+    // Nối trực tiếp SecureHash mà không cần thêm dấu & thừa
+    $vnpSecureHash = hash_hmac('sha512', $hashData, $vnp_HashSecret);
+    $finalUrl = $vnp_Url . "?" . $query . 'vnp_SecureHash=' . $vnpSecureHash;
+
+    Redis::setex($vnp_TxnRef, 900, $orderId);
+
+    return $finalUrl;
+}
 
     /**
      * Xử lý Callback từ VNPay

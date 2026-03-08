@@ -51,6 +51,7 @@ Route::get('/voucher/detail/{id}', [VoucherController::class, 'show']);
 Route::get('/reviews/{id}', action: [ReviewController::class, 'show']);
 Route::post('/otp/verify-otp', [BrevoController::class, 'verify']);
 Route::get('/user/email', [UserController::class, 'getUserByEmail']);
+ Route::get('/payment/vnpay-return', [PaymentController::class, 'returnPayment'])->name('vnpay.return');
 // Notifications
 Route::post('/otp/send', [BrevoController::class, 'send']);
 Route::post('/user/{userId}/verify-account', [UserController::class, 'verifyAccount']);
@@ -174,7 +175,7 @@ Route::middleware('auth')->group(function () {
     Route::prefix('export')->group(function () {
         Route::get('/schedule', [ExportController::class, 'exportSchedule'])->middleware('can:EXPORT_DATA');
         Route::get('/my-schedule', [ExportController::class, 'exportMySchedule']);
-        Route::get('/export/late-arrivals', [ExportController::class, 'exportLateArrivals'])
+        Route::get('/late-arrivals', [ExportController::class, 'exportLateArrivals'])
             ->middleware('can:VIEW_STATISTICAL');
     });
 
@@ -214,7 +215,6 @@ Route::middleware('auth')->group(function () {
     // Payment
     Route::prefix('payment')->group(function () {
         Route::post('/{orderId}/add', [PaymentController::class, 'addPayment']);
-        Route::get('/vnpay-return', [PaymentController::class, 'returnPayment'])->name('vnpay.return');
     });
 
     // RBAC: Roles
