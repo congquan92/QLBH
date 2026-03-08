@@ -19,17 +19,101 @@ import {
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ChevronRight, LogOut, Settings, User2 } from "lucide-react";
-import { adminDashboardItem, adminMenuSections, type AdminMenuItem } from "@/data/admin";
+import {
+    BadgeDollarSign,
+    Briefcase,
+    CalendarDays,
+    ChevronRight,
+    Clock3,
+    FileText,
+    Folder,
+    ImageIcon,
+    KeyRound,
+    LayoutDashboard,
+    LogOut,
+    LucideIcon,
+    MapPin,
+    Package,
+    ShieldCheck,
+    ShoppingCart,
+    Star,
+    Tags,
+    Truck,
+    User2,
+    UserCog,
+    Users,
+    Wallet,
+    Settings,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { toast } from "sonner";
 
-function canRenderMenuItem(item: AdminMenuItem, canAccessPath: (path: string) => boolean, hasAnyPermission: (permissionList: string[]) => boolean) {
-    const canByPath = canAccessPath(item.url);
-    if (!canByPath) return false;
+type SidebarApiItem = {
+    title: string;
+    url: string;
+    permissions: string[];
+    icon: LucideIcon;
+};
 
-    if (!item.permissions || item.permissions.length === 0) return true;
+type SidebarApiSection = {
+    title: string;
+    icon: LucideIcon;
+    items: SidebarApiItem[];
+};
+
+function normalizeIconKey(value?: string) {
+    return String(value ?? "")
+        .trim()
+        .toLowerCase()
+        .replace(/[_\s]+/g, "-");
+}
+
+function resolveMenuIcon(iconRaw?: string, title?: string, url?: string): LucideIcon {
+    const tokens = [normalizeIconKey(iconRaw), normalizeIconKey(title), normalizeIconKey(url)].filter(Boolean);
+
+    const iconChecks: Array<{ matcher: RegExp; icon: LucideIcon }> = [
+        { matcher: /(dashboard|home|tong-quan)/, icon: LayoutDashboard },
+        { matcher: /(user|users|customer|employee|nhan-vien|khach-hang)/, icon: Users },
+        { matcher: /(role|permission|rbac|group|phan-quyen)/, icon: ShieldCheck },
+        { matcher: /(address|dia-chi)/, icon: MapPin },
+        { matcher: /(product|san-pham)/, icon: Package },
+        { matcher: /(category|danh-muc|tag)/, icon: Tags },
+        { matcher: /(order|don-hang|cart|gio-hang)/, icon: ShoppingCart },
+        { matcher: /(supplier|nha-cung-cap|import|nhap)/, icon: Truck },
+        { matcher: /(shift|ca-lam|schedule|lich)/, icon: CalendarDays },
+        { matcher: /(attendance|cham-cong|time|clock)/, icon: Clock3 },
+        { matcher: /(salary|luong|payment|thanh-toan)/, icon: Wallet },
+        { matcher: /(rank|voucher|promotion|khuyen-mai)/, icon: Star },
+        { matcher: /(review|danh-gia|post|bai-viet|content)/, icon: FileText },
+        { matcher: /(image|media|photo|hinh-anh|upload)/, icon: ImageIcon },
+        { matcher: /(position|job|nghe-nghiep|career)/, icon: Briefcase },
+        { matcher: /(setting|config|cai-dat)/, icon: Settings },
+        { matcher: /(otp|security|auth|bao-mat)/, icon: KeyRound },
+        { matcher: /(stat|report|thong-ke|revenue)/, icon: BadgeDollarSign },
+        { matcher: /(profile|account|tai-khoan)/, icon: UserCog },
+    ];
+
+    for (const token of tokens) {
+        const matched = iconChecks.find((entry) => entry.matcher.test(token));
+        if (matched) return matched.icon;
+    }
+
+    return Folder;
+}
+
+function normalizeAdminUrl(raw?: string) {
+    const value = String(raw ?? "").trim();
+    if (!value) return "";
+    if (value.startsWith("/admin")) return value;
+    if (value.startsWith("/")) return `/admin${value}`;
+    return `/admin/${value}`;
+}
+
+function canRenderApiItem(item: SidebarApiItem, canAccessPath: (path: string) => boolean, hasAnyPermission: (permissionList: string[]) => boolean) {
+    if (!item.url) return false;
+    if (!canAccessPath(item.url)) return false;
+    if (item.permissions.length === 0) return true;
     return hasAnyPermission(item.permissions);
 }
 
@@ -37,18 +121,50 @@ export function AppSidebar() {
     const pathname = usePathname();
     const { session, canAccessPath, hasAnyPermission, logout } = useAdminAuth();
 
-    const visibleDashboard = canRenderMenuItem(adminDashboardItem, canAccessPath, hasAnyPermission);
-    const visibleSections = adminMenuSections
-        .map((section) => ({
-            ...section,
-            groups: section.groups
-                .map((group) => ({
-                    ...group,
-                    items: group.items.filter((item) => canRenderMenuItem(item, canAccessPath, hasAnyPermission)),
-                }))
-                .filter((group) => group.items.length > 0),
+    const visibleDashboard = canAccessPath("/admin/dashboard");
+
+    const sections: SidebarApiSection[] = (session?.role?.page ?? [])
+        .map((page) => {
+            const items: SidebarApiItem[] = (page.items ?? [])
+                .map((item) => {
+                    const permissions = (item.permissions ?? [])
+                        .map((permission) =>
+                            String(permission?.name ?? "")
+                                .trim()
+                                .toUpperCase(),
+                        )
+                        .filter((permission) => permission.length > 0);
+
+                    return {
+                        title: String(item.name ?? item.url ?? "Untitled"),
+                        url: normalizeAdminUrl(item.url),
+                        permissions,
+                        icon: resolveMenuIcon(item.icon, item.name, item.url),
+                    };
+                })
+                .filter((item) => canRenderApiItem(item, canAccessPath, hasAnyPermission));
+
+            return {
+                title: String(page.title ?? "Menu"),
+                icon: resolveMenuIcon(page.icon, page.title),
+                items,
+            };
+        })
+        .filter((section) => section.items.length > 0);
+
+    const fallbackItems: SidebarApiItem[] = (session?.allowedUrls ?? [])
+        .map((url) => normalizeAdminUrl(url))
+        .filter((url) => url.startsWith("/admin") && url !== "/admin/dashboard")
+        .map((url) => ({
+            title: url.split("/").filter(Boolean).pop()?.replace(/-/g, " ") ?? url,
+            url,
+            permissions: [],
+            icon: resolveMenuIcon(undefined, undefined, url),
         }))
-        .filter((section) => section.groups.length > 0);
+        .filter((item, index, arr) => arr.findIndex((candidate) => candidate.url === item.url) === index)
+        .filter((item) => canRenderApiItem(item, canAccessPath, hasAnyPermission));
+
+    const visibleSections = sections.length > 0 ? sections : fallbackItems.length > 0 ? [{ title: "Menu", icon: Folder, items: fallbackItems }] : [];
 
     const profileName = session?.email ? session.email.split("@")[0] : "Admin";
     const profileEmail = session?.email ?? "Chưa có thông tin email";
@@ -72,10 +188,10 @@ export function AppSidebar() {
                         <SidebarGroupContent>
                             <SidebarMenu>
                                 <SidebarMenuItem>
-                                    <SidebarMenuButton asChild tooltip={adminDashboardItem.title} isActive={pathname === adminDashboardItem.url}>
-                                        <Link href={adminDashboardItem.url}>
-                                            <adminDashboardItem.icon />
-                                            <span>{adminDashboardItem.title}</span>
+                                    <SidebarMenuButton asChild tooltip="Dashboard" isActive={pathname === "/admin/dashboard"}>
+                                        <Link href="/admin/dashboard">
+                                            <LayoutDashboard />
+                                            <span>Dashboard</span>
                                         </Link>
                                     </SidebarMenuButton>
                                 </SidebarMenuItem>
@@ -85,41 +201,58 @@ export function AppSidebar() {
                 )}
 
                 {visibleSections.map((section) => (
-                    <SidebarGroup key={section.label}>
-                        <SidebarGroupLabel>{section.label}</SidebarGroupLabel>
+                    <SidebarGroup key={section.title}>
+                        <SidebarGroupLabel>{section.title}</SidebarGroupLabel>
                         <SidebarGroupContent>
                             <SidebarMenu>
-                                {section.groups.map((group) => (
-                                    <Collapsible className="group/collapsible" key={group.title} defaultOpen>
-                                        <SidebarMenuItem>
-                                            <CollapsibleTrigger asChild>
-                                                <SidebarMenuButton tooltip={group.title}>
-                                                    <group.icon />
-                                                    <span className="cursor-pointer">{group.title}</span>
-                                                    <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
-                                                </SidebarMenuButton>
-                                            </CollapsibleTrigger>
-                                            <CollapsibleContent>
-                                                <SidebarMenuSub>
-                                                    {group.items.map((item) => (
+                                <Collapsible className="group/collapsible" key={section.title} defaultOpen>
+                                    <SidebarMenuItem>
+                                        <CollapsibleTrigger asChild>
+                                            <SidebarMenuButton tooltip={section.title}>
+                                                <section.icon />
+                                                <span className="cursor-pointer">{section.title}</span>
+                                                <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                                            </SidebarMenuButton>
+                                        </CollapsibleTrigger>
+                                        <CollapsibleContent>
+                                            <SidebarMenuSub>
+                                                {section.items.map((item) => {
+                                                    const active = pathname === item.url || pathname.startsWith(`${item.url}/`);
+                                                    return (
                                                         <SidebarMenuSubItem key={item.url}>
-                                                            <SidebarMenuSubButton asChild isActive={pathname === item.url}>
+                                                            <SidebarMenuSubButton asChild isActive={active}>
                                                                 <Link href={item.url}>
                                                                     <item.icon className="h-4 w-4" />
                                                                     <span>{item.title}</span>
                                                                 </Link>
                                                             </SidebarMenuSubButton>
                                                         </SidebarMenuSubItem>
-                                                    ))}
-                                                </SidebarMenuSub>
-                                            </CollapsibleContent>
-                                        </SidebarMenuItem>
-                                    </Collapsible>
-                                ))}
+                                                    );
+                                                })}
+                                            </SidebarMenuSub>
+                                        </CollapsibleContent>
+                                    </SidebarMenuItem>
+                                </Collapsible>
                             </SidebarMenu>
                         </SidebarGroupContent>
                     </SidebarGroup>
                 ))}
+
+                {visibleSections.length === 0 && (
+                    <SidebarGroup>
+                        <SidebarGroupLabel>Menu</SidebarGroupLabel>
+                        <SidebarGroupContent>
+                            <SidebarMenu>
+                                <SidebarMenuItem>
+                                    <SidebarMenuButton>
+                                        <Folder />
+                                        <span>Không có mục truy cập</span>
+                                    </SidebarMenuButton>
+                                </SidebarMenuItem>
+                            </SidebarMenu>
+                        </SidebarGroupContent>
+                    </SidebarGroup>
+                )}
             </SidebarContent>
 
             <SidebarFooter className="border-t border-sidebar-border">
@@ -144,9 +277,11 @@ export function AppSidebar() {
                                     <User2 className="mr-2 h-4 w-4" />
                                     <span>Thông tin cá nhân</span>
                                 </DropdownMenuItem>
-                                <DropdownMenuItem className="cursor-pointer">
-                                    <Settings className="mr-2 h-4 w-4" />
-                                    <span>Cài đặt</span>
+                                <DropdownMenuItem asChild className="cursor-pointer">
+                                    <Link href="/admin/settings">
+                                        <Settings className="mr-2 h-4 w-4" />
+                                        <span>Cài đặt</span>
+                                    </Link>
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem
