@@ -173,9 +173,9 @@ export const ProductApi = {
     },
 
     /** DELETE /product/{id}/attribute/delete — Delete attribute */
-    deleteAttribute: async (id: number) => {
+    deleteAttribute: async (id: number, payload?: { attributeIds: number[] }) => {
         try {
-            const res = await axiosInstance.delete(`/product/${id}/attribute/delete`);
+            const res = await axiosInstance.delete(`/product/${id}/attribute/delete`, payload ? { data: payload } : undefined);
             return res.data;
         } catch (error) {
             console.warn(`${WARNING_PREFIX} /product/{id}/attribute/delete failed.`, error);
@@ -184,9 +184,9 @@ export const ProductApi = {
     },
 
     /** DELETE /product/{id}/attributeValue/delete — Delete attribute value */
-    deleteAttributeValue: async (id: number) => {
+    deleteAttributeValue: async (id: number, payload?: { attributeValueIds: number[] }) => {
         try {
-            const res = await axiosInstance.delete(`/product/${id}/attributeValue/delete`);
+            const res = await axiosInstance.delete(`/product/${id}/attributeValue/delete`, payload ? { data: payload } : undefined);
             return res.data;
         } catch (error) {
             console.warn(`${WARNING_PREFIX} /product/{id}/attributeValue/delete failed.`, error);
