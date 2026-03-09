@@ -1,10 +1,8 @@
 version: "3.9"
 
 services:
-  # Service chạy code Laravel
   app:
     build: .
-    container_name: shopzues-app
     restart: always
     environment:
       - APP_ENV=production
@@ -13,25 +11,22 @@ services:
       - DB_PORT=3306
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-    # Railway/Render sẽ tự động map PORT, nhưng nếu dùng VPS riêng thì thêm:
-    # ports:
-    #   - "80:8000"
     depends_on:
       - db
       - redis
 
   redis:
-    image: redis:alpine # Bản alpine nhẹ hơn, tiết kiệm tài nguyên Cloud
+    image: redis:alpine
     restart: always
 
   db:
     image: mysql:8.0
     restart: always
     environment:
-      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD} # Dùng biến môi trường cho bảo mật
-      MYSQL_DATABASE: ${DB_DATABASE}
-      MYSQL_USER: ${DB_USERNAME}
-      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: web2
+      MYSQL_USER: web2
+      MYSQL_PASSWORD: web2password
     volumes:
       - db-prod-data:/var/lib/mysql
 
