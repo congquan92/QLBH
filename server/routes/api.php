@@ -67,7 +67,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/auth/introspect', [AuthController::class, 'introspect']);
 
     // User Management
-    Route::get('/user/list', [UserController::class, 'list'])->middleware('can:VIEW_USERS');
+    Route::get('/user/list', [UserController::class, 'findAll'])->middleware('can:VIEW_USERS');
     Route::get('/user/me', [UserController::class, 'getMyInfo']);
     Route::get('/user/{userId}', [UserController::class, 'getDetailUser'])->middleware('can:VIEW_USER_DETAIL');
     Route::post('/user/add', [UserController::class, 'createUser'])->middleware('can:CREATE_USER');
