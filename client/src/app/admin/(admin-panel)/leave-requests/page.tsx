@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Loader2, CheckCircle, XCircle, Trash2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import type { Shift } from "@/types/admin-crud";
 import type { LeaveRequest } from "@/types/leave";
@@ -39,7 +39,7 @@ export default function LeaveRequestsPage() {
     const canViewAll = hasPermission("VIEW_LEAVE_LIST");
     const canApprove = hasPermission("APPROVE_LEAVE");
 
-    async function fetchData() {
+    const fetchData = useCallback(async () => {
         setIsLoading(true);
         try {
             const [leavesRes, shiftsRes] = await Promise.all([
@@ -53,11 +53,11 @@ export default function LeaveRequestsPage() {
         } finally {
             setIsLoading(false);
         }
-    }
+    }, [canViewAll]);
 
     useEffect(() => {
         void fetchData();
-    }, [canViewAll]);
+    }, [fetchData]);
 
     function resetForm() {
         setForm(emptyForm);

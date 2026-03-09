@@ -1,9 +1,30 @@
-import { createFallbackProductDetailResponse, createFallbackProductListResponse } from "@/data/static-fallback";
 import { axiosInstance } from "@/lib/axios";
 import type { ApiResponse, PageResponse } from "@/types/api";
 import type { Product, ProductDetail } from "@/types/product";
 
 const WARNING_PREFIX = "[WARNING][ProductApi]";
+
+function createEmptyProductListResponse(page: number, size: number): ApiResponse<PageResponse<Product>> {
+    return {
+        status: 200,
+        message: "No product data",
+        data: {
+            data: [],
+            pageNumber: page,
+            pageSize: size,
+            totalPages: 0,
+            totalElements: 0,
+        },
+    };
+}
+
+function createEmptyProductDetailResponse(): ApiResponse<ProductDetail> {
+    return {
+        status: 404,
+        message: "Product detail not found",
+        data: null as unknown as ProductDetail,
+    };
+}
 
 function isValidProductListResponse(payload: unknown): payload is ApiResponse<PageResponse<Product>> {
     if (!payload || typeof payload !== "object") return false;
@@ -26,14 +47,14 @@ export const ProductApi = {
             });
 
             if (!isValidProductListResponse(res.data)) {
-                console.warn(`${WARNING_PREFIX} Invalid /product/list response shape. Fallback static data is used.`);
-                return createFallbackProductListResponse(page, size);
+                console.warn(`${WARNING_PREFIX} Invalid /product/list response shape.`);
+                return createEmptyProductListResponse(page, size);
             }
 
             return res.data;
         } catch (error) {
-            console.warn(`${WARNING_PREFIX} /product/list failed. Fallback static data is used.`, error);
-            return createFallbackProductListResponse(page, size);
+            console.error(`${WARNING_PREFIX} /product/list failed.`, error);
+            return createEmptyProductListResponse(page, size);
         }
     },
 
@@ -42,14 +63,14 @@ export const ProductApi = {
             const res = await axiosInstance.get<ApiResponse<ProductDetail>>(`/product/detail/${id}`);
 
             if (!isValidProductDetailResponse(res.data)) {
-                console.warn(`${WARNING_PREFIX} Invalid /product/detail/{id} response shape. Fallback static data is used.`);
-                return createFallbackProductDetailResponse();
+                console.warn(`${WARNING_PREFIX} Invalid /product/detail/{id} response shape.`);
+                return createEmptyProductDetailResponse();
             }
 
             return res.data;
         } catch (error) {
-            console.warn(`${WARNING_PREFIX} /product/detail/{id} failed. Fallback static data is used.`, error);
-            return createFallbackProductDetailResponse();
+            console.error(`${WARNING_PREFIX} /product/detail/{id} failed.`, error);
+            return createEmptyProductDetailResponse();
         }
     },
 
@@ -60,14 +81,14 @@ export const ProductApi = {
             });
 
             if (!isValidProductListResponse(res.data)) {
-                console.warn(`${WARNING_PREFIX} Invalid /product/category/{id} response shape. Fallback static data is used.`);
-                return createFallbackProductListResponse(page, size);
+                console.warn(`${WARNING_PREFIX} Invalid /product/category/{id} response shape.`);
+                return createEmptyProductListResponse(page, size);
             }
 
             return res.data;
         } catch (error) {
-            console.warn(`${WARNING_PREFIX} /product/category/{id} failed. Fallback static data is used.`, error);
-            return createFallbackProductListResponse(page, size);
+            console.error(`${WARNING_PREFIX} /product/category/{id} failed.`, error);
+            return createEmptyProductListResponse(page, size);
         }
     },
 
@@ -78,13 +99,13 @@ export const ProductApi = {
                 params: { page, size },
             });
             if (!isValidProductListResponse(res.data)) {
-                console.warn(`${WARNING_PREFIX} Invalid /product/admin/list response shape. Fallback static data is used.`);
-                return createFallbackProductListResponse(page, size);
+                console.warn(`${WARNING_PREFIX} Invalid /product/admin/list response shape.`);
+                return createEmptyProductListResponse(page, size);
             }
             return res.data;
         } catch (error) {
-            console.warn(`${WARNING_PREFIX} /product/admin/list failed. Fallback static data is used.`, error);
-            return createFallbackProductListResponse(page, size);
+            console.error(`${WARNING_PREFIX} /product/admin/list failed.`, error);
+            return createEmptyProductListResponse(page, size);
         }
     },
 
@@ -96,13 +117,13 @@ export const ProductApi = {
         try {
             const res = await axiosInstance.get<ApiResponse<ProductDetail>>(`/product/detail/${id}`);
             if (!isValidProductDetailResponse(res.data)) {
-                console.warn(`${WARNING_PREFIX} Invalid /product/detail/{id} response shape. Fallback static data is used.`);
-                return createFallbackProductDetailResponse();
+                console.warn(`${WARNING_PREFIX} Invalid /product/detail/{id} response shape.`);
+                return createEmptyProductDetailResponse();
             }
             return res.data;
         } catch (error) {
-            console.warn(`${WARNING_PREFIX} /product/detail/{id} failed. Fallback static data is used.`, error);
-            return createFallbackProductDetailResponse();
+            console.error(`${WARNING_PREFIX} /product/detail/{id} failed.`, error);
+            return createEmptyProductDetailResponse();
         }
     },
 

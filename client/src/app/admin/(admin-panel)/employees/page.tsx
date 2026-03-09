@@ -3,15 +3,14 @@
 import { useAdminAuth } from "@/components/feature/admin-auth-provider";
 import { UserApi } from "@/api/user.api";
 import { RbacApi } from "@/api/rbac.api";
-import { JobHistoryApi } from "@/api/job-history.api";
 import { AdminPageShell } from "@/components/feature/admin-page-shell";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Search, Plus, Loader2, Pencil, Mail, Phone, Shield, UserCheck, UserX } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Search, Plus, Loader2, Mail, Phone, Shield, UserCheck, UserX } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import type { UserProfile } from "@/types/user";
 import type { RbacRole } from "@/types/rbac";
@@ -90,7 +89,7 @@ export default function EmployeesPage() {
     const canAssignRole = hasPermission("ASSIGN_ROLE");
     const canAssignStatus = hasPermission("ASSIGN_STATUS");
 
-    async function fetchEmployees() {
+    const fetchEmployees = useCallback(async () => {
         if (!canViewUsers) {
             setEmployees([]);
             setIsLoading(false);
@@ -109,11 +108,11 @@ export default function EmployeesPage() {
         } finally {
             setIsLoading(false);
         }
-    }
+    }, [canAssignRole, canViewUsers]);
 
     useEffect(() => {
         void fetchEmployees();
-    }, [canViewUsers]);
+    }, [fetchEmployees]);
 
     function resetForm() {
         setForm(emptyForm);

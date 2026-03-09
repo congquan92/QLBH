@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DollarSign, Loader2, Calculator, TrendingUp, Clock, AlertCircle } from "lucide-react";
 import { Helper } from "@/lib/helper";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import type { SalaryCalculation } from "@/types/salary";
 import type { UserProfile } from "@/types/user";
@@ -27,7 +27,7 @@ export default function SalaryCalculationPage() {
 
     const canCalculate = hasPermission("CALCULATE_SALARY");
 
-    async function fetchUsers() {
+    const fetchUsers = useCallback(async () => {
         if (!canCalculate) return;
 
         setIsLoadingUsers(true);
@@ -39,13 +39,13 @@ export default function SalaryCalculationPage() {
         } finally {
             setIsLoadingUsers(false);
         }
-    }
+    }, [canCalculate]);
 
     useEffect(() => {
         if (canCalculate) {
             void fetchUsers();
         }
-    }, [canCalculate]);
+    }, [canCalculate, fetchUsers]);
 
     async function handleCalculate() {
         if (!selectedUserId) {

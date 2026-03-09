@@ -201,11 +201,16 @@ export const AdminAuthUtil = {
 
     canAccessUrl(session: AdminSession | null, url: string) {
         if (!session) return false;
+
+        const normalized = normalizeAdminPath(url);
+        if (normalized === "/admin/forbidden") {
+            return true;
+        }
+
         if (session.allowedUrls.length === 0) {
             return true;
         }
 
-        const normalized = normalizeAdminPath(url);
         if (!normalized) return false;
         const candidates = new Set<string>([normalized]);
 
@@ -231,15 +236,3 @@ export const AdminAuthUtil = {
         return preferred ?? fallback;
     },
 };
-
-// Backward-compatible aliases while migrating call sites.
-export const buildAdminSession = AdminAuthUtil.buildSession.bind(AdminAuthUtil);
-export const persistAdminSession = AdminAuthUtil.persistSession.bind(AdminAuthUtil);
-export const getAdminSession = AdminAuthUtil.getSession.bind(AdminAuthUtil);
-export const clearAdminSession = AdminAuthUtil.clearSession.bind(AdminAuthUtil);
-export const patchAdminSession = AdminAuthUtil.patchSession.bind(AdminAuthUtil);
-export const isAdminSession = AdminAuthUtil.isSessionValid.bind(AdminAuthUtil);
-export const hasPermission = AdminAuthUtil.hasPermission.bind(AdminAuthUtil);
-export const hasAnyPermission = AdminAuthUtil.hasAnyPermission.bind(AdminAuthUtil);
-export const canAccessUrl = AdminAuthUtil.canAccessUrl.bind(AdminAuthUtil);
-export const resolveDefaultAdminPath = AdminAuthUtil.resolveDefaultAdminPath.bind(AdminAuthUtil);

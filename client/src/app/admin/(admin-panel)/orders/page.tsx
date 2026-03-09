@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Search, Filter, Loader2, CheckCircle, XCircle } from "lucide-react";
 import { Helper } from "@/lib/helper";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import type { OrderSummary } from "@/types/order";
 
@@ -31,7 +31,7 @@ export default function OrdersPage() {
     const canViewOrders = hasPermission("VIEW_ORDERS_ADMIN");
     const canUpdateStatus = hasPermission("UPDATE_ORDER_STATUS");
 
-    async function fetchOrders() {
+    const fetchOrders = useCallback(async () => {
         if (!canViewOrders) {
             setOrders([]);
             setIsLoading(false);
@@ -42,11 +42,12 @@ export default function OrdersPage() {
         const orderRes = await OrderApi.getAdminOrders({ page: 1, size: 100, sort: "id:desc" });
         setOrders(orderRes.data.data);
         setIsLoading(false);
-    }
+    }, [canViewOrders]);
 
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         void fetchOrders();
-    }, [canViewOrders]);
+    }, [fetchOrders]);
 
     async function handleChangeStatus(orderId: number, newStatus: string) {
         if (!canUpdateStatus) {

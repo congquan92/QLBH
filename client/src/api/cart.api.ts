@@ -1,9 +1,22 @@
-import { createFallbackCartListResponse } from "@/data/static-fallback";
 import { axiosInstance } from "@/lib/axios";
 import type { ApiResponse, PageResponse } from "@/types/api";
 import type { AddCartItemPayload, CartItem, UpdateCartItemPayload } from "@/types/cart";
 
 const WARNING_PREFIX = "[WARNING][CartApi]";
+
+function createEmptyCartListResponse(page: number, size: number): ApiResponse<PageResponse<CartItem>> {
+    return {
+        status: 200,
+        message: "No cart data",
+        data: {
+            data: [],
+            pageNumber: page,
+            pageSize: size,
+            totalPages: 0,
+            totalElements: 0,
+        },
+    };
+}
 
 function isPageCart(value: unknown): value is PageResponse<CartItem> {
     if (!value || typeof value !== "object") return false;
@@ -26,8 +39,8 @@ function normalizeCartList(payload: unknown, page: number, size: number): ApiRes
             data: payload,
         };
     }
-    console.warn(`${WARNING_PREFIX} Invalid cart list response shape. Fallback static data is used.`);
-    return createFallbackCartListResponse(page, size);
+    console.warn(`${WARNING_PREFIX} Invalid cart list response shape.`);
+    return createEmptyCartListResponse(page, size);
 }
 
 export const CartApi = {
@@ -38,8 +51,8 @@ export const CartApi = {
             const res = await axiosInstance.get("/carts", { params: { ...query, page, size } });
             return normalizeCartList(res.data, page, size);
         } catch (error) {
-            console.warn(`${WARNING_PREFIX} /carts [GET] failed. Fallback static data is used.`, error);
-            return createFallbackCartListResponse(page, size);
+            console.error(`${WARNING_PREFIX} /carts [GET] failed.`, error);
+            return createEmptyCartListResponse(page, size);
         }
     },
 

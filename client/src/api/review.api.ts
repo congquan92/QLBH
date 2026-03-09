@@ -1,9 +1,30 @@
-import { createFallbackReviewDetailResponse, createFallbackReviewListResponse } from "@/data/static-fallback";
 import { axiosInstance } from "@/lib/axios";
 import type { ApiResponse, PageResponse } from "@/types/api";
 import type { CreateReviewPayload, Review, ReviewQuery, UpdateReviewPayload } from "@/types/review";
 
 const WARNING_PREFIX = "[WARNING][ReviewApi]";
+
+function createEmptyReviewListResponse(page: number, size: number): ApiResponse<PageResponse<Review>> {
+    return {
+        status: 200,
+        message: "No review data",
+        data: {
+            data: [],
+            pageNumber: page,
+            pageSize: size,
+            totalPages: 0,
+            totalElements: 0,
+        },
+    };
+}
+
+function createEmptyReviewDetailResponse(): ApiResponse<Review> {
+    return {
+        status: 404,
+        message: "Review not found",
+        data: null as unknown as Review,
+    };
+}
 
 function isPageReview(value: unknown): value is PageResponse<Review> {
     if (!value || typeof value !== "object") return false;
@@ -26,8 +47,8 @@ function normalizeReviewList(payload: unknown, page: number, size: number): ApiR
             data: payload,
         };
     }
-    console.warn(`${WARNING_PREFIX} Invalid review list response shape. Fallback static data is used.`);
-    return createFallbackReviewListResponse(page, size);
+    console.warn(`${WARNING_PREFIX} Invalid review list response shape.`);
+    return createEmptyReviewListResponse(page, size);
 }
 
 function normalizeReviewDetail(payload: unknown): ApiResponse<Review> {
@@ -44,8 +65,8 @@ function normalizeReviewDetail(payload: unknown): ApiResponse<Review> {
             };
         }
     }
-    console.warn(`${WARNING_PREFIX} Invalid review detail response shape. Fallback static data is used.`);
-    return createFallbackReviewDetailResponse();
+    console.warn(`${WARNING_PREFIX} Invalid review detail response shape.`);
+    return createEmptyReviewDetailResponse();
 }
 
 export const ReviewApi = {
@@ -54,8 +75,8 @@ export const ReviewApi = {
             const res = await axiosInstance.get(`/reviews/${id}`);
             return normalizeReviewDetail(res.data);
         } catch (error) {
-            console.warn(`${WARNING_PREFIX} /reviews/{id} failed. Fallback static data is used.`, error);
-            return createFallbackReviewDetailResponse();
+            console.error(`${WARNING_PREFIX} /reviews/{id} failed.`, error);
+            return createEmptyReviewDetailResponse();
         }
     },
 
@@ -68,8 +89,8 @@ export const ReviewApi = {
             });
             return normalizeReviewList(res.data, page, size);
         } catch (error) {
-            console.warn(`${WARNING_PREFIX} /reviews failed. Fallback static data is used.`, error);
-            return createFallbackReviewListResponse(page, size);
+            console.error(`${WARNING_PREFIX} /reviews failed.`, error);
+            return createEmptyReviewListResponse(page, size);
         }
     },
 
@@ -87,11 +108,11 @@ export const ReviewApi = {
             if (wrapped && Array.isArray(wrapped.data)) {
                 return wrapped;
             }
-            console.warn(`${WARNING_PREFIX} Invalid /reviews/me/{productId} response shape. Fallback static data is used.`);
-            return { status: 200, message: "Fallback my review list", data: createFallbackReviewListResponse(1, 10).data.data };
+            console.warn(`${WARNING_PREFIX} Invalid /reviews/me/{productId} response shape.`);
+            return { status: 200, message: "No review data", data: [] };
         } catch (error) {
-            console.warn(`${WARNING_PREFIX} /reviews/me/{productId} failed. Fallback static data is used.`, error);
-            return { status: 200, message: "Fallback my review list", data: createFallbackReviewListResponse(1, 10).data.data };
+            console.error(`${WARNING_PREFIX} /reviews/me/{productId} failed.`, error);
+            return { status: 200, message: "No review data", data: [] };
         }
     },
 

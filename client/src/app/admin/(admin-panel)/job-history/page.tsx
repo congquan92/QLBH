@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TrendingUp, Loader2, UserCheck, Briefcase, Calendar } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import type { UserProfile } from "@/types/user";
 import type { Position } from "@/types/admin-crud";
@@ -42,7 +42,7 @@ export default function JobHistoryPage() {
     const canPromote = hasPermission("PROMOTE_EMPLOYEE");
     const canViewUsers = hasPermission("VIEW_USERS");
 
-    async function fetchData() {
+    const fetchData = useCallback(async () => {
         setIsLoading(true);
         try {
             const [usersRes, positionsRes] = await Promise.all([canViewUsers ? UserApi.getUsers({ page: 1, size: 100 }) : Promise.resolve({ data: { data: [] } }), AdminCrudApi.getPositions({ sort: "name:asc" })]);
@@ -53,11 +53,11 @@ export default function JobHistoryPage() {
         } finally {
             setIsLoading(false);
         }
-    }
+    }, [canViewUsers]);
 
     useEffect(() => {
         void fetchData();
-    }, [canViewUsers]);
+    }, [fetchData]);
 
     async function handleViewCareer() {
         if (!form.userId) {
@@ -242,7 +242,7 @@ export default function JobHistoryPage() {
                         {career.history && career.history.length > 0 ? (
                             <div className="space-y-4">
                                 <div className="relative border-l-2 border-muted pl-6 space-y-6">
-                                    {career.history.map((record, idx) => (
+                                    {career.history.map((record) => (
                                         <div key={record.id} className="relative">
                                             <div className="absolute -left-8 mt-1 h-4 w-4 rounded-full bg-primary border-2 border-background"></div>
                                             <div className="rounded-lg border p-4">

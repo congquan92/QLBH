@@ -5,10 +5,10 @@ import { UserApi } from "@/api/user.api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, Loader2, Mail, Phone, UserCheck, UserX } from "lucide-react";
+import { Search, Loader2, Mail, Phone, UserCheck, UserX } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Helper } from "@/lib/helper";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import type { UserProfile } from "@/types/user";
 
@@ -22,7 +22,7 @@ export default function CustomersPage() {
     const canViewCustomers = hasPermission("VIEW_USERS");
     const canUpdateStatus = hasPermission("ASSIGN_STATUS");
 
-    async function fetchCustomers() {
+    const fetchCustomers = useCallback(async () => {
         if (!canViewCustomers) {
             setCustomers([]);
             setIsLoading(false);
@@ -33,11 +33,11 @@ export default function CustomersPage() {
         const usersRes = await UserApi.getUsers({ page: 1, size: 100, sort: "id:desc" });
         setCustomers(usersRes.data.data);
         setIsLoading(false);
-    }
+    }, [canViewCustomers]);
 
     useEffect(() => {
         void fetchCustomers();
-    }, [canViewCustomers]);
+    }, [fetchCustomers]);
 
     async function handleToggleStatus(userId: number, currentStatus: string) {
         const newStatus = currentStatus === "ACTIVE" ? "INACTIVE" : "ACTIVE";
@@ -106,12 +106,7 @@ export default function CustomersPage() {
                         </div>
                         <div className="relative">
                             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                            <Input
-                                placeholder="Tìm kiếm khách hàng..."
-                                className="pl-8 w-62.5"
-                                value={searchKeyword}
-                                onChange={(e) => setSearchKeyword(e.target.value)}
-                            />
+                            <Input placeholder="Tìm kiếm khách hàng..." className="pl-8 w-62.5" value={searchKeyword} onChange={(e) => setSearchKeyword(e.target.value)} />
                         </div>
                     </div>
                 </CardHeader>
@@ -176,13 +171,7 @@ export default function CustomersPage() {
                                                 <td className="px-6 py-4">
                                                     <div className="flex gap-2">
                                                         {canUpdateStatus && (
-                                                            <Button
-                                                                variant="outline"
-                                                                size="sm"
-                                                                onClick={() => void handleToggleStatus(customer.id, status)}
-                                                                disabled={isSaving}
-                                                                title={status === "ACTIVE" ? "Vô hiệu hóa" : "Kích hoạt"}
-                                                            >
+                                                            <Button variant="outline" size="sm" onClick={() => void handleToggleStatus(customer.id, status)} disabled={isSaving} title={status === "ACTIVE" ? "Vô hiệu hóa" : "Kích hoạt"}>
                                                                 {status === "ACTIVE" ? <UserX className="h-4 w-4" /> : <UserCheck className="h-4 w-4" />}
                                                             </Button>
                                                         )}

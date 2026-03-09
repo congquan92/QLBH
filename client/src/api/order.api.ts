@@ -1,9 +1,30 @@
-import { createFallbackOrderDetailResponse, createFallbackOrderListResponse } from "@/data/static-fallback";
 import { axiosInstance } from "@/lib/axios";
 import type { ApiResponse, PageResponse } from "@/types/api";
 import type { CreateOrderPayload, OrderSummary } from "@/types/order";
 
 const WARNING_PREFIX = "[WARNING][OrderApi]";
+
+function createEmptyOrderListResponse(page: number, size: number): ApiResponse<PageResponse<OrderSummary>> {
+    return {
+        status: 200,
+        message: "No order data",
+        data: {
+            data: [],
+            pageNumber: page,
+            pageSize: size,
+            totalPages: 0,
+            totalElements: 0,
+        },
+    };
+}
+
+function createEmptyOrderDetailResponse(): ApiResponse<OrderSummary> {
+    return {
+        status: 404,
+        message: "Order detail not found",
+        data: null as unknown as OrderSummary,
+    };
+}
 
 function isPageOrder(value: unknown): value is PageResponse<OrderSummary> {
     if (!value || typeof value !== "object") return false;
@@ -22,8 +43,8 @@ function normalizeOrderList(payload: unknown, page: number, size: number): ApiRe
     if (isPageOrder(payload)) {
         return { status: 200, message: "Order list fetched", data: payload };
     }
-    console.warn(`${WARNING_PREFIX} Invalid order list response shape. Fallback static data is used.`);
-    return createFallbackOrderListResponse(page, size);
+    console.warn(`${WARNING_PREFIX} Invalid order list response shape.`);
+    return createEmptyOrderListResponse(page, size);
 }
 
 function normalizeOrderDetail(payload: unknown): ApiResponse<OrderSummary> {
@@ -40,8 +61,8 @@ function normalizeOrderDetail(payload: unknown): ApiResponse<OrderSummary> {
             };
         }
     }
-    console.warn(`${WARNING_PREFIX} Invalid order detail response shape. Fallback static data is used.`);
-    return createFallbackOrderDetailResponse();
+    console.warn(`${WARNING_PREFIX} Invalid order detail response shape.`);
+    return createEmptyOrderDetailResponse();
 }
 
 export const OrderApi = {
@@ -72,8 +93,8 @@ export const OrderApi = {
             const res = await axiosInstance.get("/order/list", { params: { ...query, page, size } });
             return normalizeOrderList(res.data, page, size);
         } catch (error) {
-            console.warn(`${WARNING_PREFIX} /order/list failed. Fallback static data is used.`, error);
-            return createFallbackOrderListResponse(page, size);
+            console.error(`${WARNING_PREFIX} /order/list failed.`, error);
+            return createEmptyOrderListResponse(page, size);
         }
     },
 
@@ -84,8 +105,8 @@ export const OrderApi = {
             const res = await axiosInstance.get("/order/admin/list", { params: { ...query, page, size } });
             return normalizeOrderList(res.data, page, size);
         } catch (error) {
-            console.warn(`${WARNING_PREFIX} /order/admin/list failed. Fallback static data is used.`, error);
-            return createFallbackOrderListResponse(page, size);
+            console.error(`${WARNING_PREFIX} /order/admin/list failed.`, error);
+            return createEmptyOrderListResponse(page, size);
         }
     },
 
@@ -94,8 +115,8 @@ export const OrderApi = {
             const res = await axiosInstance.get(`/order/${id}`);
             return normalizeOrderDetail(res.data);
         } catch (error) {
-            console.warn(`${WARNING_PREFIX} /order/{id} failed. Fallback static data is used.`, error);
-            return createFallbackOrderDetailResponse();
+            console.error(`${WARNING_PREFIX} /order/{id} failed.`, error);
+            return createEmptyOrderDetailResponse();
         }
     },
 
@@ -104,8 +125,8 @@ export const OrderApi = {
             const res = await axiosInstance.get(`/order/admin/${id}`);
             return normalizeOrderDetail(res.data);
         } catch (error) {
-            console.warn(`${WARNING_PREFIX} /order/admin/{id} failed. Fallback static data is used.`, error);
-            return createFallbackOrderDetailResponse();
+            console.error(`${WARNING_PREFIX} /order/admin/{id} failed.`, error);
+            return createEmptyOrderDetailResponse();
         }
     },
 

@@ -1,9 +1,30 @@
-import { createFallbackVoucherDetailResponse, createFallbackVoucherListResponse } from "@/data/static-fallback";
 import { axiosInstance } from "@/lib/axios";
 import type { ApiResponse, PageResponse } from "@/types/api";
 import type { Voucher, VoucherQuery } from "@/types/voucher";
 
 const WARNING_PREFIX = "[WARNING][VoucherApi]";
+
+function createEmptyVoucherListResponse(page: number, size: number): ApiResponse<PageResponse<Voucher>> {
+    return {
+        status: 200,
+        message: "No voucher data",
+        data: {
+            data: [],
+            pageNumber: page,
+            pageSize: size,
+            totalPages: 0,
+            totalElements: 0,
+        },
+    };
+}
+
+function createEmptyVoucherDetailResponse(): ApiResponse<Voucher> {
+    return {
+        status: 404,
+        message: "Voucher not found",
+        data: null as unknown as Voucher,
+    };
+}
 
 function isPageVoucher(value: unknown): value is PageResponse<Voucher> {
     if (!value || typeof value !== "object") return false;
@@ -22,8 +43,8 @@ function normalizeVoucherList(payload: unknown, page: number, size: number): Api
     if (isPageVoucher(payload)) {
         return { status: 200, message: "Voucher list fetched", data: payload };
     }
-    console.warn(`${WARNING_PREFIX} Invalid voucher list response shape. Fallback static data is used.`);
-    return createFallbackVoucherListResponse(page, size);
+    console.warn(`${WARNING_PREFIX} Invalid voucher list response shape.`);
+    return createEmptyVoucherListResponse(page, size);
 }
 
 export const VoucherApi = {
@@ -34,8 +55,8 @@ export const VoucherApi = {
             const res = await axiosInstance.get("/voucher/list", { params: { ...query, page, size } });
             return normalizeVoucherList(res.data, page, size);
         } catch (error) {
-            console.warn(`${WARNING_PREFIX} /voucher/list failed. Fallback static data is used.`, error);
-            return createFallbackVoucherListResponse(page, size);
+            console.error(`${WARNING_PREFIX} /voucher/list failed.`, error);
+            return createEmptyVoucherListResponse(page, size);
         }
     },
 
@@ -46,8 +67,8 @@ export const VoucherApi = {
             const res = await axiosInstance.get("/voucher/admin/list", { params: { ...query, page, size } });
             return normalizeVoucherList(res.data, page, size);
         } catch (error) {
-            console.warn(`${WARNING_PREFIX} /voucher/admin/list failed. Fallback static data is used.`, error);
-            return createFallbackVoucherListResponse(page, size);
+            console.error(`${WARNING_PREFIX} /voucher/admin/list failed.`, error);
+            return createEmptyVoucherListResponse(page, size);
         }
     },
 
@@ -58,8 +79,8 @@ export const VoucherApi = {
             const res = await axiosInstance.get("/voucher/my-available", { params: { ...query, page, size } });
             return normalizeVoucherList(res.data, page, size);
         } catch (error) {
-            console.warn(`${WARNING_PREFIX} /voucher/my-available failed. Fallback static data is used.`, error);
-            return createFallbackVoucherListResponse(page, size);
+            console.error(`${WARNING_PREFIX} /voucher/my-available failed.`, error);
+            return createEmptyVoucherListResponse(page, size);
         }
     },
 
@@ -68,13 +89,13 @@ export const VoucherApi = {
             const res = await axiosInstance.get(`/voucher/detail/${id}`);
             const payload = res.data as ApiResponse<Voucher>;
             if (!payload || typeof payload !== "object" || !payload.data) {
-                console.warn(`${WARNING_PREFIX} Invalid /voucher/detail/{id} response shape. Fallback static data is used.`);
-                return createFallbackVoucherDetailResponse();
+                console.warn(`${WARNING_PREFIX} Invalid /voucher/detail/{id} response shape.`);
+                return createEmptyVoucherDetailResponse();
             }
             return payload;
         } catch (error) {
-            console.warn(`${WARNING_PREFIX} /voucher/detail/{id} failed. Fallback static data is used.`, error);
-            return createFallbackVoucherDetailResponse();
+            console.error(`${WARNING_PREFIX} /voucher/detail/{id} failed.`, error);
+            return createEmptyVoucherDetailResponse();
         }
     },
 

@@ -1,9 +1,44 @@
-import { createFallbackAddressListResponse, createFallbackUserListResponse } from "@/data/static-fallback";
 import { axiosInstance } from "@/lib/axios";
 import type { ApiResponse, PageResponse } from "@/types/api";
 import type { ChangePasswordPayload, UserAddress, UserProfile } from "@/types/user";
 
 const WARNING_PREFIX = "[WARNING][UserApi]";
+
+function createEmptyUserListResponse(page: number, size: number): ApiResponse<PageResponse<UserProfile>> {
+    return {
+        status: 200,
+        message: "No user data",
+        data: {
+            data: [],
+            pageNumber: page,
+            pageSize: size,
+            totalPages: 0,
+            totalElements: 0,
+        },
+    };
+}
+
+function createEmptyAddressListResponse(page: number, size: number): ApiResponse<PageResponse<UserAddress>> {
+    return {
+        status: 200,
+        message: "No address data",
+        data: {
+            data: [],
+            pageNumber: page,
+            pageSize: size,
+            totalPages: 0,
+            totalElements: 0,
+        },
+    };
+}
+
+function createEmptyUserDetailResponse(message: string): ApiResponse<UserProfile> {
+    return {
+        status: 404,
+        message,
+        data: null as unknown as UserProfile,
+    };
+}
 
 function isPageUser(value: unknown): value is PageResponse<UserProfile> {
     if (!value || typeof value !== "object") return false;
@@ -41,11 +76,11 @@ export const UserApi = {
             if (res.data && typeof res.data === "object" && "id" in (res.data as Record<string, unknown>)) {
                 return { status: 200, message: "My info", data: res.data as UserProfile };
             }
-            console.warn(`${WARNING_PREFIX} Invalid /user/me response shape. Fallback static data is used.`);
-            return { status: 200, message: "Fallback my info", data: createFallbackUserListResponse(1, 10).data.data[0] };
+            console.warn(`${WARNING_PREFIX} Invalid /user/me response shape.`);
+            return createEmptyUserDetailResponse("My info not available");
         } catch (error) {
-            console.warn(`${WARNING_PREFIX} /user/me failed. Fallback static data is used.`, error);
-            return { status: 200, message: "Fallback my info", data: createFallbackUserListResponse(1, 10).data.data[0] };
+            console.error(`${WARNING_PREFIX} /user/me failed.`, error);
+            return createEmptyUserDetailResponse("My info not available");
         }
     },
 
@@ -62,11 +97,11 @@ export const UserApi = {
             if (isPageUser(res.data)) {
                 return { status: 200, message: "User list", data: res.data };
             }
-            console.warn(`${WARNING_PREFIX} Invalid /user/list response shape. Fallback static data is used.`);
-            return createFallbackUserListResponse(page, size);
+            console.warn(`${WARNING_PREFIX} Invalid /user/list response shape.`);
+            return createEmptyUserListResponse(page, size);
         } catch (error) {
-            console.warn(`${WARNING_PREFIX} /user/list failed. Fallback static data is used.`, error);
-            return createFallbackUserListResponse(page, size);
+            console.error(`${WARNING_PREFIX} /user/list failed.`, error);
+            return createEmptyUserListResponse(page, size);
         }
     },
 
@@ -77,11 +112,11 @@ export const UserApi = {
             if (res.data && typeof res.data === "object" && "id" in (res.data as Record<string, unknown>)) {
                 return { status: 200, message: "User detail", data: res.data as UserProfile };
             }
-            console.warn(`${WARNING_PREFIX} Invalid /user/{userId} response shape. Fallback static data is used.`);
-            return { status: 200, message: "Fallback user detail", data: createFallbackUserListResponse(1, 10).data.data[0] };
+            console.warn(`${WARNING_PREFIX} Invalid /user/{userId} response shape.`);
+            return createEmptyUserDetailResponse("User detail not found");
         } catch (error) {
-            console.warn(`${WARNING_PREFIX} /user/{userId} failed. Fallback static data is used.`, error);
-            return { status: 200, message: "Fallback user detail", data: createFallbackUserListResponse(1, 10).data.data[0] };
+            console.error(`${WARNING_PREFIX} /user/{userId} failed.`, error);
+            return createEmptyUserDetailResponse("User detail not found");
         }
     },
 
@@ -96,11 +131,11 @@ export const UserApi = {
             if (isPageAddress(res.data)) {
                 return { status: 200, message: "Address list", data: res.data };
             }
-            console.warn(`${WARNING_PREFIX} Invalid /user/address/list response shape. Fallback static data is used.`);
-            return createFallbackAddressListResponse(page, size);
+            console.warn(`${WARNING_PREFIX} Invalid /user/address/list response shape.`);
+            return createEmptyAddressListResponse(page, size);
         } catch (error) {
-            console.warn(`${WARNING_PREFIX} /user/address/list failed. Fallback static data is used.`, error);
-            return createFallbackAddressListResponse(page, size);
+            console.error(`${WARNING_PREFIX} /user/address/list failed.`, error);
+            return createEmptyAddressListResponse(page, size);
         }
     },
 

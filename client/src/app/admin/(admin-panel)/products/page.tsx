@@ -6,9 +6,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, Search, Filter, Loader2, Pencil, Trash2, RotateCcw } from "lucide-react";
+import { Plus, Search, Loader2, Pencil, Trash2, RotateCcw } from "lucide-react";
 import { Helper } from "@/lib/helper";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import type { Product } from "@/types/product";
 
@@ -38,7 +38,7 @@ export default function ProductsPage() {
 
     const canViewProducts = hasPermission("VIEW_PRODUCTS_ADMIN");
 
-    async function fetchProducts() {
+    const fetchProducts = useCallback(async () => {
         if (!canViewProducts) {
             setProducts([]);
             setIsLoading(false);
@@ -49,11 +49,11 @@ export default function ProductsPage() {
         const productRes = await ProductApi.getAdminProducts(1, 100);
         setProducts(productRes.data.data);
         setIsLoading(false);
-    }
+    }, [canViewProducts]);
 
     useEffect(() => {
         void fetchProducts();
-    }, [canViewProducts]);
+    }, [fetchProducts]);
 
     function resetForm() {
         setForm(emptyForm);
@@ -160,7 +160,12 @@ export default function ProductsPage() {
                     <h1 className="text-3xl font-bold tracking-tight">Sản phẩm</h1>
                     <p className="text-muted-foreground">Quản lý danh sách sản phẩm của cửa hàng</p>
                 </div>
-                <Button onClick={() => { resetForm(); setShowForm(true); }}>
+                <Button
+                    onClick={() => {
+                        resetForm();
+                        setShowForm(true);
+                    }}
+                >
                     <Plus className="mr-2 h-4 w-4" />
                     Thêm sản phẩm
                 </Button>
@@ -222,12 +227,7 @@ export default function ProductsPage() {
                         <div className="flex items-center gap-2">
                             <div className="relative">
                                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                                <Input
-                                    placeholder="Tìm kiếm sản phẩm..."
-                                    className="pl-8 w-62.5"
-                                    value={searchKeyword}
-                                    onChange={(e) => setSearchKeyword(e.target.value)}
-                                />
+                                <Input placeholder="Tìm kiếm sản phẩm..." className="pl-8 w-62.5" value={searchKeyword} onChange={(e) => setSearchKeyword(e.target.value)} />
                             </div>
                         </div>
                     </div>

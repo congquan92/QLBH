@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Calendar, Users, Clock, Loader2, ChevronLeft, ChevronRight, Plus, Trash2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import type { Shift } from "@/types/admin-crud";
 import type { DailyStaff, MySchedule, WeeklyReport } from "@/types/schedule";
@@ -46,7 +46,7 @@ export default function SchedulePage() {
     const canViewDaily = hasPermission("VIEW_DAILY_SCHEDULE");
     const canManageSchedule = hasPermission("ASSIGN_SHIFT") || hasPermission("DELETE_SHIFT_ASSIGNMENT") || hasPermission("SET_DEFAULT_SCHEDULE");
 
-    async function fetchData() {
+    const fetchData = useCallback(async () => {
         setIsLoading(true);
         try {
             if (viewMode === "weekly-report" && canViewReport) {
@@ -68,11 +68,11 @@ export default function SchedulePage() {
         } finally {
             setIsLoading(false);
         }
-    }
+    }, [canManageSchedule, canViewDaily, canViewReport, selectedDate, viewMode]);
 
     useEffect(() => {
         void fetchData();
-    }, [viewMode, selectedDate]);
+    }, [fetchData]);
 
     function changeDate(days: number) {
         const date = new Date(selectedDate);

@@ -1,9 +1,30 @@
-import { createFallbackCategoryResponse } from "@/data/static-fallback";
 import { axiosInstance } from "@/lib/axios";
 import type { ApiResponse, PageResponse } from "@/types/api";
 import type { Category } from "@/types/navbar";
 
 const WARNING_PREFIX = "[WARNING][CategoryApi]";
+
+function createEmptyCategoryListResponse(page: number, size: number): ApiResponse<PageResponse<Category>> {
+    return {
+        status: 200,
+        message: "No category data",
+        data: {
+            data: [],
+            pageNumber: page,
+            pageSize: size,
+            totalPages: 0,
+            totalElements: 0,
+        },
+    };
+}
+
+function createEmptyCategoryDetailResponse(): ApiResponse<Category> {
+    return {
+        status: 404,
+        message: "Category not found",
+        data: null as unknown as Category,
+    };
+}
 
 function isPageCategory(value: unknown): value is PageResponse<Category> {
     if (!value || typeof value !== "object") return false;
@@ -22,8 +43,8 @@ function normalizeCategoryResponse(payload: unknown, page: number, size: number,
     if (isPageCategory(payload)) {
         return { status: 200, message, data: payload };
     }
-    console.warn(`${WARNING_PREFIX} Invalid category response shape. Fallback static data is used.`);
-    return createFallbackCategoryResponse();
+    console.warn(`${WARNING_PREFIX} Invalid category response shape.`);
+    return createEmptyCategoryListResponse(page, size);
 }
 
 export const CategoryApi = {
@@ -34,8 +55,8 @@ export const CategoryApi = {
             const res = await axiosInstance.get("/category/all", { params: { ...query, page, size } });
             return normalizeCategoryResponse(res.data, page, size, "Category list fetched");
         } catch (error) {
-            console.warn(`${WARNING_PREFIX} /category/all failed. Fallback static data is used.`, error);
-            return createFallbackCategoryResponse();
+            console.error(`${WARNING_PREFIX} /category/all failed.`, error);
+            return createEmptyCategoryListResponse(page, size);
         }
     },
 
@@ -46,8 +67,8 @@ export const CategoryApi = {
             const res = await axiosInstance.get("/category/list", { params: { ...query, page, size } });
             return normalizeCategoryResponse(res.data, page, size, "Category list fetched");
         } catch (error) {
-            console.warn(`${WARNING_PREFIX} /category/list failed. Fallback static data is used.`, error);
-            return createFallbackCategoryResponse();
+            console.error(`${WARNING_PREFIX} /category/list failed.`, error);
+            return createEmptyCategoryListResponse(page, size);
         }
     },
 
@@ -56,15 +77,13 @@ export const CategoryApi = {
             const res = await axiosInstance.get(`/category/${categoryId}`);
             const payload = res.data as ApiResponse<Category>;
             if (!payload || typeof payload !== "object" || !payload.data || typeof payload.data !== "object") {
-                console.warn(`${WARNING_PREFIX} Invalid /category/{id} response shape. Fallback category detail is used.`);
-                const fallback = createFallbackCategoryResponse().data.data[0];
-                return { status: 200, message: "Fallback category detail", data: fallback };
+                console.warn(`${WARNING_PREFIX} Invalid /category/{id} response shape.`);
+                return createEmptyCategoryDetailResponse();
             }
             return payload;
         } catch (error) {
-            console.warn(`${WARNING_PREFIX} /category/{id} failed. Fallback category detail is used.`, error);
-            const fallback = createFallbackCategoryResponse().data.data[0];
-            return { status: 200, message: "Fallback category detail", data: fallback };
+            console.error(`${WARNING_PREFIX} /category/{id} failed.`, error);
+            return createEmptyCategoryDetailResponse();
         }
     },
 
@@ -134,4 +153,3 @@ export const CategoryApi = {
         }
     },
 };
-
