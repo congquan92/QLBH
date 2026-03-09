@@ -28,8 +28,6 @@ interface RolePage {
     items?: RolePageItem[];
 }
 
-const ADMIN_ROLE_SET = new Set(["ADMIN", "MANAGER", "STAFF"]);
-
 function isBrowser() {
     return typeof window !== "undefined";
 }
@@ -45,6 +43,12 @@ function extractRolePages(role: LoginRole): RolePage[] {
         return [];
     }
     return role.page as RolePage[];
+}
+
+function extractStringArray(value: unknown): string[] {
+    if (!Array.isArray(value)) return [];
+
+    return value.map((item) => String(item ?? "").trim()).filter((item) => item.length > 0);
 }
 
 function extractPermissionsFromRole(role: LoginRole): string[] {
@@ -79,8 +83,9 @@ function extractAllowedUrlsFromRole(role: LoginRole): string[] {
     return Array.from(values);
 }
 
-function canUseRoleForAdmin(roleName: string, permissions: string[]) {
-    return ADMIN_ROLE_SET.has(roleName) || permissions.length > 0;
+function canUseRoleForAdmin(role: LoginRole, permissions: string[], allowedUrls: string[]) {
+    const hasPages = extractRolePages(role).some((page) => (page.items?.length ?? 0) > 0);
+    return hasPages || permissions.length > 0 || allowedUrls.length > 0;
 }
 
 export const AdminAuthUtil = {
@@ -117,17 +122,23 @@ export const AdminAuthUtil = {
                 return null;
             }
 
+            const role = parsed.role as LoginRole;
+            const rolePermissions = extractPermissionsFromRole(role);
+            const roleAllowedUrls = extractAllowedUrlsFromRole(role);
+            const storedPermissions = extractStringArray(parsed.permissions).map((permission) => permission.toUpperCase());
+            const storedAllowedUrls = extractStringArray(parsed.allowedUrls);
+
             return {
                 token: String(parsed.token),
                 expiredAt: String(parsed.expiredAt ?? ""),
                 authenticated: Boolean(parsed.authenticated),
-                role: parsed.role,
-                roleName: normalizeRoleName(parsed.roleName ?? parsed.role.name),
+                role,
+                roleName: normalizeRoleName(parsed.roleName ?? role.name),
                 userId: typeof parsed.userId === "number" ? parsed.userId : undefined,
                 email: parsed.email,
                 roles: Array.isArray(parsed.roles) ? parsed.roles : undefined,
-                permissions: Array.isArray(parsed.permissions) ? parsed.permissions : [],
-                allowedUrls: Array.isArray(parsed.allowedUrls) ? parsed.allowedUrls : [],
+                permissions: Array.from(new Set([...rolePermissions, ...storedPermissions])),
+                allowedUrls: Array.from(new Set([...roleAllowedUrls, ...storedAllowedUrls])),
             };
         } catch {
             return null;
@@ -147,7 +158,7 @@ export const AdminAuthUtil = {
 
     isSessionValid(session: AdminSession | null) {
         if (!session || !session.token || !session.roleName) return false;
-        return canUseRoleForAdmin(session.roleName, session.permissions);
+        return canUseRoleForAdmin(session.role, session.permissions, session.allowedUrls);
     },
 
     hasPermission(session: AdminSession | null, permission: string) {

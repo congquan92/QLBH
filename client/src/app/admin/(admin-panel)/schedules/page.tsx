@@ -44,7 +44,7 @@ export default function SchedulePage() {
 
     const canViewReport = hasPermission("VIEW_SCHEDULE_REPORT");
     const canViewDaily = hasPermission("VIEW_DAILY_SCHEDULE");
-    const canManageSchedule = hasPermission("MANAGE_SCHEDULE");
+    const canManageSchedule = hasPermission("ASSIGN_SHIFT") || hasPermission("DELETE_SHIFT_ASSIGNMENT") || hasPermission("SET_DEFAULT_SCHEDULE");
 
     async function fetchData() {
         setIsLoading(true);

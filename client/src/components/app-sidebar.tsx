@@ -168,7 +168,7 @@ export function AppSidebar() {
 
     const profileName = session?.email ? session.email.split("@")[0] : "Admin";
     const profileEmail = session?.email ?? "Chưa có thông tin email";
-    const profileRole = session?.roleName ?? "ADMIN";
+    const profileRole = session?.roleName ?? "UNKNOWN_ROLE";
 
     return (
         <Sidebar collapsible="icon" suppressHydrationWarning>
