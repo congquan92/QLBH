@@ -28,6 +28,16 @@ interface RolePage {
     items?: RolePageItem[];
 }
 
+function normalizeAdminPath(raw?: string) {
+    const value = String(raw ?? "").trim();
+    if (!value) return "";
+
+    const normalized = value.replace(/\/$/, "");
+    if (normalized.startsWith("/admin")) return normalized;
+    if (normalized.startsWith("/")) return `/admin${normalized}`;
+    return `/admin/${normalized}`;
+}
+
 function isBrowser() {
     return typeof window !== "undefined";
 }
@@ -74,7 +84,7 @@ function extractAllowedUrlsFromRole(role: LoginRole): string[] {
         for (const item of page.items ?? []) {
             const raw = item?.url;
             if (!raw) continue;
-            const normalized = String(raw).trim();
+            const normalized = normalizeAdminPath(String(raw).trim());
             if (!normalized) continue;
             values.add(normalized);
         }
@@ -86,6 +96,24 @@ function extractAllowedUrlsFromRole(role: LoginRole): string[] {
 function canUseRoleForAdmin(role: LoginRole, permissions: string[], allowedUrls: string[]) {
     const hasPages = extractRolePages(role).some((page) => (page.items?.length ?? 0) > 0);
     return hasPages || permissions.length > 0 || allowedUrls.length > 0;
+}
+
+function extractCandidateAdminPaths(role: LoginRole, allowedUrls: string[]) {
+    const values = new Set<string>();
+
+    for (const allowedUrl of allowedUrls) {
+        const normalized = normalizeAdminPath(allowedUrl);
+        if (normalized) values.add(normalized);
+    }
+
+    for (const page of extractRolePages(role)) {
+        for (const item of page.items ?? []) {
+            const normalized = normalizeAdminPath(item?.url);
+            if (normalized) values.add(normalized);
+        }
+    }
+
+    return Array.from(values);
 }
 
 export const AdminAuthUtil = {
@@ -177,7 +205,8 @@ export const AdminAuthUtil = {
             return true;
         }
 
-        const normalized = url.replace(/\/$/, "");
+        const normalized = normalizeAdminPath(url);
+        if (!normalized) return false;
         const candidates = new Set<string>([normalized]);
 
         if (normalized.startsWith("/admin/")) {
@@ -187,10 +216,19 @@ export const AdminAuthUtil = {
         }
 
         return session.allowedUrls.some((allowed) => {
-            const base = allowed.replace(/\/$/, "");
+            const base = normalizeAdminPath(allowed);
+            if (!base) return false;
             if (candidates.has(base)) return true;
             return Array.from(candidates).some((candidate) => candidate.startsWith(`${base}/`));
         });
+    },
+
+    resolveDefaultAdminPath(session: AdminSession | null, fallback = "/admin/categories") {
+        if (!session) return fallback;
+
+        const candidates = extractCandidateAdminPaths(session.role, session.allowedUrls);
+        const preferred = candidates.find((path) => path !== "/admin/dashboard");
+        return preferred ?? fallback;
     },
 };
 
@@ -204,3 +242,4 @@ export const isAdminSession = AdminAuthUtil.isSessionValid.bind(AdminAuthUtil);
 export const hasPermission = AdminAuthUtil.hasPermission.bind(AdminAuthUtil);
 export const hasAnyPermission = AdminAuthUtil.hasAnyPermission.bind(AdminAuthUtil);
 export const canAccessUrl = AdminAuthUtil.canAccessUrl.bind(AdminAuthUtil);
+export const resolveDefaultAdminPath = AdminAuthUtil.resolveDefaultAdminPath.bind(AdminAuthUtil);

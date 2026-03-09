@@ -1,6 +1,7 @@
 "use client";
 
 import { useAdminAuth } from "@/components/feature/admin-auth-provider";
+import { AdminAuthUtil } from "@/lib/admin-auth";
 import {
     Sidebar,
     SidebarContent,
@@ -120,8 +121,7 @@ function canRenderApiItem(item: SidebarApiItem, canAccessPath: (path: string) =>
 export function AppSidebar() {
     const pathname = usePathname();
     const { session, canAccessPath, hasAnyPermission, logout } = useAdminAuth();
-
-    const visibleDashboard = canAccessPath("/admin/dashboard");
+    const defaultAdminPath = AdminAuthUtil.resolveDefaultAdminPath(session);
 
     const sections: SidebarApiSection[] = (session?.role?.page ?? [])
         .map((page) => {
@@ -154,7 +154,7 @@ export function AppSidebar() {
 
     const fallbackItems: SidebarApiItem[] = (session?.allowedUrls ?? [])
         .map((url) => normalizeAdminUrl(url))
-        .filter((url) => url.startsWith("/admin") && url !== "/admin/dashboard")
+        .filter((url) => url.startsWith("/admin"))
         .map((url) => ({
             title: url.split("/").filter(Boolean).pop()?.replace(/-/g, " ") ?? url,
             url,
@@ -173,7 +173,7 @@ export function AppSidebar() {
     return (
         <Sidebar collapsible="icon" suppressHydrationWarning>
             <SidebarHeader className="border-b border-sidebar-border">
-                <Link href="/admin/dashboard" className="flex items-center gap-1">
+                <Link href={defaultAdminPath} className="flex items-center gap-1">
                     <Avatar className="size-16 rounded-none">
                         <AvatarImage src="/ARES_CLUB.png" alt="AresClub" className="object-contain" />
                         <AvatarFallback className="bg-transparent font-bold">ARES</AvatarFallback>
@@ -183,23 +183,6 @@ export function AppSidebar() {
             </SidebarHeader>
 
             <SidebarContent>
-                {visibleDashboard && (
-                    <SidebarGroup>
-                        <SidebarGroupContent>
-                            <SidebarMenu>
-                                <SidebarMenuItem>
-                                    <SidebarMenuButton asChild tooltip="Dashboard" isActive={pathname === "/admin/dashboard"}>
-                                        <Link href="/admin/dashboard">
-                                            <LayoutDashboard />
-                                            <span>Dashboard</span>
-                                        </Link>
-                                    </SidebarMenuButton>
-                                </SidebarMenuItem>
-                            </SidebarMenu>
-                        </SidebarGroupContent>
-                    </SidebarGroup>
-                )}
-
                 {visibleSections.map((section) => (
                     <SidebarGroup key={section.title}>
                         <SidebarGroupLabel>{section.title}</SidebarGroupLabel>

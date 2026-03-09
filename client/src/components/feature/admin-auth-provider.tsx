@@ -2,6 +2,7 @@
 
 import { AdminAuthUtil, type AdminSession } from "@/lib/admin-auth";
 import { AdminAuthStore } from "@/stores/admin-auth.store";
+import { useCallback, useMemo } from "react";
 import { useEffect } from "react";
 
 interface AdminAuthValue {
@@ -24,15 +25,23 @@ export function useAdminAuth() {
         void AdminAuthStore.actions.ensureHydrated();
     }, []);
 
-    return {
-        session,
-        isLoading,
-        isAuthenticated: Boolean(session),
-        login: AdminAuthStore.actions.login,
-        logout: AdminAuthStore.actions.logout,
-        hasPermission: (permission: string) => AdminAuthUtil.hasPermission(session, permission),
-        hasAnyPermission: (permissionList: string[]) => AdminAuthUtil.hasAnyPermission(session, permissionList),
-        canAccessPath: (path: string) => AdminAuthUtil.canAccessUrl(session, path),
-        refreshProfile: AdminAuthStore.actions.refreshProfile,
-    } satisfies AdminAuthValue;
+    const hasPermission = useCallback((permission: string) => AdminAuthUtil.hasPermission(session, permission), [session]);
+    const hasAnyPermission = useCallback((permissionList: string[]) => AdminAuthUtil.hasAnyPermission(session, permissionList), [session]);
+    const canAccessPath = useCallback((path: string) => AdminAuthUtil.canAccessUrl(session, path), [session]);
+
+    return useMemo(
+        () =>
+            ({
+                session,
+                isLoading,
+                isAuthenticated: Boolean(session),
+                login: AdminAuthStore.actions.login,
+                logout: AdminAuthStore.actions.logout,
+                hasPermission,
+                hasAnyPermission,
+                canAccessPath,
+                refreshProfile: AdminAuthStore.actions.refreshProfile,
+            }) satisfies AdminAuthValue,
+        [canAccessPath, hasAnyPermission, hasPermission, isLoading, session],
+    );
 }

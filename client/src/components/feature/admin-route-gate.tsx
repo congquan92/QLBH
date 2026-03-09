@@ -1,14 +1,16 @@
 "use client";
 
 import { useAdminAuth } from "@/components/feature/admin-auth-provider";
+import { AdminAuthUtil } from "@/lib/admin-auth";
 import { usePathname, useRouter } from "next/navigation";
 import { Loader2, ShieldX } from "lucide-react";
 import { useEffect } from "react";
 
 export function AdminRouteGate({ children }: { children: React.ReactNode }) {
-    const { isLoading, isAuthenticated, canAccessPath } = useAdminAuth();
+    const { session, isLoading, isAuthenticated, canAccessPath } = useAdminAuth();
     const router = useRouter();
     const pathname = usePathname();
+    const fallbackPath = AdminAuthUtil.resolveDefaultAdminPath(session);
 
     useEffect(() => {
         if (isLoading) return;
@@ -20,10 +22,12 @@ export function AdminRouteGate({ children }: { children: React.ReactNode }) {
 
         if (pathname && pathname.startsWith("/admin") && pathname !== "/admin" && pathname !== "/admin/login") {
             if (!canAccessPath(pathname)) {
-                router.replace("/admin/dashboard"); // redirect về dashboard nếu không có quyền truy cập trang hiện tại
+                if (pathname !== fallbackPath) {
+                    router.replace(fallbackPath);
+                }
             }
         }
-    }, [canAccessPath, isAuthenticated, isLoading, pathname, router]);
+    }, [canAccessPath, fallbackPath, isAuthenticated, isLoading, pathname, router]);
 
     if (isLoading) {
         return (

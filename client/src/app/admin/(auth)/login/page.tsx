@@ -1,6 +1,7 @@
 "use client";
 
 import { useAdminAuth } from "@/components/feature/admin-auth-provider";
+import { AdminAuthUtil } from "@/lib/admin-auth";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -38,11 +39,8 @@ export default function LoginPage() {
     useEffect(() => {
         if (isLoading || !isAuthenticated) return;
 
-        const firstAllowedPath = session?.allowedUrls?.[0];
-        const nextPath = firstAllowedPath?.startsWith("/admin") ? firstAllowedPath : firstAllowedPath ? `/admin${firstAllowedPath.startsWith("/") ? "" : "/"}${firstAllowedPath}` : "/admin/dashboard";
-
-        router.replace(nextPath);
-    }, [isAuthenticated, isLoading, router, session?.allowedUrls]);
+        router.replace(AdminAuthUtil.resolveDefaultAdminPath(session));
+    }, [isAuthenticated, isLoading, router, session]);
 
     const onSubmit = async (data: LoginFormData) => {
         setIsSubmitting(true);

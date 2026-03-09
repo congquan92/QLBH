@@ -32,6 +32,48 @@ const emptyForm: CreateEmployeeForm = {
     phone: "",
 };
 
+function getEmployeeRoleLabel(employee: UserProfile) {
+    const roleName = (employee as { roleName?: unknown }).roleName;
+    if (typeof roleName === "string" && roleName.trim()) {
+        return roleName;
+    }
+
+    const role = (employee as { role?: unknown }).role;
+    if (typeof role === "string" && role.trim()) {
+        return role;
+    }
+
+    if (role && typeof role === "object") {
+        const roleObject = role as { name?: unknown; title?: unknown; code?: unknown };
+        if (typeof roleObject.name === "string" && roleObject.name.trim()) return roleObject.name;
+        if (typeof roleObject.title === "string" && roleObject.title.trim()) return roleObject.title;
+        if (typeof roleObject.code === "string" && roleObject.code.trim()) return roleObject.code;
+    }
+
+    const roles = (employee as { roles?: unknown }).roles;
+    if (Array.isArray(roles)) {
+        const names = roles
+            .map((item) => {
+                if (typeof item === "string") return item;
+                if (item && typeof item === "object") {
+                    const normalized = item as { name?: unknown; title?: unknown; code?: unknown };
+                    if (typeof normalized.name === "string") return normalized.name;
+                    if (typeof normalized.title === "string") return normalized.title;
+                    if (typeof normalized.code === "string") return normalized.code;
+                }
+                return "";
+            })
+            .map((name) => name.trim())
+            .filter((name) => name.length > 0);
+
+        if (names.length > 0) {
+            return names.join(", ");
+        }
+    }
+
+    return "-";
+}
+
 export default function EmployeesPage() {
     const { hasPermission } = useAdminAuth();
     const [employees, setEmployees] = useState<UserProfile[]>([]);
@@ -57,10 +99,7 @@ export default function EmployeesPage() {
 
         setIsLoading(true);
         try {
-            const [usersRes, rolesRes] = await Promise.all([
-                UserApi.getUsers({ page: 1, size: 100, sort: "id:desc" }),
-                canAssignRole ? RbacApi.getRoles({ page: 1, size: 50 }) : Promise.resolve(null),
-            ]);
+            const [usersRes, rolesRes] = await Promise.all([UserApi.getUsers({ page: 1, size: 100, sort: "id:desc" }), canAssignRole ? RbacApi.getRoles({ page: 1, size: 50 }) : Promise.resolve(null)]);
             setEmployees(usersRes.data.data);
             if (rolesRes) {
                 setRoles(rolesRes.data.data);
@@ -163,7 +202,13 @@ export default function EmployeesPage() {
                         <div className="flex items-center justify-between">
                             <CardTitle>Tạo nhân viên mới</CardTitle>
                             <Button variant={showForm ? "outline" : "default"} onClick={() => setShowForm(!showForm)}>
-                                {showForm ? "Đóng" : <><Plus className="mr-2 h-4 w-4" /> Thêm nhân viên</>}
+                                {showForm ? (
+                                    "Đóng"
+                                ) : (
+                                    <>
+                                        <Plus className="mr-2 h-4 w-4" /> Thêm nhân viên
+                                    </>
+                                )}
                             </Button>
                         </div>
                     </CardHeader>
@@ -217,12 +262,7 @@ export default function EmployeesPage() {
                         </div>
                         <div className="relative">
                             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                            <Input
-                                placeholder="Tìm kiếm nhân viên..."
-                                className="pl-8 w-62.5"
-                                value={searchKeyword}
-                                onChange={(e) => setSearchKeyword(e.target.value)}
-                            />
+                            <Input placeholder="Tìm kiếm nhân viên..." className="pl-8 w-62.5" value={searchKeyword} onChange={(e) => setSearchKeyword(e.target.value)} />
                         </div>
                     </div>
                 </CardHeader>
@@ -276,15 +316,11 @@ export default function EmployeesPage() {
                                                 <td className="px-6 py-4">
                                                     <div className="flex items-center gap-2">
                                                         <Shield className="h-4 w-4 text-muted-foreground" />
-                                                        <span className="text-sm">{String((emp as { roleName?: string }).roleName ?? (emp as { role?: string }).role ?? "-")}</span>
+                                                        <span className="text-sm">{getEmployeeRoleLabel(emp)}</span>
                                                     </div>
                                                     {canAssignRole && (
                                                         <div className="flex items-center gap-1 mt-1">
-                                                            <select
-                                                                className="h-7 rounded border border-input bg-background px-2 text-xs"
-                                                                value={selectedRoleId}
-                                                                onChange={(e) => setSelectedRoleId(e.target.value)}
-                                                            >
+                                                            <select className="h-7 rounded border border-input bg-background px-2 text-xs" value={selectedRoleId} onChange={(e) => setSelectedRoleId(e.target.value)}>
                                                                 <option value="">Chọn vai trò</option>
                                                                 {roles.map((role) => (
                                                                     <option key={role.id} value={String(role.id)}>
@@ -301,9 +337,7 @@ export default function EmployeesPage() {
                                                 <td className="px-6 py-4">
                                                     <span
                                                         className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                                            status === "ACTIVE"
-                                                                ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
-                                                                : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300"
+                                                            status === "ACTIVE" ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300" : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300"
                                                         }`}
                                                     >
                                                         {status}
@@ -312,13 +346,7 @@ export default function EmployeesPage() {
                                                 <td className="px-6 py-4">
                                                     <div className="flex gap-2">
                                                         {canAssignStatus && (
-                                                            <Button
-                                                                variant="outline"
-                                                                size="sm"
-                                                                onClick={() => void handleToggleStatus(emp.id, status)}
-                                                                disabled={isSaving}
-                                                                title={status === "ACTIVE" ? "Vô hiệu hóa" : "Kích hoạt"}
-                                                            >
+                                                            <Button variant="outline" size="sm" onClick={() => void handleToggleStatus(emp.id, status)} disabled={isSaving} title={status === "ACTIVE" ? "Vô hiệu hóa" : "Kích hoạt"}>
                                                                 {status === "ACTIVE" ? <UserX className="h-4 w-4" /> : <UserCheck className="h-4 w-4" />}
                                                             </Button>
                                                         )}
