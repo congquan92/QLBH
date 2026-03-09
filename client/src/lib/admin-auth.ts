@@ -83,100 +83,113 @@ function canUseRoleForAdmin(roleName: string, permissions: string[]) {
     return ADMIN_ROLE_SET.has(roleName) || permissions.length > 0;
 }
 
-export function buildAdminSession(loginResponse: LoginResponse): AdminSession {
-    const roleName = normalizeRoleName(loginResponse.role?.name);
-    const permissions = extractPermissionsFromRole(loginResponse.role);
-    const allowedUrls = extractAllowedUrlsFromRole(loginResponse.role);
-
-    return {
-        token: loginResponse.token,
-        authenticated: Boolean(loginResponse.authenticated),
-        role: loginResponse.role,
-        roleName,
-        expiredAt: loginResponse.expiredAt,
-        permissions,
-        allowedUrls,
-    };
-}
-
-export function persistAdminSession(session: AdminSession) {
-    if (!isBrowser()) return;
-    window.localStorage.setItem(ADMIN_SESSION_STORAGE_KEY, JSON.stringify(session));
-}
-
-export function getAdminSession(): AdminSession | null {
-    if (!isBrowser()) return null;
-
-    const raw = window.localStorage.getItem(ADMIN_SESSION_STORAGE_KEY);
-    if (!raw) return null;
-
-    try {
-        const parsed = JSON.parse(raw) as Partial<AdminSession>;
-        if (!parsed || typeof parsed !== "object" || !parsed.token || !parsed.role) {
-            return null;
-        }
+export const AdminAuthUtil = {
+    buildSession(loginResponse: LoginResponse): AdminSession {
+        const roleName = normalizeRoleName(loginResponse.role?.name);
+        const permissions = extractPermissionsFromRole(loginResponse.role);
+        const allowedUrls = extractAllowedUrlsFromRole(loginResponse.role);
 
         return {
-            token: String(parsed.token),
-            expiredAt: String(parsed.expiredAt ?? ""),
-            authenticated: Boolean(parsed.authenticated),
-            role: parsed.role,
-            roleName: normalizeRoleName(parsed.roleName ?? parsed.role.name),
-            userId: typeof parsed.userId === "number" ? parsed.userId : undefined,
-            email: parsed.email,
-            roles: Array.isArray(parsed.roles) ? parsed.roles : undefined,
-            permissions: Array.isArray(parsed.permissions) ? parsed.permissions : [],
-            allowedUrls: Array.isArray(parsed.allowedUrls) ? parsed.allowedUrls : [],
+            token: loginResponse.token,
+            authenticated: Boolean(loginResponse.authenticated),
+            role: loginResponse.role,
+            roleName,
+            expiredAt: loginResponse.expiredAt,
+            permissions,
+            allowedUrls,
         };
-    } catch {
-        return null;
-    }
-}
+    },
 
-export function clearAdminSession() {
-    if (!isBrowser()) return;
-    window.localStorage.removeItem(ADMIN_SESSION_STORAGE_KEY);
-}
+    persistSession(session: AdminSession) {
+        if (!isBrowser()) return;
+        window.localStorage.setItem(ADMIN_SESSION_STORAGE_KEY, JSON.stringify(session));
+    },
 
-export function patchAdminSession(partial: Partial<AdminSession>) {
-    const current = getAdminSession();
-    if (!current) return;
-    persistAdminSession({ ...current, ...partial });
-}
+    getSession(): AdminSession | null {
+        if (!isBrowser()) return null;
 
-export function isAdminSession(session: AdminSession | null) {
-    if (!session || !session.token || !session.roleName) return false;
-    return canUseRoleForAdmin(session.roleName, session.permissions);
-}
+        const raw = window.localStorage.getItem(ADMIN_SESSION_STORAGE_KEY);
+        if (!raw) return null;
 
-export function hasPermission(session: AdminSession | null, permission: string) {
-    if (!session) return false;
-    return session.permissions.includes(permission.trim().toUpperCase());
-}
+        try {
+            const parsed = JSON.parse(raw) as Partial<AdminSession>;
+            if (!parsed || typeof parsed !== "object" || !parsed.token || !parsed.role) {
+                return null;
+            }
 
-export function hasAnyPermission(session: AdminSession | null, permissionList: string[]) {
-    if (!session) return false;
-    return permissionList.some((permission) => hasPermission(session, permission));
-}
+            return {
+                token: String(parsed.token),
+                expiredAt: String(parsed.expiredAt ?? ""),
+                authenticated: Boolean(parsed.authenticated),
+                role: parsed.role,
+                roleName: normalizeRoleName(parsed.roleName ?? parsed.role.name),
+                userId: typeof parsed.userId === "number" ? parsed.userId : undefined,
+                email: parsed.email,
+                roles: Array.isArray(parsed.roles) ? parsed.roles : undefined,
+                permissions: Array.isArray(parsed.permissions) ? parsed.permissions : [],
+                allowedUrls: Array.isArray(parsed.allowedUrls) ? parsed.allowedUrls : [],
+            };
+        } catch {
+            return null;
+        }
+    },
 
-export function canAccessUrl(session: AdminSession | null, url: string) {
-    if (!session) return false;
-    if (session.allowedUrls.length === 0) {
-        return true;
-    }
+    clearSession() {
+        if (!isBrowser()) return;
+        window.localStorage.removeItem(ADMIN_SESSION_STORAGE_KEY);
+    },
 
-    const normalized = url.replace(/\/$/, "");
-    const candidates = new Set<string>([normalized]);
+    patchSession(partial: Partial<AdminSession>) {
+        const current = this.getSession();
+        if (!current) return;
+        this.persistSession({ ...current, ...partial });
+    },
 
-    if (normalized.startsWith("/admin/")) {
-        candidates.add(normalized.replace("/admin", ""));
-    } else if (normalized.startsWith("/")) {
-        candidates.add(`/admin${normalized}`);
-    }
+    isSessionValid(session: AdminSession | null) {
+        if (!session || !session.token || !session.roleName) return false;
+        return canUseRoleForAdmin(session.roleName, session.permissions);
+    },
 
-    return session.allowedUrls.some((allowed) => {
-        const base = allowed.replace(/\/$/, "");
-        if (candidates.has(base)) return true;
-        return Array.from(candidates).some((candidate) => candidate.startsWith(`${base}/`));
-    });
-}
+    hasPermission(session: AdminSession | null, permission: string) {
+        if (!session) return false;
+        return session.permissions.includes(permission.trim().toUpperCase());
+    },
+
+    hasAnyPermission(session: AdminSession | null, permissionList: string[]) {
+        if (!session) return false;
+        return permissionList.some((permission) => this.hasPermission(session, permission));
+    },
+
+    canAccessUrl(session: AdminSession | null, url: string) {
+        if (!session) return false;
+        if (session.allowedUrls.length === 0) {
+            return true;
+        }
+
+        const normalized = url.replace(/\/$/, "");
+        const candidates = new Set<string>([normalized]);
+
+        if (normalized.startsWith("/admin/")) {
+            candidates.add(normalized.replace("/admin", ""));
+        } else if (normalized.startsWith("/")) {
+            candidates.add(`/admin${normalized}`);
+        }
+
+        return session.allowedUrls.some((allowed) => {
+            const base = allowed.replace(/\/$/, "");
+            if (candidates.has(base)) return true;
+            return Array.from(candidates).some((candidate) => candidate.startsWith(`${base}/`));
+        });
+    },
+};
+
+// Backward-compatible aliases while migrating call sites.
+export const buildAdminSession = AdminAuthUtil.buildSession.bind(AdminAuthUtil);
+export const persistAdminSession = AdminAuthUtil.persistSession.bind(AdminAuthUtil);
+export const getAdminSession = AdminAuthUtil.getSession.bind(AdminAuthUtil);
+export const clearAdminSession = AdminAuthUtil.clearSession.bind(AdminAuthUtil);
+export const patchAdminSession = AdminAuthUtil.patchSession.bind(AdminAuthUtil);
+export const isAdminSession = AdminAuthUtil.isSessionValid.bind(AdminAuthUtil);
+export const hasPermission = AdminAuthUtil.hasPermission.bind(AdminAuthUtil);
+export const hasAnyPermission = AdminAuthUtil.hasAnyPermission.bind(AdminAuthUtil);
+export const canAccessUrl = AdminAuthUtil.canAccessUrl.bind(AdminAuthUtil);

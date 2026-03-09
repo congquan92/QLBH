@@ -1,18 +1,19 @@
 import { axiosInstance } from "@/lib/axios";
 
-export const helloApi = {
+export const HelloApi = {
     // WARNING: Backend routes do not expose `/hello` in `server/routes/api.php`.
-    sayHello: async () => {
+    getMessage: async (): Promise<{ message: string }> => {
         try {
-            return await axiosInstance.get("/hello");
+            const res = await axiosInstance.get<{ message: string }>("/hello");
+            return res.data;
         } catch (error) {
-            console.warn("[WARNING][helloApi] Endpoint /hello is not defined in backend routes.", error);
+            console.warn("[WARNING][HelloApi] Endpoint /hello is not defined in backend routes.", error);
             return {
-                data: {
-                    status: 404,
-                    message: "Endpoint /hello is not available on backend",
-                },
+                message: "Endpoint /hello is not available on backend",
             };
         }
     },
 };
+
+// Backward-compatible alias.
+export const helloApi = HelloApi;

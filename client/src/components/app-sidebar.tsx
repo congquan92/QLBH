@@ -277,12 +277,14 @@ export function AppSidebar() {
                                     <User2 className="mr-2 h-4 w-4" />
                                     <span>Thông tin cá nhân</span>
                                 </DropdownMenuItem>
-                                <DropdownMenuItem asChild className="cursor-pointer">
-                                    <Link href="/admin/settings">
-                                        <Settings className="mr-2 h-4 w-4" />
-                                        <span>Cài đặt</span>
-                                    </Link>
-                                </DropdownMenuItem>
+                                {/* {canAccessPath("/admin/settings") && (
+                                    <DropdownMenuItem asChild className="cursor-pointer">
+                                        <Link href="/admin/settings">
+                                            <Settings className="mr-2 h-4 w-4" />
+                                            <span>Cài đặt</span>
+                                        </Link>
+                                    </DropdownMenuItem>
+                                )} */}
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem
                                     className="cursor-pointer text-destructive focus:text-destructive"

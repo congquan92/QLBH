@@ -1,5 +1,5 @@
 import axios from "axios";
-import { clearAdminSession, getAdminSession, patchAdminSession } from "@/lib/admin-auth";
+import { AdminAuthUtil } from "@/lib/admin-auth";
 import type { AxiosRequestConfig } from "axios";
 
 type RetryableRequestConfig = AxiosRequestConfig & {
@@ -43,7 +43,7 @@ async function refreshAccessToken(): Promise<string | null> {
             {
                 withCredentials: true,
                 headers: (() => {
-                    const token = getAdminSession()?.token;
+                    const token = AdminAuthUtil.getSession()?.token;
                     return token ? { Authorization: `Bearer ${token}` } : undefined;
                 })(),
             },
@@ -51,14 +51,14 @@ async function refreshAccessToken(): Promise<string | null> {
         .then((response) => {
             const token = response.data?.access_token;
             if (!token) {
-                clearAdminSession();
+                AdminAuthUtil.clearSession();
                 return null;
             }
-            patchAdminSession({ token });
+            AdminAuthUtil.patchSession({ token });
             return token;
         })
         .catch(() => {
-            clearAdminSession();
+            AdminAuthUtil.clearSession();
             return null;
         })
         .finally(() => {
@@ -69,7 +69,7 @@ async function refreshAccessToken(): Promise<string | null> {
 }
 
 axiosInstance.interceptors.request.use((config) => {
-    const session = getAdminSession();
+    const session = AdminAuthUtil.getSession();
     if (session?.token) {
         config.headers = config.headers ?? {};
         (config.headers as Record<string, unknown>).Authorization = `Bearer ${session.token}`;
