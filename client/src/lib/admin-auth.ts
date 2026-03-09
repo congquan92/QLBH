@@ -32,7 +32,22 @@ function normalizeAdminPath(raw?: string) {
     const value = String(raw ?? "").trim();
     if (!value) return "";
 
-    const normalized = value.replace(/\/$/, "");
+    let candidate = value;
+
+    // Some backend payloads can include absolute URLs; keep only pathname for ACL checks.
+    if (/^https?:\/\//i.test(candidate)) {
+        try {
+            candidate = new URL(candidate).pathname;
+        } catch {
+            // Ignore parse failure and continue with raw candidate.
+        }
+    }
+
+    const pathOnly = candidate.split(/[?#]/)[0]?.trim() ?? "";
+    if (!pathOnly) return "";
+
+    const normalized = pathOnly.replace(/\/+$/, "");
+    if (!normalized) return "/admin";
     if (normalized.startsWith("/admin")) return normalized;
     if (normalized.startsWith("/")) return `/admin${normalized}`;
     return `/admin/${normalized}`;

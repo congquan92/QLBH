@@ -1,34 +1,21 @@
 "use client";
 
 import { useAdminAuth } from "@/components/feature/admin-auth-provider";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { Loader2, ShieldX } from "lucide-react";
 import { useEffect } from "react";
 
 export function AdminRouteGate({ children }: { children: React.ReactNode }) {
-    const { isLoading, isAuthenticated, canAccessPath } = useAdminAuth();
+    const { isLoading, isAuthenticated } = useAdminAuth();
     const router = useRouter();
-    const pathname = usePathname();
-    const forbiddenPath = "/admin/forbidden";
 
     useEffect(() => {
         if (isLoading) return;
 
         if (!isAuthenticated) {
             router.replace("/admin/login");
-            return;
         }
-
-        if (pathname && pathname.startsWith("/admin") && pathname !== "/admin" && pathname !== "/admin/login") {
-            if (pathname === forbiddenPath) {
-                return;
-            }
-
-            if (!canAccessPath(pathname)) {
-                router.replace(forbiddenPath);
-            }
-        }
-    }, [canAccessPath, forbiddenPath, isAuthenticated, isLoading, pathname, router]);
+    }, [isAuthenticated, isLoading, router]);
 
     if (isLoading) {
         return (
