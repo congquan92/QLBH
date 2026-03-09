@@ -1,15 +1,16 @@
 "use client";
 
 import { useAdminAuth } from "@/components/feature/admin-auth-provider";
-import { AdminOrdersStore } from "@/stores/admin-orders.store";
+import { OrderApi } from "@/api/order.api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Search, Filter, Loader2, CheckCircle, XCircle } from "lucide-react";
 import { Helper } from "@/lib/helper";
-import { useCallback, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import type { OrderSummary } from "@/types/order";
 
 const DELIVERY_STATUSES = [
     { value: "PENDING", label: "Chờ xử lý", color: "yellow" },
@@ -23,25 +24,29 @@ const DELIVERY_STATUSES = [
 
 export default function OrdersPage() {
     const { hasPermission } = useAdminAuth();
-    const orders = AdminOrdersStore.useStore((state) => state.orders);
-    const isLoading = AdminOrdersStore.useStore((state) => state.isLoading);
-    const updatingOrderId = AdminOrdersStore.useStore((state) => state.updatingOrderId);
+    const [orders, setOrders] = useState<OrderSummary[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [updatingOrderId, setUpdatingOrderId] = useState<number | null>(null);
 
     const canViewOrders = hasPermission("VIEW_ORDERS_ADMIN");
     const canUpdateStatus = hasPermission("UPDATE_ORDER_STATUS");
 
-    const refreshOrders = useCallback(async () => {
-        await AdminOrdersStore.actions.loadOrders({
-            canViewOrders,
-            page: 1,
-            size: 100,
-            sort: "id:desc",
-        });
-    }, [canViewOrders]);
+    async function fetchOrders() {
+        if (!canViewOrders) {
+            setOrders([]);
+            setIsLoading(false);
+            return;
+        }
+
+        setIsLoading(true);
+        const orderRes = await OrderApi.getAdminOrders({ page: 1, size: 100, sort: "id:desc" });
+        setOrders(orderRes.data.data);
+        setIsLoading(false);
+    }
 
     useEffect(() => {
-        void refreshOrders();
-    }, [refreshOrders]);
+        void fetchOrders();
+    }, [canViewOrders]);
 
     async function handleChangeStatus(orderId: number, newStatus: string) {
         if (!canUpdateStatus) {
@@ -49,10 +54,13 @@ export default function OrdersPage() {
             return;
         }
 
-        const res = await AdminOrdersStore.actions.changeStatus(orderId, newStatus);
+        setUpdatingOrderId(orderId);
+        const res = await OrderApi.changeStatus(orderId, newStatus);
+        setUpdatingOrderId(null);
 
         if (res.status === 200) {
             toast.success(`Đã cập nhật trạng thái đơn #${orderId} thành ${newStatus}`);
+            await fetchOrders();
         } else {
             toast.error(res.message || "Không thể cập nhật trạng thái");
         }
@@ -64,10 +72,13 @@ export default function OrdersPage() {
             return;
         }
 
-        const res = await AdminOrdersStore.actions.completeOrder(orderId);
+        setUpdatingOrderId(orderId);
+        const res = await OrderApi.complete(orderId);
+        setUpdatingOrderId(null);
 
         if (res.status === 200) {
             toast.success(`Đã hoàn thành đơn hàng #${orderId}`);
+            await fetchOrders();
         } else {
             toast.error(res.message || "Không thể hoàn thành đơn hàng");
         }
@@ -76,10 +87,13 @@ export default function OrdersPage() {
     async function handleCancelOrder(orderId: number) {
         if (!confirm("Bạn có chắc chắn muốn hủy đơn hàng này?")) return;
 
-        const res = await AdminOrdersStore.actions.cancelOrder(orderId);
+        setUpdatingOrderId(orderId);
+        const res = await OrderApi.cancel(orderId);
+        setUpdatingOrderId(null);
 
         if (res.status === 200) {
             toast.success(`Đã hủy đơn hàng #${orderId}`);
+            await fetchOrders();
         } else {
             toast.error(res.message || "Không thể hủy đơn hàng");
         }
