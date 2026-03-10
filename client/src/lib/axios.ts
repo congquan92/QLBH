@@ -1,5 +1,6 @@
 import axios from "axios";
 import { AdminAuthUtil } from "@/lib/admin-auth";
+import { UserAuthUtil } from "@/lib/user-auth";
 import type { AxiosRequestConfig } from "axios";
 
 type RetryableRequestConfig = AxiosRequestConfig & {
@@ -33,8 +34,41 @@ function shouldSkipRefresh(url?: string) {
 
 let refreshInFlight: Promise<string | null> | null = null;
 
+function getSessionPreference() {
+    if (typeof window === "undefined") {
+        const adminSession = AdminAuthUtil.getSession();
+        if (adminSession?.token) return { source: "admin" as const, token: adminSession.token };
+
+        const userSession = UserAuthUtil.getSession();
+        if (userSession?.token) return { source: "user" as const, token: userSession.token };
+
+        return null;
+    }
+
+    const pathname = window.location.pathname;
+    if (pathname.startsWith("/admin")) {
+        const adminSession = AdminAuthUtil.getSession();
+        if (adminSession?.token) return { source: "admin" as const, token: adminSession.token };
+
+        const userSession = UserAuthUtil.getSession();
+        if (userSession?.token) return { source: "user" as const, token: userSession.token };
+
+        return null;
+    }
+
+    const userSession = UserAuthUtil.getSession();
+    if (userSession?.token) return { source: "user" as const, token: userSession.token };
+
+    const adminSession = AdminAuthUtil.getSession();
+    if (adminSession?.token) return { source: "admin" as const, token: adminSession.token };
+
+    return null;
+}
+
 async function refreshAccessToken(): Promise<string | null> {
     if (refreshInFlight) return refreshInFlight;
+
+    const preferredSession = getSessionPreference();
 
     refreshInFlight = axios
         .post<{ access_token: string }>(
@@ -42,23 +76,29 @@ async function refreshAccessToken(): Promise<string | null> {
             {},
             {
                 withCredentials: true,
-                headers: (() => {
-                    const token = AdminAuthUtil.getSession()?.token;
-                    return token ? { Authorization: `Bearer ${token}` } : undefined;
-                })(),
+                headers: preferredSession?.token ? { Authorization: `Bearer ${preferredSession.token}` } : undefined,
             },
         )
         .then((response) => {
             const token = response.data?.access_token;
             if (!token) {
                 AdminAuthUtil.clearSession();
+                UserAuthUtil.clearSession();
                 return null;
             }
-            AdminAuthUtil.patchSession({ token });
+            if (preferredSession?.source === "admin") {
+                AdminAuthUtil.patchSession({ token });
+            } else {
+                UserAuthUtil.patchSession({ token });
+            }
             return token;
         })
         .catch(() => {
-            AdminAuthUtil.clearSession();
+            if (preferredSession?.source === "admin") {
+                AdminAuthUtil.clearSession();
+            } else {
+                UserAuthUtil.clearSession();
+            }
             return null;
         })
         .finally(() => {
@@ -69,10 +109,10 @@ async function refreshAccessToken(): Promise<string | null> {
 }
 
 axiosInstance.interceptors.request.use((config) => {
-    const session = AdminAuthUtil.getSession();
-    if (session?.token) {
+    const preferredSession = getSessionPreference();
+    if (preferredSession?.token) {
         config.headers = config.headers ?? {};
-        (config.headers as Record<string, unknown>).Authorization = `Bearer ${session.token}`;
+        (config.headers as Record<string, unknown>).Authorization = `Bearer ${preferredSession.token}`;
     }
     return config;
 });

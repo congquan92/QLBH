@@ -4,6 +4,31 @@ import type { Product, ProductDetail } from "@/types/product";
 
 const WARNING_PREFIX = "[WARNING][ProductApi]";
 
+type ProductListQuery = {
+    keyword?: string;
+    sort?: string;
+    page?: number;
+    size?: number;
+};
+
+function normalizeListQuery(pageOrQuery?: number | ProductListQuery, size?: number) {
+    if (typeof pageOrQuery === "object") {
+        return {
+            page: pageOrQuery.page ?? 1,
+            size: pageOrQuery.size ?? 10,
+            keyword: pageOrQuery.keyword,
+            sort: pageOrQuery.sort,
+        };
+    }
+
+    return {
+        page: pageOrQuery ?? 1,
+        size: size ?? 10,
+        keyword: undefined,
+        sort: undefined,
+    };
+}
+
 function createEmptyProductListResponse(page: number, size: number): ApiResponse<PageResponse<Product>> {
     return {
         status: 200,
@@ -39,22 +64,22 @@ function isValidProductDetailResponse(payload: unknown): payload is ApiResponse<
 }
 
 export const ProductApi = {
-    getAllProducts: async (page = 1, size = 10): Promise<ApiResponse<PageResponse<Product>>> => {
+    getAllProducts: async (pageOrQuery: number | ProductListQuery = 1, size?: number): Promise<ApiResponse<PageResponse<Product>>> => {
+        const query = normalizeListQuery(pageOrQuery, size);
         try {
             const res = await axiosInstance.get<ApiResponse<PageResponse<Product>>>("/product/list", {
-                // Backend uses `size`, not `pageSize`.
-                params: { page, size },
+                params: query,
             });
 
             if (!isValidProductListResponse(res.data)) {
                 console.warn(`${WARNING_PREFIX} Invalid /product/list response shape.`);
-                return createEmptyProductListResponse(page, size);
+                return createEmptyProductListResponse(query.page, query.size);
             }
 
             return res.data;
         } catch (error) {
             console.error(`${WARNING_PREFIX} /product/list failed.`, error);
-            return createEmptyProductListResponse(page, size);
+            return createEmptyProductListResponse(query.page, query.size);
         }
     },
 
@@ -74,21 +99,22 @@ export const ProductApi = {
         }
     },
 
-    getProductsByCategory: async (categoryId: number, page = 1, size = 10): Promise<ApiResponse<PageResponse<Product>>> => {
+    getProductsByCategory: async (categoryId: number, pageOrQuery: number | ProductListQuery = 1, size?: number): Promise<ApiResponse<PageResponse<Product>>> => {
+        const query = normalizeListQuery(pageOrQuery, size);
         try {
             const res = await axiosInstance.get<ApiResponse<PageResponse<Product>>>(`/product/category/${categoryId}`, {
-                params: { page, size },
+                params: query,
             });
 
             if (!isValidProductListResponse(res.data)) {
                 console.warn(`${WARNING_PREFIX} Invalid /product/category/{id} response shape.`);
-                return createEmptyProductListResponse(page, size);
+                return createEmptyProductListResponse(query.page, query.size);
             }
 
             return res.data;
         } catch (error) {
             console.error(`${WARNING_PREFIX} /product/category/{id} failed.`, error);
-            return createEmptyProductListResponse(page, size);
+            return createEmptyProductListResponse(query.page, query.size);
         }
     },
 

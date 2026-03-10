@@ -25,7 +25,7 @@ export interface UserAddress {
 
 export interface ChangePasswordPayload {
     oldPassword: string;
-    newPassword: string;
+    password: string;
     confirmPassword: string;
 }
 
