@@ -10,6 +10,8 @@ use Illuminate\Support\Facades\DB;
 
 class OrderDemoSeeder extends Seeder
 {
+    private const PRODUCT_NAME = 'Dép Nam ICONDENIM Drift Slides';
+
     public function run(): void
     {
         $customer = DB::table('users')->where('username', 'customer_demo')->first();
@@ -24,12 +26,12 @@ class OrderDemoSeeder extends Seeder
 
     private function seedOrders(int $userId, string $customerName, string $customerPhone): void
     {
-        $variants = DB::table('product_variants')->whereIn('sku', ['SN-WHITE-41', 'TUI-MINI-BE', 'SM-WHITE-M', 'SD-NU-37'])->get()->keyBy('sku');
-        $products = DB::table('products')->whereIn('name', ['Giay Sneaker Trang', 'Tui Deo Cheo Mini', 'Ao So Mi Trang Cong So', 'Sandal Nu Mua He'])->get()->keyBy('name');
+        $variants = DB::table('product_variants')->whereIn('sku', ['DRIFT-BLK-M', 'DRIFT-GBE-L'])->get()->keyBy('sku');
+        $products = DB::table('products')->whereIn('name', [self::PRODUCT_NAME])->get()->keyBy('name');
 
         $samples = [
-            ['tracking_code' => 'DEMO-ORDER-1001', 'status' => DeliveryStatus::CONFIRMED->value, 'payment_type' => PaymentType::COD->value, 'payment_status' => PaymentStatus::UNPAID->value, 'is_confirmed' => true, 'items' => [['sku' => 'SN-WHITE-41', 'product' => 'Giay Sneaker Trang', 'qty' => 1, 'attrs' => ['size' => '41', 'color' => 'White']], ['sku' => 'TUI-MINI-BE', 'product' => 'Tui Deo Cheo Mini', 'qty' => 1, 'attrs' => ['color' => 'Beige']]]],
-            ['tracking_code' => 'DEMO-ORDER-1002', 'status' => DeliveryStatus::DELIVERED->value, 'payment_type' => PaymentType::BANK_TRANSFER->value, 'payment_status' => PaymentStatus::PAID->value, 'is_confirmed' => true, 'items' => [['sku' => 'SM-WHITE-M', 'product' => 'Ao So Mi Trang Cong So', 'qty' => 1, 'attrs' => ['size' => 'M', 'color' => 'White']], ['sku' => 'SD-NU-37', 'product' => 'Sandal Nu Mua He', 'qty' => 1, 'attrs' => ['size' => '37', 'color' => 'Nude']]]],
+            ['tracking_code' => 'DEMO-ORDER-1001', 'status' => DeliveryStatus::CONFIRMED->value, 'payment_type' => PaymentType::COD->value, 'payment_status' => PaymentStatus::UNPAID->value, 'is_confirmed' => true, 'items' => [['sku' => 'DRIFT-BLK-M', 'product' => self::PRODUCT_NAME, 'qty' => 1, 'attrs' => ['Kích thước' => 'M', 'Màu sắc' => 'Đen']]]],
+            ['tracking_code' => 'DEMO-ORDER-1002', 'status' => DeliveryStatus::DELIVERED->value, 'payment_type' => PaymentType::BANK_TRANSFER->value, 'payment_status' => PaymentStatus::PAID->value, 'is_confirmed' => true, 'items' => [['sku' => 'DRIFT-GBE-L', 'product' => self::PRODUCT_NAME, 'qty' => 2, 'attrs' => ['Kích thước' => 'L', 'Màu sắc' => 'Xám be']]]],
         ];
 
         foreach ($samples as $sample) {
@@ -58,13 +60,13 @@ class OrderDemoSeeder extends Seeder
                 [
                     'customer_name' => $customerName,
                     'customer_phone' => $customerPhone,
-                    'delivery_ward_name' => 'Ben Nghe',
-                    'delivery_ward_code' => '26734',
-                    'delivery_district_id' => 760,
-                    'delivery_province_id' => 79,
-                    'delivery_district_name' => 'Quan 1',
-                    'delivery_province_name' => 'Ho Chi Minh',
-                    'delivery_address' => '123 Le Loi, Quan 1',
+                    'delivery_ward_name' => 'Phường Bình Hưng Hoà A',
+                    'delivery_ward_code' => '21904',
+                    'delivery_district_id' => 1458,
+                    'delivery_province_id' => 209,
+                    'delivery_district_name' => 'Quận Bình Tân',
+                    'delivery_province_name' => 'Hồ Chí Minh',
+                    'delivery_address' => 'abcd, Quận Bình Tân',
                     'service_type_id' => 2,
                     'original_order_amount' => $amount,
                     'weight' => max(1, $weight),
@@ -72,7 +74,7 @@ class OrderDemoSeeder extends Seeder
                     'width' => max(1, $width),
                     'height' => max(1, $height),
                     'total_fee_for_ship' => $shipping,
-                    'note' => 'Don hang demo',
+                    'note' => 'Đơn hàng demo theo dữ liệu seed mới',
                     'total_amount' => $amount + $shipping,
                     'order_status' => $sample['status'],
                     'payment_type' => $sample['payment_type'],

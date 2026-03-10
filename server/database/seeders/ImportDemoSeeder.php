@@ -9,16 +9,17 @@ use Illuminate\Support\Facades\DB;
 
 class ImportDemoSeeder extends Seeder
 {
+    private const PRODUCT_NAME = 'Dép Nam ICONDENIM Drift Slides';
+
     public function run(): void
     {
         DB::transaction(function (): void {
-            $variantRows = DB::table('product_variants')->whereIn('sku', ['TS-BASIC-M-BLACK', 'SN-WHITE-41', 'BALO-15-BLACK'])->get()->keyBy('sku');
-            $productRows = DB::table('products')->whereIn('name', ['Ao Thun Basic Nam', 'Giay Sneaker Trang', 'Balo Laptop Chong Nuoc'])->get()->keyBy('name');
+            $variantRows = DB::table('product_variants')->whereIn('sku', ['DRIFT-BLK-M', 'DRIFT-GBE-L'])->get()->keyBy('sku');
+            $productRows = DB::table('products')->whereIn('name', [self::PRODUCT_NAME])->get()->keyBy('name');
 
             $imports = [
-                ['description' => 'Nhap demo Ao Thun Basic Nam', 'product' => 'Ao Thun Basic Nam', 'status' => DeliveryStatus::COMPLETED->value, 'details' => [['sku' => 'TS-BASIC-M-BLACK', 'qty' => 20, 'unit' => 150000, 'attrs' => ['size' => 'M', 'color' => 'Black']]]],
-                ['description' => 'Nhap demo Giay Sneaker Trang', 'product' => 'Giay Sneaker Trang', 'status' => DeliveryStatus::CONFIRMED->value, 'details' => [['sku' => 'SN-WHITE-41', 'qty' => 10, 'unit' => 650000, 'attrs' => ['size' => '41', 'color' => 'White']]]],
-                ['description' => 'Nhap demo Balo Laptop', 'product' => 'Balo Laptop Chong Nuoc', 'status' => DeliveryStatus::PENDING->value, 'details' => [['sku' => 'BALO-15-BLACK', 'qty' => 12, 'unit' => 520000, 'attrs' => ['size' => '15.6 inch', 'color' => 'Black']]]],
+                ['description' => 'Nhập demo dép nam màu Đen size M', 'product' => self::PRODUCT_NAME, 'status' => DeliveryStatus::COMPLETED->value, 'details' => [['sku' => 'DRIFT-BLK-M', 'qty' => 20, 'unit' => 240000, 'attrs' => ['Kích thước' => 'M', 'Màu sắc' => 'Đen']]]],
+                ['description' => 'Nhập demo dép nam màu Xám be size L', 'product' => self::PRODUCT_NAME, 'status' => DeliveryStatus::CONFIRMED->value, 'details' => [['sku' => 'DRIFT-GBE-L', 'qty' => 12, 'unit' => 245000, 'attrs' => ['Kích thước' => 'L', 'Màu sắc' => 'Xám be']]]],
             ];
 
             foreach ($imports as $import) {

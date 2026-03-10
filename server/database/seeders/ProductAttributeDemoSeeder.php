@@ -7,6 +7,8 @@ use Illuminate\Support\Facades\DB;
 
 class ProductAttributeDemoSeeder extends Seeder
 {
+    private const PRODUCT_NAME = 'Dép Nam ICONDENIM Drift Slides';
+
     public function run(): void
     {
         DB::transaction(function (): void {
@@ -19,7 +21,7 @@ class ProductAttributeDemoSeeder extends Seeder
 
     private function seedAttributes(): void
     {
-        foreach (['Color', 'Size'] as $name) {
+        foreach (['Màu sắc', 'Kích thước'] as $name) {
             DB::table('attributes')->updateOrInsert(
                 ['name' => $name],
                 ['updated_at' => now(), 'created_at' => now()]
@@ -29,8 +31,8 @@ class ProductAttributeDemoSeeder extends Seeder
 
     private function seedProductAttributes(): void
     {
-        $productIds = DB::table('products')->whereIn('name', ['Ao Thun Basic Nam', 'Ao So Mi Trang Cong So', 'Giay Sneaker Trang', 'Sandal Nu Mua He'])->pluck('id');
-        $attributeIds = DB::table('attributes')->whereIn('name', ['Color', 'Size'])->pluck('id');
+        $productIds = DB::table('products')->whereIn('name', [self::PRODUCT_NAME])->pluck('id');
+        $attributeIds = DB::table('attributes')->whereIn('name', ['Màu sắc', 'Kích thước'])->pluck('id');
 
         foreach ($productIds as $productId) {
             foreach ($attributeIds as $attributeId) {
@@ -44,14 +46,22 @@ class ProductAttributeDemoSeeder extends Seeder
 
     private function seedProductAttributeValues(): void
     {
-        $attributes = DB::table('attributes')->whereIn('name', ['Color', 'Size'])->pluck('id', 'name');
-        $products = DB::table('products')->whereIn('name', ['Ao Thun Basic Nam', 'Ao So Mi Trang Cong So', 'Giay Sneaker Trang', 'Sandal Nu Mua He'])->pluck('id', 'name');
+        $attributes = DB::table('attributes')->whereIn('name', ['Màu sắc', 'Kích thước'])->pluck('id', 'name');
+        $products = DB::table('products')->whereIn('name', [self::PRODUCT_NAME])->pluck('id', 'name');
 
         $spec = [
-            'Ao Thun Basic Nam' => ['Color' => ['Black', 'White'], 'Size' => ['M', 'L']],
-            'Ao So Mi Trang Cong So' => ['Color' => ['White'], 'Size' => ['M']],
-            'Giay Sneaker Trang' => ['Color' => ['White'], 'Size' => ['41', '42']],
-            'Sandal Nu Mua He' => ['Color' => ['Nude'], 'Size' => ['37']],
+            self::PRODUCT_NAME => [
+                'Màu sắc' => [
+                    ['value' => 'Đen', 'url_image' => 'https://cdn.hstatic.net/products/1000253775/160_dep_039-4_aefebb92930a4c60a12fa2bae5b97a2f_1024x1024.jpg'],
+                    ['value' => 'Xám be', 'url_image' => 'https://cdn.hstatic.net/products/1000253775/160_dep_039-2_ebcd85b035f440c7b6075b07e9833ed8_1024x1024.jpg'],
+                ],
+                'Kích thước' => [
+                    ['value' => 'S', 'url_image' => null],
+                    ['value' => 'M', 'url_image' => null],
+                    ['value' => 'L', 'url_image' => null],
+                    ['value' => 'XL', 'url_image' => null],
+                ],
+            ],
         ];
 
         foreach ($spec as $productName => $groups) {
@@ -75,10 +85,10 @@ class ProductAttributeDemoSeeder extends Seeder
                     continue;
                 }
 
-                foreach ($values as $value) {
+                foreach ($values as $valueRow) {
                     DB::table('product_attribute_values')->updateOrInsert(
-                        ['product_attribute_id' => $productAttributeId, 'value' => $value],
-                        ['url_image' => null, 'updated_at' => now(), 'created_at' => now()]
+                        ['product_attribute_id' => $productAttributeId, 'value' => $valueRow['value']],
+                        ['url_image' => $valueRow['url_image'], 'updated_at' => now(), 'created_at' => now()]
                     );
                 }
             }
@@ -88,12 +98,14 @@ class ProductAttributeDemoSeeder extends Seeder
     private function seedVariantAttributeMap(): void
     {
         $bindings = [
-            'TS-BASIC-M-BLACK' => ['product' => 'Ao Thun Basic Nam', 'Color' => 'Black', 'Size' => 'M'],
-            'TS-BASIC-L-WHITE' => ['product' => 'Ao Thun Basic Nam', 'Color' => 'White', 'Size' => 'L'],
-            'SM-WHITE-M' => ['product' => 'Ao So Mi Trang Cong So', 'Color' => 'White', 'Size' => 'M'],
-            'SN-WHITE-41' => ['product' => 'Giay Sneaker Trang', 'Color' => 'White', 'Size' => '41'],
-            'SN-WHITE-42' => ['product' => 'Giay Sneaker Trang', 'Color' => 'White', 'Size' => '42'],
-            'SD-NU-37' => ['product' => 'Sandal Nu Mua He', 'Color' => 'Nude', 'Size' => '37'],
+            'DRIFT-BLK-S' => ['product' => self::PRODUCT_NAME, 'Màu sắc' => 'Đen', 'Kích thước' => 'S'],
+            'DRIFT-BLK-M' => ['product' => self::PRODUCT_NAME, 'Màu sắc' => 'Đen', 'Kích thước' => 'M'],
+            'DRIFT-BLK-L' => ['product' => self::PRODUCT_NAME, 'Màu sắc' => 'Đen', 'Kích thước' => 'L'],
+            'DRIFT-BLK-XL' => ['product' => self::PRODUCT_NAME, 'Màu sắc' => 'Đen', 'Kích thước' => 'XL'],
+            'DRIFT-GBE-S' => ['product' => self::PRODUCT_NAME, 'Màu sắc' => 'Xám be', 'Kích thước' => 'S'],
+            'DRIFT-GBE-M' => ['product' => self::PRODUCT_NAME, 'Màu sắc' => 'Xám be', 'Kích thước' => 'M'],
+            'DRIFT-GBE-L' => ['product' => self::PRODUCT_NAME, 'Màu sắc' => 'Xám be', 'Kích thước' => 'L'],
+            'DRIFT-GBE-XL' => ['product' => self::PRODUCT_NAME, 'Màu sắc' => 'Xám be', 'Kích thước' => 'XL'],
         ];
 
         $attributes = DB::table('attributes')->pluck('id', 'name');
@@ -107,7 +119,7 @@ class ProductAttributeDemoSeeder extends Seeder
                 continue;
             }
 
-            foreach (['Color', 'Size'] as $attributeName) {
+            foreach (['Màu sắc', 'Kích thước'] as $attributeName) {
                 $attributeId = $attributes[$attributeName] ?? null;
                 if (!$attributeId) {
                     continue;

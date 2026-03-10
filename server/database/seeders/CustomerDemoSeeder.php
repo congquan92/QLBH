@@ -8,6 +8,8 @@ use Illuminate\Support\Facades\DB;
 
 class CustomerDemoSeeder extends Seeder
 {
+    private const PRODUCT_NAME = 'Dép Nam ICONDENIM Drift Slides';
+
     public function run(): void
     {
         $customerId = DB::table('users')->where('username', 'customer_demo')->value('id');
@@ -25,8 +27,7 @@ class CustomerDemoSeeder extends Seeder
     private function seedAddresses(int $customerId): void
     {
         $samples = [
-            ['customer_name' => 'Customer Demo', 'phone_number' => '0900000004', 'address' => '123 Le Loi', 'ward' => 'Ben Nghe', 'district' => 'Quan 1', 'province' => 'Ho Chi Minh', 'province_id' => 79, 'district_id' => 760, 'ward_id' => 26734, 'address_type' => 'HOME', 'is_default' => true],
-            ['customer_name' => 'Customer Demo', 'phone_number' => '0900000004', 'address' => '88 Nguyen Hue', 'ward' => 'Ben Thanh', 'district' => 'Quan 1', 'province' => 'Ho Chi Minh', 'province_id' => 79, 'district_id' => 760, 'ward_id' => 26740, 'address_type' => 'WORK', 'is_default' => false],
+            ['customer_name' => 'ABCD', 'phone_number' => '0399097211', 'address' => 'abcd', 'ward' => 'Phường Bình Hưng Hoà A', 'district' => 'Quận Bình Tân', 'province' => 'Hồ Chí Minh', 'province_id' => 209, 'district_id' => 1458, 'ward_id' => 21904, 'address_type' => 'HOME', 'is_default' => true],
         ];
 
         foreach ($samples as $sample) {
@@ -47,7 +48,7 @@ class CustomerDemoSeeder extends Seeder
 
     private function seedFavorites(int $customerId): void
     {
-        $productIds = DB::table('products')->whereIn('name', ['Giay Sneaker Trang', 'Balo Laptop Chong Nuoc', 'Ao Thun Basic Nam'])->pluck('id');
+        $productIds = DB::table('products')->whereIn('name', [self::PRODUCT_NAME])->pluck('id');
         foreach ($productIds as $productId) {
             DB::table('favorite_product')->updateOrInsert(
                 ['user_id' => $customerId, 'product_id' => $productId],
@@ -58,12 +59,12 @@ class CustomerDemoSeeder extends Seeder
 
     private function seedCarts(int $customerId): void
     {
-        $variants = DB::table('product_variants')->whereIn('sku', ['TS-BASIC-M-BLACK', 'BALO-15-BLACK'])->pluck('id', 'sku');
-        $products = DB::table('products')->whereIn('name', ['Ao Thun Basic Nam', 'Balo Laptop Chong Nuoc'])->get()->keyBy('name');
+        $variants = DB::table('product_variants')->whereIn('sku', ['DRIFT-BLK-M', 'DRIFT-GBE-L'])->pluck('id', 'sku');
+        $products = DB::table('products')->whereIn('name', [self::PRODUCT_NAME])->get()->keyBy('name');
 
         $samples = [
-            ['sku' => 'TS-BASIC-M-BLACK', 'product' => 'Ao Thun Basic Nam', 'quantity' => 2, 'attrs' => ['size' => 'M', 'color' => 'Black']],
-            ['sku' => 'BALO-15-BLACK', 'product' => 'Balo Laptop Chong Nuoc', 'quantity' => 1, 'attrs' => ['size' => '15.6 inch', 'color' => 'Black']],
+            ['sku' => 'DRIFT-BLK-M', 'product' => self::PRODUCT_NAME, 'quantity' => 2, 'attrs' => ['Kích thước' => 'M', 'Màu sắc' => 'Đen']],
+            ['sku' => 'DRIFT-GBE-L', 'product' => self::PRODUCT_NAME, 'quantity' => 1, 'attrs' => ['Kích thước' => 'L', 'Màu sắc' => 'Xám be']],
         ];
 
         foreach ($samples as $sample) {
