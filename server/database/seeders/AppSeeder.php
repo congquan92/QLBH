@@ -11,7 +11,6 @@ use App\Models\User;
 use App\Models\Role;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
-
 class AppSeeder extends Seeder
 {
     public function run(): void
