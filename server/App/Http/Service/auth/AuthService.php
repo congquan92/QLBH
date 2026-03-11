@@ -10,7 +10,7 @@ use App\Exceptions\BusinessException;
 use App\Exceptions\ErrorCode;
 use App\Exceptions\MessageError;
 use App\Http\Mapper\RoleMapper;
-use App\Http\Requests\auth\LoginRequest;
+use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\RegisterRequest;
 use App\Http\Requests\IntrospectRequest;
 
