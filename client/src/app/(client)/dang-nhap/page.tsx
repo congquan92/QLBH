@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { UserAuthUtil } from "@/lib/user-auth";
 import { UserAuthStore } from "@/stores/user-auth.store";
 import { Eye, EyeOff, Loader2, UserRound } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -66,37 +67,19 @@ export default function StoreLoginPage() {
 
     return (
         <div className="mx-auto flex min-h-[calc(100vh-12rem)] max-w-6xl items-center px-4 py-10">
-            <div className="grid w-full gap-8 lg:grid-cols-[1fr_420px]">
-                <section className="rounded-none border border-gray-200 bg-[linear-gradient(135deg,#111827_0%,#1f2937_45%,#7f1d1d_100%)] p-8 text-white lg:p-12">
-                    <p className="text-sm font-semibold uppercase tracking-[0.3em] text-red-200">Khách hàng</p>
-                    <h1 className="mt-4 text-4xl font-bold leading-tight">Đăng nhập để quản lý giỏ hàng, đơn mua và thông tin cá nhân.</h1>
-                    <p className="mt-5 max-w-xl text-base leading-7 text-gray-200">
-                        Backend đã có đầy đủ API cho tài khoản người dùng. Sau khi đăng nhập, bạn có thể xem hồ sơ, danh sách đơn hàng, địa chỉ giao nhận và sử dụng giỏ hàng xuyên suốt trong storefront.
-                    </p>
-                    <div className="mt-8 grid gap-4 sm:grid-cols-3">
-                        <div className="border border-white/10 bg-white/10 p-4">
-                            <p className="text-xs uppercase tracking-[0.2em] text-red-200">Giỏ hàng</p>
-                            <p className="mt-2 text-sm text-white/90">Thêm, sửa và theo dõi sản phẩm đã chọn.</p>
-                        </div>
-                        <div className="border border-white/10 bg-white/10 p-4">
-                            <p className="text-xs uppercase tracking-[0.2em] text-red-200">Đơn hàng</p>
-                            <p className="mt-2 text-sm text-white/90">Xem tình trạng và chi tiết các đơn đã tạo.</p>
-                        </div>
-                        <div className="border border-white/10 bg-white/10 p-4">
-                            <p className="text-xs uppercase tracking-[0.2em] text-red-200">Tài khoản</p>
-                            <p className="mt-2 text-sm text-white/90">Cập nhật thông tin, đổi mật khẩu và quản lý địa chỉ.</p>
-                        </div>
-                    </div>
+            <div className="grid w-full gap-8 lg:grid-cols-[1fr_450px]">
+                <section className="relative hidden min-h-100 overflow-hidden rounded-none border border-gray-200 lg:block">
+                    <Image src="/login_back.png" alt="Login Banner" fill className="object-cover object-left" />
                 </section>
 
-                <Card className="border-gray-200 shadow-lg">
+                <Card className="border-gray-200 rounded-none shadow-lg">
                     <CardHeader className="space-y-4 text-center">
                         <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-red-50 text-red-600">
                             <UserRound className="h-7 w-7" />
                         </div>
                         <div>
                             <CardTitle className="text-2xl">Đăng nhập khách hàng</CardTitle>
-                            <CardDescription className="mt-1">Sử dụng tài khoản USER để truy cập khu mua sắm cá nhân.</CardDescription>
+                            <CardDescription className="mt-1">Hãy đăng nhập để truy cập khu mua sắm cá nhân.</CardDescription>
                         </div>
                     </CardHeader>
                     <CardContent>
