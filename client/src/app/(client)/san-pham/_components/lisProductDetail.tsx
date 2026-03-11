@@ -1,7 +1,7 @@
 "use client";
 
 import { CartApi } from "@/api/cart.api";
-import ProductGrid from "@/components/feature/product-grid";
+import ProductGrid from "@/components/feature/ProductGrid";
 import { ProductDetail } from "@/types/product";
 import Image from "next/image";
 import { useEffect, useState } from "react";
@@ -18,7 +18,7 @@ import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 
 export default function ListProductDetail({ products, relatedProducts }: { products: ProductDetail; relatedProducts: Product[] }) {
-    const productImages = products.imageProduct.length > 0 ? products.imageProduct : [products.coverImage || "/window.svg"];
+    const productImages = products.imageProduct.length > 0 ? products.imageProduct : [products.coverImage];
     const [selectedImage, setSelectedImage] = useState(0);
     const [lightboxOpen, setLightboxOpen] = useState(false);
     const [quantity, setQuantity] = useState(1);
@@ -77,9 +77,7 @@ export default function ListProductDetail({ products, relatedProducts }: { produ
     };
 
     const [activeTab, setActiveTab] = useState<"description" | "reviews">("description");
-
     const selectedVariant = products.productVariant.find((variant) => variant.variantAttributes.every((attribute) => selectedAttributes[attribute.attribute] === attribute.value)) ?? products.productVariant[0];
-
     const totalStock = selectedVariant?.quantity ?? products.productVariant.reduce((sum, variant) => sum + variant.quantity, 0);
 
     const handleAddToCart = async (shouldRedirect = false) => {
@@ -325,41 +323,35 @@ export default function ListProductDetail({ products, relatedProducts }: { produ
                 <div className="flex border-b border-gray-200">
                     <button
                         onClick={() => setActiveTab("description")}
-                        className={`px-6 py-4 text-sm font-semibold transition-colors relative ${activeTab === "description" ? "text-red-600 border-b-2 border-red-600" : "text-gray-600 hover:text-gray-900"}`}
+                        className={`px-6 py-4 text-sm font-semibold cursor-pointer transition-colors relative ${activeTab === "description" ? "text-red-600 border-b-2 border-red-600" : "text-gray-600 hover:text-gray-900"}`}
                     >
                         Mô tả sản phẩm
                     </button>
-                    <button onClick={() => setActiveTab("reviews")} className={`px-6 py-4 text-sm font-semibold transition-colors relative ${activeTab === "reviews" ? "text-red-600 border-b-2 border-red-600" : "text-gray-600 hover:text-gray-900"}`}>
+                    <button
+                        onClick={() => setActiveTab("reviews")}
+                        className={`px-6 py-4 text-sm cursor-pointer font-semibold transition-colors relative ${activeTab === "reviews" ? "text-red-600 border-b-2 border-red-600" : "text-gray-600 hover:text-gray-900"}`}
+                    >
                         Đánh giá & Bình luận
                     </button>
                 </div>
 
                 {/* Tab Content */}
                 <div className="py-8">
-                    {activeTab === "description" ? (
+                    {activeTab === "description" && (
                         <div className="prose max-w-none">
-                            <h3 className="text-lg font-semibold text-gray-900 mb-4">Chi tiết sản phẩm</h3>
-                            <p className="text-gray-600 leading-relaxed mb-4">{products.description}</p>
-                            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                                <div className="border border-gray-200 bg-gray-50 p-4">
-                                    <p className="text-xs uppercase tracking-wide text-gray-500">Danh mục</p>
-                                    <p className="mt-2 font-medium text-gray-900">{products.categoryParents.map((item) => item.name).join(" / ")}</p>
-                                </div>
-                                <div className="border border-gray-200 bg-gray-50 p-4">
-                                    <p className="text-xs uppercase tracking-wide text-gray-500">Biến thể</p>
-                                    <p className="mt-2 font-medium text-gray-900">{products.productVariant.length} lựa chọn có sẵn</p>
-                                </div>
-                                <div className="border border-gray-200 bg-gray-50 p-4">
-                                    <p className="text-xs uppercase tracking-wide text-gray-500">Đánh giá trung bình</p>
-                                    <p className="mt-2 font-medium text-gray-900">{products.avgRating.toFixed(1)} / 5 sao</p>
-                                </div>
+                            <div className="bg-gray-50 border border-gray-200 p-6 text-center text-gray-500">
+                                <h3 className="text-lg font-semibold text-gray-900 mb-4">Mô tả sản phẩm</h3>
+                                <p>Backend hiện mới cung cấp điểm trung bình và số lượng đã bán cho trang công khai.</p>
+                                <p className="text-sm mt-2">Danh sách bình luận chi tiết sẽ hiển thị khi API công khai cho review theo sản phẩm được bổ sung.</p>
                             </div>
                         </div>
-                    ) : (
-                        <div>
-                            <h3 className="text-lg font-semibold text-gray-900 mb-4">Đánh giá từ khách hàng</h3>
+                    )}
+
+                    {activeTab === "reviews" && (
+                        <div className="prose max-w-none">
                             <div className="bg-gray-50 border border-gray-200 p-6 text-center text-gray-500">
-                                <p>Backend hiện mới cung cấp điểm trung bình và số lượng đã bán cho trang công khai.</p>
+                                <h3 className="text-lg font-semibold text-gray-900 mb-4">Đánh giá từ khách hàng</h3>
+                                <p>Chưa có đánh giá nào cho sản phẩm này.</p>
                                 <p className="text-sm mt-2">Danh sách bình luận chi tiết sẽ hiển thị khi API công khai cho review theo sản phẩm được bổ sung.</p>
                             </div>
                         </div>
@@ -374,7 +366,7 @@ export default function ListProductDetail({ products, relatedProducts }: { produ
                     <ProductGrid products={relatedProducts} />
                 ) : (
                     <div className="bg-gray-50 border border-gray-200 p-12 text-center text-gray-500">
-                        <p className="text-lg">Chưa có thêm sản phẩm liên quan trong danh mục này.</p>
+                        <p className="text-lg">Không có sản phẩm liên quan.</p>
                     </div>
                 )}
             </div>

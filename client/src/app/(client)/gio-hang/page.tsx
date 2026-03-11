@@ -16,21 +16,34 @@ export default function CartPage() {
     const session = UserAuthStore.useStore((state) => state.session);
     const isAuthLoading = UserAuthStore.useStore((state) => state.isLoading);
     const [cartItems, setCartItems] = useState<CartItem[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
+    const [lastLoadedToken, setLastLoadedToken] = useState<string | null>(null);
 
+    const sessionToken = session?.token ?? null;
     const isAuthenticated = UserAuthUtil.isSessionValid(session);
-
-    const loadCart = async () => {
-        setIsLoading(true);
-        const cartResponse = await CartApi.getMyCart({ page: 1, size: 50, sort: "id:desc" });
-        setCartItems(isAuthenticated ? cartResponse.data.data : []);
-        setIsLoading(false);
-    };
+    const isLoading = isAuthLoading || (isAuthenticated && lastLoadedToken !== sessionToken);
 
     useEffect(() => {
-        if (isAuthLoading) return;
-        void loadCart();
-    }, [isAuthenticated, isAuthLoading]);
+        if (isAuthLoading || !isAuthenticated || !sessionToken) return;
+
+        let isCancelled = false;
+
+        const fetchCart = async () => {
+            const cartResponse = await CartApi.getMyCart({ page: 1, size: 50, sort: "id:desc" });
+
+            if (isCancelled) {
+                return;
+            }
+
+            setCartItems(cartResponse.data.data);
+            setLastLoadedToken(sessionToken);
+        };
+
+        void fetchCart();
+
+        return () => {
+            isCancelled = true;
+        };
+    }, [isAuthenticated, isAuthLoading, sessionToken]);
 
     const handleQuantityChange = async (item: CartItem, nextQuantity: number) => {
         if (nextQuantity < 1) {
@@ -72,15 +85,13 @@ export default function CartPage() {
             <div className="mx-auto max-w-4xl px-4 py-16">
                 <div className="border border-dashed border-gray-300 bg-gray-50 p-10 text-center">
                     <h1 className="text-2xl font-bold text-gray-900">Giỏ hàng của bạn</h1>
-                    <p className="mt-3 text-sm leading-6 text-gray-600">
-                        Backend đã hỗ trợ API giỏ hàng cho người dùng đăng nhập. Hiện storefront chưa có luồng đăng nhập khách hàng riêng, nên bạn cần có phiên đăng nhập hợp lệ để xem dữ liệu giỏ hàng.
-                    </p>
+                    <p className="mt-3 text-sm leading-6 text-gray-600">Bạn cần đăng nhập để xem và quản lý giỏ hàng của mình. Đừng lo, chỉ mất vài giây!</p>
                     <div className="mt-6 flex justify-center gap-3">
                         <Link href="/dang-nhap?redirect=%2Fgio-hang" className="bg-red-600 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-red-700">
                             Đăng nhập để xem giỏ hàng
                         </Link>
                         <Link href="/san-pham" className="border border-gray-300 px-5 py-3 text-sm font-semibold text-gray-700 transition-colors hover:border-gray-900 hover:text-gray-900">
-                            Tiếp tục mua sắm
+                            Tiếp tục xem sản phẩm
                         </Link>
                     </div>
                 </div>
