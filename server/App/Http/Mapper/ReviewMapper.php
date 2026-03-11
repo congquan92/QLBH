@@ -23,8 +23,6 @@ class ReviewMapper
             $review->product->id,
             $review->orderItem->name_product_snapshot,
             $review->orderItem->variant_attributes_snapshot,
-            $review->user->avatar ?? '',
-            $review->user->full_name,
             $review->rating,
             $review->comment ?? '',
             $imageResponse,

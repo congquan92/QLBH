@@ -1,3 +1,5 @@
+import type { ApiResponse, PageResponse } from "@/types/api";
+
 export interface Product {
     id: number;
     name: string;
@@ -14,15 +16,9 @@ export interface Product {
 }
 
 export interface ProductListResponse {
-    status: number;
-    message: string;
-    data: {
-        data: Product[];
-        pageNumber: number;
-        pageSize: number;
-        totalPages: number;
-        totalElements: number;
-    };
+    status: ApiResponse<PageResponse<Product>>["status"];
+    message: ApiResponse<PageResponse<Product>>["message"];
+    data: PageResponse<Product>;
 }
 
 // -----------------------Product detail--------------------------
@@ -81,7 +77,7 @@ export interface ProductDetail {
 }
 
 export interface ProductDetailResponse {
-    status: number;
-    message: string;
-    data: ProductDetail;
+    status: ApiResponse<ProductDetail>["status"];
+    message: ApiResponse<ProductDetail>["message"];
+    data: ApiResponse<ProductDetail>["data"];
 }

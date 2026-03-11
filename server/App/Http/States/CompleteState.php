@@ -1,5 +1,5 @@
 <?php
-namespace App\States;
+namespace App\Http\States;
 
 use App\Exceptions\ErrorCode;
 use App\Http\Service\FirebaseService;

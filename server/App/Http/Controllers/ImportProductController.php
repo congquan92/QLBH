@@ -83,4 +83,15 @@ class ImportProductController extends Controller
             return response()->json(['message' => $e->getMessage()], 400);
         }
     }
+
+    public function show(int $id): JsonResponse
+    {
+        $import = $this->importService->getById($id);
+        
+        return response()->json([
+            'status' => 200,
+            'message' => 'Lấy thông tin phiếu nhập thành công',
+            'data' => $import
+        ]);
+    }
 }

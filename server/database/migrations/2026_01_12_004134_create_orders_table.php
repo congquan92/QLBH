@@ -34,6 +34,7 @@ return new class extends Migration {
             $table->string('order_tracking_code')->nullable();
             $table->string('note')->nullable();
             $table->decimal('total_amount',15,2);
+            $table->decimal('voucher_discount_value',15,2)->nullable();
             $table->string('order_status')
                 ->default(DeliveryStatus::PENDING->value);
             $table->string(column: 'payment_type');

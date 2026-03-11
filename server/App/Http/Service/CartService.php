@@ -16,30 +16,34 @@ class CartService
     /**
      * Lấy danh sách giỏ hàng (Phân trang + Sort)
      */
-    public function getCarts(?string $sort, int $page, int $size)
-    {
-        $user = auth()->user();
+ public function getCarts(?string $sort, int $page, int $size, ?string $keyword = null)
+{
+    $user = auth()->user();
 
-        $query = Cart::where('user_id', $user->id)
-            ->where('status', Status::ACTIVE->value);
+    $query = Cart::where('user_id', $user->id)
+        ->where('status', Status::ACTIVE->value);
 
-        // Xử lý Sort: tencot:asc|desc
-        $column = 'id';
-        $direction = 'asc';
-        if ($sort && str_contains($sort, ':')) {
-            [$column, $dir] = explode(':', $sort);
-            $direction = strtolower($dir) === 'desc' ? 'desc' : 'asc';
-        }
-
-        $paginator = $query->orderBy($column, $direction)
-            ->paginate($size, ['*'], 'page', $page);
-
-        // Map sang DTO (Trong Mapper sẽ ưu tiên dùng Snapshot)
-        $dtoItems = $paginator->getCollection()->map(fn($cart) => CartMapper::toResponse($cart));
-        $paginator->setCollection($dtoItems);
-
-        return PageResponse::fromLaravelPaginator($paginator);
+    // Thêm điều kiện tìm kiếm
+    if (!empty($keyword)) {
+        $query->where('name_product_snapshot', 'LIKE', '%' . $keyword . '%');
     }
+
+    // Xử lý Sort
+    $column = 'id';
+    $direction = 'asc';
+    if ($sort && str_contains($sort, ':')) {
+        [$column, $dir] = explode(':', $sort);
+        $direction = strtolower($dir) === 'desc' ? 'desc' : 'asc';
+    }
+
+    $paginator = $query->orderBy($column, $direction)
+        ->paginate($size, ['*'], 'page', $page);
+
+    $dtoItems = $paginator->getCollection()->map(fn($cart) => CartMapper::toResponse($cart));
+    $paginator->setCollection($dtoItems);
+
+    return PageResponse::fromLaravelPaginator($paginator);
+}
 
     /**
      * Thêm sản phẩm vào giỏ (Xử lý Snapshot)

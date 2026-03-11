@@ -1,7 +1,7 @@
 "use client";
 
 import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink } from "@/components/ui/pagination";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -12,6 +12,7 @@ interface ProductPaginationProps {
 
 export default function ProductPagination({ currentPage, totalPages }: ProductPaginationProps) {
     const router = useRouter();
+    const pathname = usePathname();
     const searchParams = useSearchParams();
 
     // Không hiển thị pagination nếu chỉ có 1 trang
@@ -22,7 +23,7 @@ export default function ProductPagination({ currentPage, totalPages }: ProductPa
     const handlePageChange = (page: number) => {
         const params = new URLSearchParams(searchParams.toString());
         params.set("page", page.toString());
-        router.push(`/san-pham?${params.toString()}`);
+        router.push(`${pathname}?${params.toString()}`);
     };
 
     const getPageNumbers = () => {
@@ -59,6 +60,10 @@ export default function ProductPagination({ currentPage, totalPages }: ProductPa
     const activeStyle = "bg-black text-white hover:bg-black/90 hover:text-white";
     const inactiveStyle = "bg-white text-black hover:bg-black hover:text-white";
     const disabledStyle = "pointer-events-none opacity-20 border-gray-600";
+
+    if (totalPages <= 1) {
+        return null;
+    }
 
     return (
         <div className="flex flex-col items-center gap-4 py-6">

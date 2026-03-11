@@ -25,7 +25,7 @@ return new class extends Migration {
             $table->double('list_price_snapshot')->nullable();
             $table->string('url_image_snapshot')->nullable();
             $table->string('name_product_snapshot')->nullable();
-            $table->text('variant_attributes_snapshot')->nullable();
+            $table->json('variant_attributes_snapshot')->nullable();
 
             $table->string('status')->default('ACTIVE');
             $table->timestamps();

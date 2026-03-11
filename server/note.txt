@@ -8,3 +8,7 @@ tail -f storage/logs/laravel.log //xem log
 
 php artisan make:seeder fileName //tao seeder chay du lieu mau 
 php artisan db:seed --class=fileName // chay du lieu mau trong seeder
+
+
+composer require predis/predis
+REDIS_CLIENT=predis

@@ -32,15 +32,15 @@ class ProductController extends Controller
         return $this->success($result, 'Product list fetched successfully');
     }
 
-     public function findAllForAdmin(Request $request)
+    public function findAllForAdmin(Request $request)
     {
         $keyword = $request->query('keyword');
         $sort = $request->query('sort');
-        $status = $request->query('status' , Status::ACTIVE->name);
+        $status = $request->query('status');
         $page = (int) $request->query('page', 1);
         $size = (int) $request->query('size', 10);
 
-        $result = $this->productService->findAllForAdmin($keyword,$status, $sort, $page, $size);
+        $result = $this->productService->findAllForAdmin($keyword, $status, $sort, $page, $size);
         return $this->success($result, 'Product list fetched successfully');
     }
 
@@ -55,14 +55,14 @@ class ProductController extends Controller
         return $this->success($result, 'Product list fetched successfully');
     }
 
-     public function findAllByCategory(Request $request, $id)
+    public function findAllByCategory(Request $request, $id)
     {
         $keyword = $request->query('keyword');
         $sort = $request->query('sort');
         $page = (int) $request->query('page', 1);
         $size = (int) $request->query('size', 10);
 
-        $result = $this->productService->findAllByCategory($id,$keyword, $sort, $page, $size);
+        $result = $this->productService->findAllByCategory($id, $keyword, $sort, $page, $size);
         return $this->success($result, 'Product list fetched successfully');
     }
     /**
@@ -76,9 +76,9 @@ class ProductController extends Controller
     /**
      * Show the form for creating a new resource.
      */
-    public function addVariants($productId, array $requests)
+    public function addVariants($id, Request $request)
     {
-        $this->productService->addVariants($productId, $requests);
+        $this->productService->addVariants((int) $id, $request->all());
     }
 
     /**
@@ -97,27 +97,26 @@ class ProductController extends Controller
         //
     }
 
-    public function deleteAttribute(int $id , Request $request){
+    public function deleteAttribute(int $id, Request $request)
+    {
         $attributeIds = $request->input('attributeIds');
         $this->productService->deleteAttribute($id, $attributeIds);
     }
 
-     public function deleteAttributeValue(int $id , Request $request){
+    public function deleteAttributeValue(int $id, Request $request)
+    {
         $attributeValueIds = $request->input('attributeValueIds');
         $this->productService->deleteAttributeValue($id, $attributeValueIds);
     }
 
 
-    public function getProductById($productId){
+    public function getProductById($productId)
+    {
         Log::info('ProductController');
         $product = $this->productService->getProductById($productId);
         return $this->success($product, 'Product detail fetched successfully');
     }
 
-    public function getProductByIdForAdmin($productId){
-        $product = $this->productService->getProductByIdForAdmin($productId);
-        return $this->success($product, 'Product detail fetched successfully');
-    }
 
     /**
      * Show the form for editing the specified resource.
@@ -136,7 +135,7 @@ class ProductController extends Controller
         $this->productService->update($request);
     }
 
-     public function restoreProduct($productId)
+    public function restoreProduct($productId)
     {
         $this->productService->restoreProduct($productId);
     }
@@ -147,5 +146,35 @@ class ProductController extends Controller
     public function destroy($productId)
     {
         $this->productService->deleteProduct($productId);
+    }
+
+    public function updateVariants($productId, Request $request)
+    {
+        // 1. Validation dữ liệu đầu vào
+        $request->validate([
+            'variantId' => 'required|exists:product_variants,id',
+            'sku'       => 'nullable|string|max:50',
+            'price'     => 'required|numeric|min:0',
+            'weight'    => 'required|numeric|min:0',
+            'variantAttributes' => 'required|array',
+            'variantAttributes.*.attributeId' => 'required|exists:attributes,id',
+            'variantAttributes.*.value' => 'required|string',
+        ]);
+
+        // 2. Gọi Service xử lý logic cập nhật
+        try {
+            $this->productService->updateVariants((int)$productId, (int)$request->variantId, $request->all());
+            
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Cập nhật biến thể thành công!'
+            ], 200);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Có lỗi xảy ra: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }

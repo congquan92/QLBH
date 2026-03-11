@@ -4,7 +4,6 @@ namespace Database\Seeders;
 
 use App\Enums\EmploymentType;
 use App\Models\SalaryConfig;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
 class SalaryConfigSeeder extends Seeder
@@ -12,7 +11,7 @@ class SalaryConfigSeeder extends Seeder
     /**
      * Run the database seeds.
      */
-    public function run()
+    public function run(): void
     {
         $configs = [
             [
@@ -30,7 +29,10 @@ class SalaryConfigSeeder extends Seeder
         ];
 
         foreach ($configs as $config) {
-            SalaryConfig::create($config);
+            SalaryConfig::updateOrCreate(
+                ['rule_name' => $config['rule_name']],
+                $config
+            );
         }
     }
 }

@@ -1,16 +1,16 @@
 <?php
-namespace App\State;
+namespace App\Http\States;
 
 use App\Enums\DeliveryStatus;
 use App\Exceptions\BusinessException;
 use App\Exceptions\ErrorCode;
-use App\States\CompleteState;
-use App\States\ConfirmedState;
-use App\States\DeliveredState;
-use App\States\OrderState;
-use App\States\PackedState;
-use App\States\PendingState;
-use App\States\ShippedState;
+use App\Http\States\CompleteState;
+use App\Http\States\ConfirmedState;
+use App\Http\States\DeliveredState;
+use App\Http\States\OrderState;
+use App\Http\States\PackedState;
+use App\Http\States\PendingState;
+use App\Http\States\ShippedState;
 
 class OrderStateFactory {
     public static function getState(DeliveryStatus $status): OrderState {
