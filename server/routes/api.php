@@ -220,11 +220,10 @@ Route::middleware('auth')->group(function () {
     // RBAC: Roles
     Route::prefix('roles')->group(function () {
         Route::get('/', [RoleController::class, 'index'])->middleware('can:VIEW_ROLES');
-        Route::post('/', [RoleController::class, 'store'])->middleware('can:CREATE_ROLE');
+        Route::post('/', [RoleController::class, 'store'])->middleware('can:CREATE_ROLES');
         Route::get('/{id}', [RoleController::class, 'show'])->middleware('can:VIEW_ROLES');
-        Route::put('/{id}', [RoleController::class, 'update'])->middleware('can:UPDATE_ROLE');
+        Route::put('/{id}', [RoleController::class, 'update'])->middleware('can:UPDATE_ROLES');
         Route::delete('/{id}', [RoleController::class, 'destroy'])->middleware('can:DELETE_ROLE');
-        Route::post('/{id}/detach-groups', [RoleController::class, 'detachGroups'])->middleware('can:UPDATE_ROLE');
     });
 
     // RBAC: Group Permissions

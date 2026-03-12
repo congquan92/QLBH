@@ -4,12 +4,15 @@ namespace Database\Seeders;
 
 use App\Enums\RoleType;
 use App\Enums\Status;
+use App\Models\GroupPermission;
 use App\Models\Page;
 use App\Models\Role;
 use Illuminate\Database\Seeder;
 
 class RoleSeeder extends Seeder
 {
+    // Database/Seeders/RoleSeeder.php
+
     public function run(): void
     {
         foreach (RoleType::cases() as $roleEnum) {
@@ -21,31 +24,32 @@ class RoleSeeder extends Seeder
                 ]
             );
 
-            // Gán Page cho Role (Quan hệ Many-to-Many qua bảng roles_pages)
             switch ($roleEnum) {
                 case RoleType::ADMIN:
-                    // Admin có quyền xem tất cả các Page
-                    $role->pages()->sync(Page::pluck('id'));
+                    // Admin lấy tất cả GroupPermission
+                    $role->groupPermissions()->sync(GroupPermission::pluck('id'));
                     break;
 
+                // Trong RoleSeeder.php
                 case RoleType::WAREHOUSE_STAFF:
-                    // Nhân viên kho chỉ thấy Page Sản phẩm và Bán hàng
-                    $warehousePages = Page::whereIn('title', [
-                        'Quản lý Sản phẩm', 
-                        'Quản lý Bán hàng'
-                    ])->pluck('id');
-                    $role->pages()->sync($warehousePages);
+                    // Tìm các mục con thuộc Page 'Sản phẩm' và 'Bán hàng'
+                    $ids = GroupPermission::whereHas('page', function ($q) {
+                        $q->whereIn('title', ['Quản lý Sản phẩm', 'Quản lý Bán hàng']);
+                    })->pluck('id');
+
+                    $role->groupPermissions()->sync($ids);
                     break;
 
                 case RoleType::ORDER_STAFF:
-                    // Nhân viên đơn hàng chỉ thấy Page Bán hàng
-                    $orderPages = Page::whereIn('title', ['Quản lý Bán hàng'])->pluck('id');
-                    $role->pages()->sync($orderPages);
+                    // Chỉ lấy các Group con thuộc Page Bán hàng
+                    $ids = GroupPermission::whereHas('page', function ($q) {
+                        $q->whereIn('title', ['Quản lý Bán hàng']);
+                    })->pluck('id');
+                    $role->groupPermissions()->sync($ids);
                     break;
 
                 case RoleType::USER:
-                    // User thường không thấy trang quản trị nào
-                    $role->pages()->sync([]);
+                    $role->groupPermissions()->sync([]);
                     break;
             }
         }
