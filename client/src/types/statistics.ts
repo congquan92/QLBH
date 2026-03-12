@@ -1,5 +1,3 @@
-import type { ApiResponse } from "@/types/api";
-
 export interface ActiveUserStats {
     period: number;
     current: number;
@@ -37,9 +35,3 @@ export interface CategoryStats {
     previousQuantity: number;
     percentChange: number;
 }
-
-export type ActiveUserStatsResponse = ApiResponse<ActiveUserStats>;
-export type OrderStatsResponse = ApiResponse<OrderStats>;
-export type Revenue12MonthsResponse = ApiResponse<MonthlyRevenue[]>;
-export type TopProductsResponse = ApiResponse<TopProduct[]>;
-export type CategoryStatsResponse = ApiResponse<CategoryStats[]>;

@@ -20,4 +20,9 @@ export const Helper = {
         const msg = error instanceof Error ? ((error as Error & { response?: { data?: { message?: string } } }).response?.data?.message ?? error.message) : "Thao tác thất bại";
         return msg;
     },
+    formatCurrency(value?: number | string) {
+        const num = Number(value ?? 0);
+        if (isNaN(num)) return String(value ?? "-");
+        return new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 }).format(num);
+    },
 };
