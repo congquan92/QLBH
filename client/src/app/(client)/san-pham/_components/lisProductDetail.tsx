@@ -1,8 +1,10 @@
 "use client";
 
+import { CartApi } from "@/api/cart.api";
+import ProductGrid from "@/components/feature/ProductGrid";
 import { ProductDetail } from "@/types/product";
 import Image from "next/image";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ShoppingCart, Minus, Plus, Package, Truck, Shield, RefreshCw, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,15 +13,42 @@ import { Helper2 } from "@/lib/helper2";
 import Lightbox from "yet-another-react-lightbox";
 import "yet-another-react-lightbox/styles.css";
 import Zoom from "yet-another-react-lightbox/plugins/zoom";
+import { Product } from "@/types/product";
+import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
-export default function ListProductDetail({ products }: { products: ProductDetail }) {
+export default function ListProductDetail({ products, relatedProducts }: { products: ProductDetail; relatedProducts: Product[] }) {
+    const productImages = products.imageProduct.length > 0 ? products.imageProduct : [products.coverImage];
     const [selectedImage, setSelectedImage] = useState(0);
     const [lightboxOpen, setLightboxOpen] = useState(false);
     const [quantity, setQuantity] = useState(1);
     const [selectedAttributes, setSelectedAttributes] = useState<Record<string, string>>({});
+    const [isSubmittingCart, setIsSubmittingCart] = useState(false);
+    const router = useRouter();
 
     // Lightbox slides
-    const slides = products.imageProduct.map((img) => ({ src: img }));
+    const slides = productImages.map((img) => ({ src: img }));
+
+    useEffect(() => {
+        if (products.attributes.length === 0) {
+            setSelectedAttributes({});
+            return;
+        }
+
+        setSelectedAttributes((current) => {
+            if (Object.keys(current).length > 0) {
+                return current;
+            }
+
+            return products.attributes.reduce<Record<string, string>>((accumulator, attribute) => {
+                const defaultValue = attribute.attributeValue[0]?.value;
+                if (defaultValue) {
+                    accumulator[attribute.name] = defaultValue;
+                }
+                return accumulator;
+            }, {});
+        });
+    }, [products.attributes]);
 
     // Handle attribute selection
     const handleAttributeSelect = (attributeName: string, value: string) => {
@@ -40,14 +69,44 @@ export default function ListProductDetail({ products }: { products: ProductDetai
 
     // Handle image navigation
     const handlePrevImage = () => {
-        setSelectedImage((prev) => (prev === 0 ? products.imageProduct.length - 1 : prev - 1));
+        setSelectedImage((prev) => (prev === 0 ? productImages.length - 1 : prev - 1));
     };
 
     const handleNextImage = () => {
-        setSelectedImage((prev) => (prev === products.imageProduct.length - 1 ? 0 : prev + 1));
+        setSelectedImage((prev) => (prev === productImages.length - 1 ? 0 : prev + 1));
     };
 
     const [activeTab, setActiveTab] = useState<"description" | "reviews">("description");
+    const selectedVariant = products.productVariant.find((variant) => variant.variantAttributes.every((attribute) => selectedAttributes[attribute.attribute] === attribute.value)) ?? products.productVariant[0];
+    const totalStock = selectedVariant?.quantity ?? products.productVariant.reduce((sum, variant) => sum + variant.quantity, 0);
+
+    const handleAddToCart = async (shouldRedirect = false) => {
+        if (!selectedVariant) {
+            toast.error("Không tìm thấy biến thể phù hợp cho sản phẩm này.");
+            return;
+        }
+
+        try {
+            setIsSubmittingCart(true);
+            const response = await CartApi.addItem({
+                product_variant_id: selectedVariant.id,
+                quantity,
+            });
+
+            if (!response || response.status >= 400) {
+                toast.error(response?.message || "Không thể thêm vào giỏ hàng. Vui lòng đăng nhập và thử lại.");
+                return;
+            }
+
+            toast.success("Đã thêm sản phẩm vào giỏ hàng.");
+
+            if (shouldRedirect) {
+                router.push("/gio-hang");
+            }
+        } finally {
+            setIsSubmittingCart(false);
+        }
+    };
 
     return (
         <div className="max-w-7xl mx-auto px-4 py-8">
@@ -56,7 +115,7 @@ export default function ListProductDetail({ products }: { products: ProductDetai
                 <div className="space-y-4">
                     {/* Main Image */}
                     <div className="relative aspect-square bg-gray-100 border border-gray-200 overflow-hidden cursor-zoom-in group" onClick={() => setLightboxOpen(true)}>
-                        <Image src={products.imageProduct[selectedImage]} alt={products.name} fill className="object-cover" sizes="(max-width: 768px) 100vw, 50vw" priority />
+                        <Image src={productImages[selectedImage]} alt={products.name} fill className="object-cover" sizes="(max-width: 768px) 100vw, 50vw" priority />
                         {products.status === "ACTIVE" && (
                             <Badge variant="destructive" className="absolute top-4 left-4 text-sm font-semibold">
                                 Còn hàng
@@ -64,7 +123,7 @@ export default function ListProductDetail({ products }: { products: ProductDetai
                         )}
 
                         {/* Navigation Arrows */}
-                        {products.imageProduct.length > 1 && (
+                        {productImages.length > 1 && (
                             <>
                                 <button
                                     onClick={(e) => {
@@ -90,7 +149,7 @@ export default function ListProductDetail({ products }: { products: ProductDetai
 
                     {/* Thumbnail Images */}
                     <div className="grid grid-cols-4 gap-2">
-                        {products.imageProduct.map((img, index) => (
+                        {productImages.map((img, index) => (
                             <button
                                 key={index}
                                 onClick={() => setSelectedImage(index)}
@@ -130,16 +189,21 @@ export default function ListProductDetail({ products }: { products: ProductDetai
                     {/* Price */}
                     <div className="bg-gray-50 border border-gray-200 p-4">
                         <div className="flex items-baseline gap-3">
-                            <span className="text-3xl font-bold text-red-600">{Helper.formatPrice(products.salePrice)}</span>
-                            {products.salePrice !== products.listPrice && (
+                            <span className="text-3xl font-bold text-red-600">{Helper.formatPrice(selectedVariant ? selectedVariant.price : products.salePrice)}</span>
+                            {(selectedVariant ? selectedVariant.price : products.salePrice) !== products.listPrice && (
                                 <>
                                     <span className="text-lg text-gray-400 line-through">{Helper.formatPrice(products.listPrice)}</span>
                                     <Badge variant="destructive" className="text-xs">
-                                        Giảm {Math.round(((parseFloat(products.listPrice) - parseFloat(products.salePrice)) / parseFloat(products.listPrice)) * 100)}%
+                                        Giảm {Math.round(((parseFloat(products.listPrice) - parseFloat(selectedVariant ? selectedVariant.price : products.salePrice)) / parseFloat(products.listPrice)) * 100)}%
                                     </Badge>
                                 </>
                             )}
                         </div>
+                        {selectedVariant && (
+                            <p className="mt-2 text-sm text-gray-600">
+                                SKU: <span className="font-medium text-gray-900">{selectedVariant.sku}</span>
+                            </p>
+                        )}
                     </div>
 
                     {/* Attributes Selection */}
@@ -178,17 +242,29 @@ export default function ListProductDetail({ products }: { products: ProductDetai
                                     <Plus className="size-4 text-gray-600" />
                                 </button>
                             </div>
-                            <span className="text-sm text-gray-500">{products.productVariant.reduce((sum, v) => sum + v.quantity, 0)} sản phẩm có sẵn</span>
+                            <span className="text-sm text-gray-500">{totalStock} sản phẩm có sẵn</span>
                         </div>
                     </div>
 
                     {/* Action Buttons */}
                     <div className="flex gap-3">
-                        <Button variant="outline" size="lg" className="flex-1 border-red-600 text-red-600 hover:bg-red-600 hover:text-white transition-colors rounded-none h-12">
+                        <Button
+                            variant="outline"
+                            size="lg"
+                            className="flex-1 border-red-600 text-red-600 hover:bg-red-600 hover:text-white transition-colors rounded-none h-12"
+                            onClick={() => handleAddToCart(false)}
+                            disabled={!selectedVariant || totalStock < 1 || isSubmittingCart}
+                        >
                             <ShoppingCart className="size-5 mr-2" />
-                            Thêm vào giỏ
+                            {isSubmittingCart ? "Đang xử lý..." : "Thêm vào giỏ"}
                         </Button>
-                        <Button variant="default" size="lg" className="flex-1 bg-red-600 hover:bg-red-700 text-white transition-colors rounded-none h-12">
+                        <Button
+                            variant="default"
+                            size="lg"
+                            className="flex-1 bg-red-600 hover:bg-red-700 text-white transition-colors rounded-none h-12"
+                            onClick={() => handleAddToCart(true)}
+                            disabled={!selectedVariant || totalStock < 1 || isSubmittingCart}
+                        >
                             Mua ngay
                         </Button>
                     </div>
@@ -247,33 +323,36 @@ export default function ListProductDetail({ products }: { products: ProductDetai
                 <div className="flex border-b border-gray-200">
                     <button
                         onClick={() => setActiveTab("description")}
-                        className={`px-6 py-4 text-sm font-semibold transition-colors relative ${activeTab === "description" ? "text-red-600 border-b-2 border-red-600" : "text-gray-600 hover:text-gray-900"}`}
+                        className={`px-6 py-4 text-sm font-semibold cursor-pointer transition-colors relative ${activeTab === "description" ? "text-red-600 border-b-2 border-red-600" : "text-gray-600 hover:text-gray-900"}`}
                     >
                         Mô tả sản phẩm
                     </button>
-                    <button onClick={() => setActiveTab("reviews")} className={`px-6 py-4 text-sm font-semibold transition-colors relative ${activeTab === "reviews" ? "text-red-600 border-b-2 border-red-600" : "text-gray-600 hover:text-gray-900"}`}>
+                    <button
+                        onClick={() => setActiveTab("reviews")}
+                        className={`px-6 py-4 text-sm cursor-pointer font-semibold transition-colors relative ${activeTab === "reviews" ? "text-red-600 border-b-2 border-red-600" : "text-gray-600 hover:text-gray-900"}`}
+                    >
                         Đánh giá & Bình luận
                     </button>
                 </div>
 
                 {/* Tab Content */}
                 <div className="py-8">
-                    {activeTab === "description" ? (
+                    {activeTab === "description" && (
                         <div className="prose max-w-none">
-                            <h3 className="text-lg font-semibold text-gray-900 mb-4">Chi tiết sản phẩm</h3>
-                            <p className="text-gray-600 leading-relaxed mb-4">{products.description}</p>
-                            {/* Placeholder cho nội dung mô tả chi tiết */}
                             <div className="bg-gray-50 border border-gray-200 p-6 text-center text-gray-500">
-                                <p>Nội dung mô tả chi tiết sẽ được cập nhật sau</p>
+                                <h3 className="text-lg font-semibold text-gray-900 mb-4">Mô tả sản phẩm</h3>
+                                <p>Backend hiện mới cung cấp điểm trung bình và số lượng đã bán cho trang công khai.</p>
+                                <p className="text-sm mt-2">Danh sách bình luận chi tiết sẽ hiển thị khi API công khai cho review theo sản phẩm được bổ sung.</p>
                             </div>
                         </div>
-                    ) : (
-                        <div>
-                            <h3 className="text-lg font-semibold text-gray-900 mb-4">Đánh giá từ khách hàng</h3>
-                            {/* Placeholder cho bình luận */}
+                    )}
+
+                    {activeTab === "reviews" && (
+                        <div className="prose max-w-none">
                             <div className="bg-gray-50 border border-gray-200 p-6 text-center text-gray-500">
-                                <p>Chưa có đánh giá nào cho sản phẩm này</p>
-                                <p className="text-sm mt-2">Hãy là người đầu tiên đánh giá sản phẩm!</p>
+                                <h3 className="text-lg font-semibold text-gray-900 mb-4">Đánh giá từ khách hàng</h3>
+                                <p>Chưa có đánh giá nào cho sản phẩm này.</p>
+                                <p className="text-sm mt-2">Danh sách bình luận chi tiết sẽ hiển thị khi API công khai cho review theo sản phẩm được bổ sung.</p>
                             </div>
                         </div>
                     )}
@@ -283,10 +362,13 @@ export default function ListProductDetail({ products }: { products: ProductDetai
             {/* Sản phẩm liên quan */}
             <div className="mt-12 border-t border-gray-200 pt-8">
                 <h2 className="text-2xl font-bold text-gray-900 mb-6">Sản phẩm liên quan</h2>
-                {/* Placeholder cho sản phẩm liên quan */}
-                <div className="bg-gray-50 border border-gray-200 p-12 text-center text-gray-500">
-                    <p className="text-lg">Danh sách sản phẩm liên quan sẽ được cập nhật sau</p>
-                </div>
+                {relatedProducts.length > 0 ? (
+                    <ProductGrid products={relatedProducts} />
+                ) : (
+                    <div className="bg-gray-50 border border-gray-200 p-12 text-center text-gray-500">
+                        <p className="text-lg">Không có sản phẩm liên quan.</p>
+                    </div>
+                )}
             </div>
 
             {/* Lightbox */}

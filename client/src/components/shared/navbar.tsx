@@ -30,11 +30,12 @@ function transformCategoriesToNavItems(categories: Category[]): NavigationItem[]
 async function getCategoryAll() {
     try {
         const response = await NavbarApi.getCategoryAll();
-        const categories = response.data?.data?.data || [];
+        const categories = response.data?.data || [];
         const apiNavItems = transformCategoriesToNavItems(categories);
         return apiNavItems;
     } catch (err) {
-        console.error(err);
+        console.warn("[WARNING][Navbar] Category fetch failed. Empty dynamic nav will be used.", err);
+        return [];
     }
 }
 

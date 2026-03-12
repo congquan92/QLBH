@@ -1,5 +1,7 @@
 "use client";
 
+import { useAdminAuth } from "@/components/feature/admin-auth-provider";
+import { AdminAuthUtil } from "@/lib/admin-auth";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -8,18 +10,23 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { LayoutDashboard, Eye, EyeOff, Loader2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { AxiosError } from "axios";
 
 const loginSchema = z.object({
-    email: z.string().min(1, "Vui lòng nhập email").email("Email không hợp lệ"),
-    password: z.string().min(6, "Mật khẩu ít nhất 6 ký tự"),
+    username: z.string().min(1, "Vui lòng nhập tên đăng nhập"),
+    password: z.string().min(1, "Vui lòng nhập mật khẩu"),
 });
 
 type LoginFormData = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
+    const router = useRouter();
+    const { login, isAuthenticated, isLoading, session } = useAdminAuth();
     const [showPassword, setShowPassword] = useState(false);
-    const [isLoading, setIsLoading] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const {
         register,
@@ -29,12 +36,25 @@ export default function LoginPage() {
         resolver: zodResolver(loginSchema),
     });
 
+    useEffect(() => {
+        if (isLoading || !isAuthenticated) return;
+
+        router.replace(AdminAuthUtil.resolveDefaultAdminPath(session));
+    }, [isAuthenticated, isLoading, router, session]);
+
     const onSubmit = async (data: LoginFormData) => {
-        setIsLoading(true);
-        // TODO: Implement actual login logic
-        console.log("Login data:", data);
-        await new Promise((resolve) => setTimeout(resolve, 1500));
-        setIsLoading(false);
+        setIsSubmitting(true);
+
+        try {
+            await login(data.username, data.password);
+            toast.success("Đăng nhập thành công.");
+        } catch (error) {
+            const axiosError = error as AxiosError<{ message?: string }>;
+            const message = axiosError.response?.data?.message ?? "Đăng nhập thất bại. Vui lòng kiểm tra tài khoản hoặc mật khẩu.";
+            toast.error(message);
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     return (
@@ -51,51 +71,24 @@ export default function LoginPage() {
             <CardContent className="pt-4">
                 <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
                     <div className="space-y-2">
-                        <Label htmlFor="email">Email</Label>
-                        <Input
-                            id="email"
-                            type="email"
-                            placeholder="admin@example.com"
-                            autoComplete="email"
-                            {...register("email")}
-                            aria-invalid={errors.email ? "true" : "false"}
-                        />
-                        {errors.email && (
-                            <p className="text-sm text-destructive">{errors.email.message}</p>
-                        )}
+                        <Label htmlFor="username">Tên đăng nhập</Label>
+                        <Input id="username" type="text" placeholder="admin" autoComplete="username" {...register("username")} aria-invalid={errors.username ? "true" : "false"} />
+                        {errors.username && <p className="text-sm text-destructive">{errors.username.message}</p>}
                     </div>
 
                     <div className="space-y-2">
                         <Label htmlFor="password">Mật khẩu</Label>
                         <div className="relative">
-                            <Input
-                                id="password"
-                                type={showPassword ? "text" : "password"}
-                                placeholder="••••••••"
-                                autoComplete="current-password"
-                                {...register("password")}
-                                aria-invalid={errors.password ? "true" : "false"}
-                                className="pr-10"
-                            />
-                            <button
-                                type="button"
-                                onClick={() => setShowPassword(!showPassword)}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                            >
-                                {showPassword ? (
-                                    <EyeOff className="h-4 w-4" />
-                                ) : (
-                                    <Eye className="h-4 w-4" />
-                                )}
+                            <Input id="password" type={showPassword ? "text" : "password"} placeholder="••••••••" autoComplete="current-password" {...register("password")} aria-invalid={errors.password ? "true" : "false"} className="pr-10" />
+                            <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
+                                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                             </button>
                         </div>
-                        {errors.password && (
-                            <p className="text-sm text-destructive">{errors.password.message}</p>
-                        )}
+                        {errors.password && <p className="text-sm text-destructive">{errors.password.message}</p>}
                     </div>
 
-                    <Button type="submit" className="w-full h-11 text-base font-medium" disabled={isLoading}>
-                        {isLoading ? (
+                    <Button type="submit" className="w-full h-11 text-base font-medium" disabled={isSubmitting || isLoading}>
+                        {isSubmitting ? (
                             <>
                                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                 Đang đăng nhập...

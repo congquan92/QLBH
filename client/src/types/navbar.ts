@@ -1,3 +1,5 @@
+import type { ApiResponse, PageResponse } from "@/types/api";
+
 // API Response Types
 export interface CategoryChild {
     id: number;
@@ -16,15 +18,9 @@ export interface Category {
 }
 
 export interface CategoryApiResponse {
-    status: number;
-    message: string;
-    data: {
-        data: Category[];
-        pageNumber: number;
-        pageSize: number;
-        totalPages: number;
-        totalElements: number;
-    };
+    status: ApiResponse<PageResponse<Category>>["status"];
+    message: ApiResponse<PageResponse<Category>>["message"];
+    data: PageResponse<Category>;
 }
 
 // UI Types for Navbar

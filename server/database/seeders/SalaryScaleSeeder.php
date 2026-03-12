@@ -3,7 +3,6 @@
 namespace Database\Seeders;
 
 use App\Models\SalaryScale;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
 class SalaryScaleSeeder extends Seeder
@@ -11,7 +10,7 @@ class SalaryScaleSeeder extends Seeder
     /**
      * Run the database seeds.
      */
-   public function run()
+    public function run(): void
     {
         $scales = [
             [
@@ -47,7 +46,10 @@ class SalaryScaleSeeder extends Seeder
         ];
 
         foreach ($scales as $scale) {
-            SalaryScale::create($scale);
+            SalaryScale::updateOrCreate(
+                ['years_of_experience' => $scale['years_of_experience']],
+                $scale
+            );
         }
     }
 }

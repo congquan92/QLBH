@@ -1,6 +1,6 @@
 import { ProductApi } from "@/api/product.api";
 import ListProductDetail from "@/app/(client)/san-pham/_components/lisProductDetail";
-import { ProductDetail } from "@/types/product";
+import { Product, ProductDetail } from "@/types/product";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -8,21 +8,20 @@ interface ProductDetailProps {
     params: Promise<{ id: string[] }>;
 }
 async function getProductDetail(id: string) {
-    try {
-        const res = await ProductApi.getProductDetail(id);
-        return res.data.data;
-    } catch (err) {
-        console.log(err);
-    }
+    const res = await ProductApi.getProductDetail(id);
+    return res.data;
 }
 export default async function ProductDetailPage({ params }: ProductDetailProps) {
     const { id } = await params;
     const data: ProductDetail = await getProductDetail(id[0]);
-    console.log("ProductDetail data:", data);
 
     if (!data) {
         notFound();
     }
+
+    const relatedResponse = await ProductApi.getProductsByCategory(data.categoryId, { page: 1, size: 5 });
+    const relatedProducts: Product[] = relatedResponse.data.data.filter((product) => product.id !== data.id).slice(0, 4);
+
     return (
         <div className="min-h-screen bg-white">
             {/* Breadcrumb */}
@@ -41,7 +40,7 @@ export default async function ProductDetailPage({ params }: ProductDetailProps) 
                     </div>
                 </div>
             </div>
-            <ListProductDetail products={data} />
+            <ListProductDetail products={data} relatedProducts={relatedProducts} />
         </div>
     );
 }
