@@ -134,7 +134,7 @@ export default function CategoriesPage() {
         }
     }
 
-    const totalCount = categories.reduce((acc, cat) => acc + 1 + (cat.childCategory?.length ?? 0), 0);
+    const totalCount = categories?.reduce((acc, cat) => acc + 1 + (cat.childCategory?.length ?? 0), 0);
 
     return (
         <AdminPageShell title="Danh mục" description="Quản lý cấu trúc danh mục và phân cấp sản phẩm">
@@ -158,7 +158,7 @@ export default function CategoriesPage() {
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="none">— Không có (tạo danh mục cha) —</SelectItem>
-                                    {categories.map((cat) => (
+                                    {categories?.map((cat) => (
                                         <SelectItem key={cat.id} value={String(cat.id)}>
                                             {cat.name}
                                         </SelectItem>
@@ -208,7 +208,7 @@ export default function CategoriesPage() {
                     <CardHeader>
                         <CardTitle>Tất cả danh mục</CardTitle>
                         <CardDescription>
-                            {totalCount} danh mục ({categories.length} danh mục gốc)
+                            {totalCount} danh mục ({categories?.length} danh mục gốc)
                         </CardDescription>
                     </CardHeader>
                     <CardContent>

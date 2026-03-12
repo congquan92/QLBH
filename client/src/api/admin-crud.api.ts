@@ -233,6 +233,4 @@ export const AdminCrudApi = {
     deleteImportProduct: async (id: number) => {
         await axiosInstance.delete(`/import-products/${id}`);
     },
-
-    toErrorMessage,
 };
