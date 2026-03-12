@@ -99,8 +99,8 @@ enum PermissionType: string
 
     // --- QUẢN LÝ VAI TRÒ (Roles) ---
     case VIEW_ROLES = 'VIEW_ROLES';
-    case CREATE_ROLE = 'CREATE_ROLE';
-    case UPDATE_ROLE = 'UPDATE_ROLE';
+    case CREATE_ROLE = 'CREATE_ROLES';
+    case UPDATE_ROLE = 'UPDATE_ROLES';
     case DELETE_ROLE = 'DELETE_ROLE';
 
     // --- QUẢN LÝ NHÓM QUYỀN (Group Permissions) ---

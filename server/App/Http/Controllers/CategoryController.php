@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\category\CategoryCreationRequest;
+use App\Http\Requests\Category\CategoryCreationRequest;
 use App\Http\Requests\Category\CategoryUpdateRequest;
 use App\Http\Requests\Category\MoveCategoryRequest;
 use App\Http\Responses\ApiResponse;

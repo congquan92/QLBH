@@ -66,7 +66,11 @@ Route::middleware('auth')->group(function () {
     Route::post('/auth/refresh', [AuthController::class, 'refresh']);
     Route::get('/auth/introspect', [AuthController::class, 'introspect']);
 
+<<<<<<< HEAD
+    // User 
+=======
     // User Management
+>>>>>>> 12dbf1f57976cf32472c9f8901806aa870db4ba0
     Route::get('/user/list', [UserController::class, 'findAll'])->middleware('can:VIEW_USERS');
     Route::get('/user/me', [UserController::class, 'getMyInfo']);
     Route::get('/user/{userId}', [UserController::class, 'getDetailUser'])->middleware('can:VIEW_USER_DETAIL');
@@ -220,11 +224,10 @@ Route::middleware('auth')->group(function () {
     // RBAC: Roles
     Route::prefix('roles')->group(function () {
         Route::get('/', [RoleController::class, 'index'])->middleware('can:VIEW_ROLES');
-        Route::post('/', [RoleController::class, 'store'])->middleware('can:CREATE_ROLE');
+        Route::post('/', [RoleController::class, 'store'])->middleware('can:CREATE_ROLES');
         Route::get('/{id}', [RoleController::class, 'show'])->middleware('can:VIEW_ROLES');
-        Route::put('/{id}', [RoleController::class, 'update'])->middleware('can:UPDATE_ROLE');
+        Route::put('/{id}', [RoleController::class, 'update'])->middleware('can:UPDATE_ROLES');
         Route::delete('/{id}', [RoleController::class, 'destroy'])->middleware('can:DELETE_ROLE');
-        Route::post('/{id}/detach-groups', [RoleController::class, 'detachGroups'])->middleware('can:UPDATE_ROLE');
     });
 
     // RBAC: Group Permissions

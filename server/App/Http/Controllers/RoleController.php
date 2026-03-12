@@ -44,17 +44,16 @@ class RoleController extends Controller
     }
 
     /**
-     * Lưu Vai trò mới và gán danh sách Pages
+     * Lưu Vai trò mới và gán danh sách GroupPermission
      */
     public function store(Request $request): JsonResponse
     {
-        // Sử dụng Page_ids thay vì group_permission_ids
         $data = $request->validate([
             'name' => 'required|string|unique:roles,name',
             'description' => 'nullable|string',
             'status' => 'nullable|string|in:ACTIVE,INACTIVE',
-            'page_ids' => 'nullable|array',
-            'page_ids.*' => 'exists:pages,id'
+            'group_permission_ids' => 'nullable|array',
+            'group_permission_ids.*' => 'exists:group_permissions,id'
         ]);
 
         return response()->json([
@@ -65,7 +64,7 @@ class RoleController extends Controller
     }
 
     /**
-     * Cập nhật Vai trò và danh sách Pages
+     * Cập nhật Vai trò và danh sách GroupPermission
      */
     public function update(Request $request, $id): JsonResponse
     {
@@ -73,8 +72,8 @@ class RoleController extends Controller
             'name' => 'nullable|string|unique:roles,name,' . $id,
             'description' => 'nullable|string',
             'status' => 'nullable|string|in:ACTIVE,INACTIVE',
-            'page_ids' => 'nullable|array',
-            'page_ids.*' => 'exists:pages,id'
+            'group_permission_ids' => 'nullable|array',
+            'group_permission_ids.*' => 'exists:group_permissions,id'
         ]);
 
         return response()->json([
@@ -84,23 +83,6 @@ class RoleController extends Controller
         ]);
     }
 
-    /**
-     * Gỡ bỏ các Trang (Pages) khỏi vai trò
-     * (Thay thế cho detachGroups cũ)
-     */
-    public function detachPages(Request $request, $id): JsonResponse
-    {
-        $request->validate([
-            'page_ids' => 'required|array',
-            'page_ids.*' => 'exists:pages,id'
-        ]);
-        
-        return response()->json([
-            'status' => 200,
-            'message' => 'Đã gỡ bỏ quyền truy cập trang khỏi vai trò thành công',
-            'data' => $this->roleService->detachPages($id, $request->page_ids)
-        ]);
-    }
 
     /**
      * Xóa Vai trò
