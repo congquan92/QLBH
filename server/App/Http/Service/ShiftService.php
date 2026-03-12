@@ -10,7 +10,6 @@ class ShiftService
     public function findAll(?string $keyword, ?string $sort, int $page, int $size): PageResponse
     {
         $query = Shift::query();
-
         // 1. Sắp xếp dynamic
         $column = 'start_time';
         $direction = 'asc';
