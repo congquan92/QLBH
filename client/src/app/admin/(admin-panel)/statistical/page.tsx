@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import type { ActiveUserStats, CategoryStats, MonthlyRevenue, OrderStats, TopProduct } from "@/types/statistics";
 import { Activity, Boxes, ChartColumnIncreasing, CircleDollarSign, PackageSearch, RefreshCw, ShoppingBag, Users } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Helper } from "@/lib/helper";
 
 type PeriodValue = "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" | "10" | "11" | "12";
 
@@ -28,31 +29,6 @@ const PERIOD_OPTIONS: Array<{ value: PeriodValue; label: string; subtitle: strin
     { value: "11", label: "11 tháng", subtitle: "11 tháng gần nhất" },
     { value: "12", label: "12 tháng", subtitle: "Cả năm" },
 ];
-
-function formatNumber(value: number) {
-    return new Intl.NumberFormat("vi-VN").format(Math.max(0, value || 0));
-}
-
-function formatMoney(value: number) {
-    return new Intl.NumberFormat("vi-VN", {
-        style: "currency",
-        currency: "VND",
-        maximumFractionDigits: 0,
-    }).format(value || 0);
-}
-
-function formatMonth(value: string) {
-    const input = String(value || "").trim();
-    if (!input) return "--";
-
-    const [year, month] = input.split("-");
-    if (!year || !month) return input;
-    return `${month}/${year.slice(-2)}`;
-}
-
-function formatPercent(value: number) {
-    return `${(value || 0).toFixed(1)}%`;
-}
 
 interface MetricCardProps {
     title: string;
@@ -194,13 +170,31 @@ export default function StatisticalPage() {
                     Array.from({ length: 4 }).map((_, index) => <Skeleton key={index} className="h-32 w-full" />)
                 ) : (
                     <>
-                        <MetricCard title="Doanh thu (12 tháng)" value={formatMoney(revenueSummary.revenue)} caption={`Lợi nhuận: ${formatMoney(revenueSummary.profit)}`} icon={<CircleDollarSign className="h-4 w-4" />} tone="emerald" />
-                        <MetricCard title="Đơn hàng trong kỳ" value={formatNumber(orderStats?.current ?? 0)} caption={`Tăng trưởng: ${formatPercent(orderStats?.percentChange ?? 0)}`} icon={<ShoppingBag className="h-4 w-4" />} tone="blue" />
-                        <MetricCard title="Khách hàng hoạt động" value={formatNumber(activeUsers?.current ?? 0)} caption={`Tăng trưởng: ${formatPercent(activeUsers?.percentChange ?? 0)}`} icon={<Users className="h-4 w-4" />} tone="violet" />
+                        <MetricCard
+                            title="Doanh thu (12 tháng)"
+                            value={Helper.formatNumber(revenueSummary.revenue)}
+                            caption={`Lợi nhuận: ${Helper.formatCurrency(revenueSummary.profit)}`}
+                            icon={<CircleDollarSign className="h-4 w-4" />}
+                            tone="emerald"
+                        />
+                        <MetricCard
+                            title="Đơn hàng trong kỳ"
+                            value={Helper.formatNumber(orderStats?.current ?? 0)}
+                            caption={`Tăng trưởng: ${Helper.formatPercent(orderStats?.percentChange ?? 0)}`}
+                            icon={<ShoppingBag className="h-4 w-4" />}
+                            tone="blue"
+                        />
+                        <MetricCard
+                            title="Khách hàng hoạt động"
+                            value={Helper.formatNumber(activeUsers?.current ?? 0)}
+                            caption={`Tăng trưởng: ${Helper.formatPercent(activeUsers?.percentChange ?? 0)}`}
+                            icon={<Users className="h-4 w-4" />}
+                            tone="violet"
+                        />
                         <MetricCard
                             title="Người dùng mới"
-                            value={formatNumber(Math.max(0, (activeUsers?.current ?? 0) - (activeUsers?.previous ?? 0)))}
-                            caption={`Kỳ trước: ${formatNumber(activeUsers?.previous ?? 0)} người dùng`}
+                            value={Helper.formatNumber(Math.max(0, (activeUsers?.current ?? 0) - (activeUsers?.previous ?? 0)))}
+                            caption={`Kỳ trước: ${Helper.formatNumber(activeUsers?.previous ?? 0)} người dùng`}
                             icon={<Activity className="h-4 w-4" />}
                             tone="amber"
                         />
@@ -227,19 +221,19 @@ export default function StatisticalPage() {
                                 <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
                                     <div className="rounded-lg border p-3">
                                         <p className="text-xs text-muted-foreground">Doanh thu lũy kế</p>
-                                        <p className="mt-1 text-base font-semibold">{formatMoney(revenueSummary.revenue)}</p>
+                                        <p className="mt-1 text-base font-semibold">{Helper.formatCurrency(revenueSummary.revenue)}</p>
                                     </div>
                                     <div className="rounded-lg border p-3">
                                         <p className="text-xs text-muted-foreground">Tổng chi phí</p>
-                                        <p className="mt-1 text-base font-semibold">{formatMoney(revenueSummary.cost)}</p>
+                                        <p className="mt-1 text-base font-semibold">{Helper.formatCurrency(revenueSummary.cost)}</p>
                                     </div>
                                     <div className="rounded-lg border p-3">
                                         <p className="text-xs text-muted-foreground">Lợi nhuận</p>
-                                        <p className="mt-1 text-base font-semibold">{formatMoney(revenueSummary.profit)}</p>
+                                        <p className="mt-1 text-base font-semibold">{Helper.formatCurrency(revenueSummary.profit)}</p>
                                     </div>
                                     <div className="rounded-lg border p-3">
                                         <p className="text-xs text-muted-foreground">Biên lợi nhuận</p>
-                                        <p className="mt-1 text-base font-semibold">{formatPercent(revenueSummary.margin)}</p>
+                                        <p className="mt-1 text-base font-semibold">{Helper.formatPercent(revenueSummary.margin)}</p>
                                     </div>
                                 </div>
 
@@ -260,7 +254,7 @@ export default function StatisticalPage() {
 
                                 <ResponsiveContainer width="100%" height={280}>
                                     <BarChart
-                                        data={revenue12Months.map((item) => ({ label: formatMonth(item.month), revenue: Number(item.revenue || 0), cost: Number(item.cost || 0), profit: Number(item.profit || 0) }))}
+                                        data={revenue12Months.map((item) => ({ label: Helper.formatMonth(item.month), revenue: Number(item.revenue || 0), cost: Number(item.cost || 0), profit: Number(item.profit || 0) }))}
                                         barCategoryGap="25%"
                                         barGap={2}
                                     >
@@ -268,7 +262,7 @@ export default function StatisticalPage() {
                                         <XAxis dataKey="label" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
                                         <YAxis tickFormatter={(v: number) => (v >= 1_000_000 ? `${(v / 1_000_000).toFixed(0)}M` : `${(v / 1_000).toFixed(0)}K`)} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={52} />
                                         <Tooltip
-                                            formatter={(value) => [formatMoney(Number(value ?? 0)), ""]}
+                                            formatter={(value) => [Helper.formatCurrency(Number(value ?? 0)), ""]}
                                             labelClassName="font-medium"
                                             content={({ active, payload, label }) => {
                                                 if (!active || !payload?.length) return null;
@@ -277,7 +271,7 @@ export default function StatisticalPage() {
                                                         <p className="mb-1 font-medium">{label}</p>
                                                         {payload.map((entry) => (
                                                             <p key={entry.dataKey as string} style={{ color: entry.color }}>
-                                                                {entry.dataKey === "revenue" ? "Doanh thu" : entry.dataKey === "cost" ? "Chi phí" : "Lợi nhuận"}: {formatMoney(Number(entry.value ?? 0))}
+                                                                {entry.dataKey === "revenue" ? "Doanh thu" : entry.dataKey === "cost" ? "Chi phí" : "Lợi nhuận"}: {Helper.formatCurrency(Number(entry.value ?? 0))}
                                                             </p>
                                                         ))}
                                                     </div>
@@ -315,8 +309,8 @@ export default function StatisticalPage() {
                                         <Badge variant="outline">#{index + 1}</Badge>
                                     </div>
                                     <div className="flex items-center justify-between text-xs text-muted-foreground">
-                                        <span>Đã bán: {formatNumber(product.soldQuantity)}</span>
-                                        <span className="font-medium text-foreground">{formatMoney(product.soldQuantity * Number(product.salePrice || 0))}</span>
+                                        <span>Đã bán: {Helper.formatNumber(product.soldQuantity)}</span>
+                                        <span className="font-medium text-foreground">{Helper.formatCurrency(product.soldQuantity * Number(product.salePrice || 0))}</span>
                                     </div>
                                 </div>
                             ))
@@ -369,8 +363,8 @@ export default function StatisticalPage() {
                                         return (
                                             <div className="rounded-lg border bg-background p-2 text-xs shadow-md">
                                                 <p className="mb-1 font-medium">{payload[0]?.name}</p>
-                                                <p>Đã bán: {formatNumber(Number(payload[0]?.value ?? 0))}</p>
-                                                <p>Tăng trưởng: {formatPercent([...categories].find((c) => c.categoryName === payload[0]?.name)?.percentChange ?? 0)}</p>
+                                                <p>Đã bán: {Helper.formatNumber(Number(payload[0]?.value ?? 0))}</p>
+                                                <p>Tăng trưởng: {Helper.formatPercent([...categories].find((c) => c.categoryName === payload[0]?.name)?.percentChange ?? 0)}</p>
                                             </div>
                                         );
                                     }}
