@@ -66,11 +66,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/auth/refresh', [AuthController::class, 'refresh']);
     Route::get('/auth/introspect', [AuthController::class, 'introspect']);
 
-<<<<<<< HEAD
     // User 
-=======
-    // User Management
->>>>>>> 12dbf1f57976cf32472c9f8901806aa870db4ba0
     Route::get('/user/list', [UserController::class, 'findAll'])->middleware('can:VIEW_USERS');
     Route::get('/user/me', [UserController::class, 'getMyInfo']);
     Route::get('/user/{userId}', [UserController::class, 'getDetailUser'])->middleware('can:VIEW_USER_DETAIL');
