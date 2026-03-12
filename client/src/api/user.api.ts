@@ -4,58 +4,6 @@ import type { ChangePasswordPayload, UserAddress, UserProfile } from "@/types/us
 
 const WARNING_PREFIX = "[WARNING][UserApi]";
 
-function createEmptyUserListResponse(page: number, size: number): ApiResponse<PageResponse<UserProfile>> {
-    return {
-        status: 200,
-        message: "No user data",
-        data: {
-            data: [],
-            pageNumber: page,
-            pageSize: size,
-            totalPages: 0,
-            totalElements: 0,
-        },
-    };
-}
-
-function createEmptyAddressListResponse(page: number, size: number): ApiResponse<PageResponse<UserAddress>> {
-    return {
-        status: 200,
-        message: "No address data",
-        data: {
-            data: [],
-            pageNumber: page,
-            pageSize: size,
-            totalPages: 0,
-            totalElements: 0,
-        },
-    };
-}
-
-function createEmptyUserDetailResponse(message: string): ApiResponse<UserProfile> {
-    return {
-        status: 404,
-        message,
-        data: null as unknown as UserProfile,
-    };
-}
-
-function isPageUser(value: unknown): value is PageResponse<UserProfile> {
-    if (!value || typeof value !== "object") return false;
-    const payload = value as PageResponse<UserProfile>;
-    return Array.isArray(payload.data) && typeof payload.pageNumber === "number";
-}
-
-function isPageAddress(value: unknown): value is PageResponse<UserAddress> {
-    if (!value || typeof value !== "object") return false;
-    const payload = value as PageResponse<UserAddress>;
-    return Array.isArray(payload.data) && typeof payload.pageNumber === "number";
-}
-
-function isWrapped<T>(value: unknown): value is ApiResponse<T> {
-    return !!value && typeof value === "object" && "data" in (value as Record<string, unknown>);
-}
-
 export const UserApi = {
     getUserByEmail: async (email: string) => {
         try {
@@ -70,53 +18,35 @@ export const UserApi = {
     getMyInfo: async (): Promise<ApiResponse<UserProfile>> => {
         try {
             const res = await axiosInstance.get("/user/me");
-            if (isWrapped<UserProfile>(res.data) && res.data.data) {
-                return res.data as ApiResponse<UserProfile>;
-            }
-            if (res.data && typeof res.data === "object" && "id" in (res.data as Record<string, unknown>)) {
-                return { status: 200, message: "My info", data: res.data as UserProfile };
-            }
-            console.warn(`${WARNING_PREFIX} Invalid /user/me response shape.`);
-            return createEmptyUserDetailResponse("My info not available");
+
+            return res.data as ApiResponse<UserProfile>;
         } catch (error) {
             console.error(`${WARNING_PREFIX} /user/me failed.`, error);
-            return createEmptyUserDetailResponse("My info not available");
+            throw error;
         }
     },
 
-    // WARNING: Backend route maps `/user/list` to `UserController::list`,
-    // while controller currently defines `findAll`. This mismatch may return server error.
     getUsers: async (query?: { keyword?: string; sort?: string; page?: number; size?: number; hasUserRole?: boolean }) => {
         const page = query?.page ?? 1;
         const size = query?.size ?? 10;
         try {
             const res = await axiosInstance.get("/user/list", { params: { ...query, page, size } });
-            if (isWrapped<PageResponse<UserProfile>>(res.data) && isPageUser((res.data as ApiResponse<PageResponse<UserProfile>>).data)) {
-                return res.data as ApiResponse<PageResponse<UserProfile>>;
-            }
-            if (isPageUser(res.data)) {
-                return { status: 200, message: "User list", data: res.data };
-            }
+
             console.warn(`${WARNING_PREFIX} Invalid /user/list response shape.`);
-            return createEmptyUserListResponse(page, size);
+            return res.data as ApiResponse<PageResponse<UserProfile>>;
         } catch (error) {
             console.error(`${WARNING_PREFIX} /user/list failed.`, error);
-            return createEmptyUserListResponse(page, size);
+            throw error;
         }
     },
 
     getUserDetail: async (userId: number): Promise<ApiResponse<UserProfile>> => {
         try {
             const res = await axiosInstance.get(`/user/${userId}`);
-            if (isWrapped<UserProfile>(res.data)) return res.data as ApiResponse<UserProfile>;
-            if (res.data && typeof res.data === "object" && "id" in (res.data as Record<string, unknown>)) {
-                return { status: 200, message: "User detail", data: res.data as UserProfile };
-            }
-            console.warn(`${WARNING_PREFIX} Invalid /user/{userId} response shape.`);
-            return createEmptyUserDetailResponse("User detail not found");
+            return res.data as ApiResponse<UserProfile>;
         } catch (error) {
             console.error(`${WARNING_PREFIX} /user/{userId} failed.`, error);
-            return createEmptyUserDetailResponse("User detail not found");
+            throw error;
         }
     },
 
@@ -125,17 +55,11 @@ export const UserApi = {
         const size = query?.size ?? 10;
         try {
             const res = await axiosInstance.get("/user/address/list", { params: { ...query, page, size } });
-            if (isWrapped<PageResponse<UserAddress>>(res.data) && isPageAddress((res.data as ApiResponse<PageResponse<UserAddress>>).data)) {
-                return res.data as ApiResponse<PageResponse<UserAddress>>;
-            }
-            if (isPageAddress(res.data)) {
-                return { status: 200, message: "Address list", data: res.data };
-            }
-            console.warn(`${WARNING_PREFIX} Invalid /user/address/list response shape.`);
-            return createEmptyAddressListResponse(page, size);
+
+            return res.data as ApiResponse<PageResponse<UserAddress>>;
         } catch (error) {
             console.error(`${WARNING_PREFIX} /user/address/list failed.`, error);
-            return createEmptyAddressListResponse(page, size);
+            throw error;
         }
     },
 
@@ -145,7 +69,7 @@ export const UserApi = {
             return res.data;
         } catch (error) {
             console.warn(`${WARNING_PREFIX} /user/add/address failed.`, error);
-            return { status: 500, message: "Add address failed", data: null };
+            throw error;
         }
     },
 
@@ -155,7 +79,7 @@ export const UserApi = {
             return res.data;
         } catch (error) {
             console.warn(`${WARNING_PREFIX} /user/address/default/{addressId} failed.`, error);
-            return { status: 500, message: "Set default address failed", data: null };
+            throw error;
         }
     },
 
@@ -165,7 +89,7 @@ export const UserApi = {
             return res.data;
         } catch (error) {
             console.warn(`${WARNING_PREFIX} /user/address/update/{addressId} failed.`, error);
-            return { status: 500, message: "Update address failed", data: null };
+            throw error;
         }
     },
 
@@ -175,7 +99,7 @@ export const UserApi = {
             return res.data;
         } catch (error) {
             console.warn(`${WARNING_PREFIX} /user/address/delete/{addressId} failed.`, error);
-            return { status: 500, message: "Delete address failed", data: null };
+            throw error;
         }
     },
 
@@ -185,7 +109,7 @@ export const UserApi = {
             return res.data;
         } catch (error) {
             console.warn(`${WARNING_PREFIX} /user/update failed.`, error);
-            return { status: 500, message: "Update profile failed", data: null };
+            throw error;
         }
     },
 
@@ -195,7 +119,7 @@ export const UserApi = {
             return res.data;
         } catch (error) {
             console.warn(`${WARNING_PREFIX} /user/change-password failed.`, error);
-            return { status: 500, message: "Change password failed", data: null };
+            throw error;
         }
     },
 
@@ -205,7 +129,7 @@ export const UserApi = {
             return res.data;
         } catch (error) {
             console.warn(`${WARNING_PREFIX} /user/change-email failed.`, error);
-            return { status: 500, message: "Change email failed", data: null };
+            throw error;
         }
     },
 
@@ -215,7 +139,7 @@ export const UserApi = {
             return res.data;
         } catch (error) {
             console.warn(`${WARNING_PREFIX} /user/change-phone failed.`, error);
-            return { status: 500, message: "Change phone failed", data: null };
+            throw error;
         }
     },
 
@@ -225,7 +149,7 @@ export const UserApi = {
             return res.data;
         } catch (error) {
             console.warn(`${WARNING_PREFIX} /user/forgot-password failed.`, error);
-            return { status: 500, message: "Forgot password failed", data: null };
+            throw error;
         }
     },
 
@@ -235,11 +159,12 @@ export const UserApi = {
             return res.data;
         } catch (error) {
             console.warn(`${WARNING_PREFIX} /user/{userId}/verify-account failed.`, error);
-            return { status: 500, message: "Verify account failed", data: null };
+            throw error;
         }
     },
 
-    /** POST /user/add — Create new user (Admin) */
+    // Admin
+
     createUser: async (payload: Record<string, unknown>) => {
         try {
             const res = await axiosInstance.post("/user/add", payload);
@@ -250,7 +175,6 @@ export const UserApi = {
         }
     },
 
-    /** PUT /user/{userId}/update/role — Update user role (Admin) */
     updateRoleUser: async (userId: number, payload: Record<string, unknown>) => {
         try {
             const res = await axiosInstance.put(`/user/${userId}/update/role`, payload);
@@ -261,7 +185,6 @@ export const UserApi = {
         }
     },
 
-    /** PUT /user/{userId}/status — Update user status (Admin) */
     updateUserStatus: async (userId: number, payload: Record<string, unknown>) => {
         try {
             const res = await axiosInstance.put(`/user/${userId}/status`, payload);
@@ -272,7 +195,6 @@ export const UserApi = {
         }
     },
 
-    /** GET /user/username — Find user by username (Admin) */
     findByUsername: async (username: string) => {
         try {
             const res = await axiosInstance.get("/user/username", { params: { username } });

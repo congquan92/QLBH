@@ -31,10 +31,7 @@ interface RolePage {
 function normalizeAdminPath(raw?: string) {
     const value = String(raw ?? "").trim();
     if (!value) return "";
-
     let candidate = value;
-
-    // Some backend payloads can include absolute URLs; keep only pathname for ACL checks.
     if (/^https?:\/\//i.test(candidate)) {
         try {
             candidate = new URL(candidate).pathname;
@@ -42,10 +39,8 @@ function normalizeAdminPath(raw?: string) {
             // Ignore parse failure and continue with raw candidate.
         }
     }
-
     const pathOnly = candidate.split(/[?#]/)[0]?.trim() ?? "";
     if (!pathOnly) return "";
-
     const normalized = pathOnly.replace(/\/+$/, "");
     if (!normalized) return "/admin";
     if (normalized.startsWith("/admin")) return normalized;
@@ -162,6 +157,7 @@ export const AdminAuthUtil = {
         try {
             const parsed = JSON.parse(raw) as Partial<AdminSession>;
             if (!parsed || typeof parsed !== "object" || !parsed.token || !parsed.role) {
+                window.localStorage.removeItem(ADMIN_SESSION_STORAGE_KEY);
                 return null;
             }
 
@@ -184,6 +180,7 @@ export const AdminAuthUtil = {
                 allowedUrls: Array.from(new Set([...roleAllowedUrls, ...storedAllowedUrls])),
             };
         } catch {
+            window.localStorage.removeItem(ADMIN_SESSION_STORAGE_KEY);
             return null;
         }
     },

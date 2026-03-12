@@ -3,46 +3,32 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { StatisticsApi } from "@/api/statistics.api";
 import { AdminPageShell } from "@/components/feature/admin-page-shell";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
 import type { ActiveUserStats, CategoryStats, MonthlyRevenue, OrderStats, TopProduct } from "@/types/statistics";
-import { Activity, Boxes, ChartColumnIncreasing, CircleDollarSign, PackageSearch, Percent, RefreshCw, ShoppingBag, Users } from "lucide-react";
+import { Activity, Boxes, ChartColumnIncreasing, CircleDollarSign, PackageSearch, RefreshCw, ShoppingBag, Users } from "lucide-react";
+import { Bar, BarChart, CartesianGrid, Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Helper } from "@/lib/helper";
 
-type PeriodValue = "1" | "2" | "3";
+type PeriodValue = "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" | "10" | "11" | "12";
 
 const PERIOD_OPTIONS: Array<{ value: PeriodValue; label: string; subtitle: string }> = [
-    { value: "1", label: "7 ngày", subtitle: "Theo dõi ngắn hạn" },
-    { value: "2", label: "30 ngày", subtitle: "Xu hướng tháng" },
-    { value: "3", label: "90 ngày", subtitle: "Toàn cảnh quý" },
+    { value: "1", label: "1 tháng", subtitle: "Tháng gần nhất" },
+    { value: "2", label: "2 tháng", subtitle: "2 tháng gần nhất" },
+    { value: "3", label: "3 tháng", subtitle: "3 tháng gần nhất" },
+    { value: "4", label: "4 tháng", subtitle: "4 tháng gần nhất" },
+    { value: "5", label: "5 tháng", subtitle: "5 tháng gần nhất" },
+    { value: "6", label: "6 tháng", subtitle: "Nửa năm" },
+    { value: "7", label: "7 tháng", subtitle: "7 tháng gần nhất" },
+    { value: "8", label: "8 tháng", subtitle: "8 tháng gần nhất" },
+    { value: "9", label: "9 tháng", subtitle: "9 tháng gần nhất" },
+    { value: "10", label: "10 tháng", subtitle: "10 tháng gần nhất" },
+    { value: "11", label: "11 tháng", subtitle: "11 tháng gần nhất" },
+    { value: "12", label: "12 tháng", subtitle: "Cả năm" },
 ];
-
-function formatNumber(value: number) {
-    return new Intl.NumberFormat("vi-VN").format(Math.max(0, value || 0));
-}
-
-function formatMoney(value: number) {
-    return new Intl.NumberFormat("vi-VN", {
-        style: "currency",
-        currency: "VND",
-        maximumFractionDigits: 0,
-    }).format(value || 0);
-}
-
-function formatMonth(value: string) {
-    const input = String(value || "").trim();
-    if (!input) return "--";
-
-    const [year, month] = input.split("-");
-    if (!year || !month) return input;
-    return `${month}/${year.slice(-2)}`;
-}
-
-function formatPercent(value: number) {
-    return `${(value || 0).toFixed(1)}%`;
-}
 
 interface MetricCardProps {
     title: string;
@@ -77,7 +63,7 @@ function MetricCard({ title, value, caption, icon, tone = "blue" }: MetricCardPr
 }
 
 export default function StatisticalPage() {
-    const [period, setPeriod] = useState<PeriodValue>("2");
+    const [period, setPeriod] = useState<PeriodValue>("1");
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -115,7 +101,7 @@ export default function StatisticalPage() {
     }, [period]);
 
     useEffect(() => {
-        void loadDashboard();
+        loadDashboard();
     }, [loadDashboard]);
 
     const periodMeta = PERIOD_OPTIONS.find((item) => item.value === period) ?? PERIOD_OPTIONS[1];
@@ -185,18 +171,30 @@ export default function StatisticalPage() {
                 ) : (
                     <>
                         <MetricCard
-                            title="Tổng doanh thu"
-                            value={formatMoney(orderStats?.total_revenue ?? 0)}
-                            caption={`${formatNumber(orderStats?.total_orders ?? 0)} đơn trong ${periodMeta.label}`}
+                            title="Doanh thu (12 tháng)"
+                            value={Helper.formatNumber(revenueSummary.revenue)}
+                            caption={`Lợi nhuận: ${Helper.formatCurrency(revenueSummary.profit)}`}
                             icon={<CircleDollarSign className="h-4 w-4" />}
                             tone="emerald"
                         />
-                        <MetricCard title="Đơn hoàn tất" value={formatNumber(orderStats?.completed_orders ?? 0)} caption={`Đơn hủy: ${formatNumber(orderStats?.cancelled_orders ?? 0)}`} icon={<ShoppingBag className="h-4 w-4" />} tone="blue" />
-                        <MetricCard title="Khách hàng hoạt động" value={formatNumber(activeUsers?.active_users ?? 0)} caption={`Tăng trưởng: ${formatPercent(activeUsers?.growth_rate ?? 0)}`} icon={<Users className="h-4 w-4" />} tone="violet" />
                         <MetricCard
-                            title="Giá trị đơn trung bình"
-                            value={formatMoney(orderStats?.average_order_value ?? 0)}
-                            caption={`Người dùng mới: ${formatNumber(activeUsers?.new_users ?? 0)}`}
+                            title="Đơn hàng trong kỳ"
+                            value={Helper.formatNumber(orderStats?.current ?? 0)}
+                            caption={`Tăng trưởng: ${Helper.formatPercent(orderStats?.percentChange ?? 0)}`}
+                            icon={<ShoppingBag className="h-4 w-4" />}
+                            tone="blue"
+                        />
+                        <MetricCard
+                            title="Khách hàng hoạt động"
+                            value={Helper.formatNumber(activeUsers?.current ?? 0)}
+                            caption={`Tăng trưởng: ${Helper.formatPercent(activeUsers?.percentChange ?? 0)}`}
+                            icon={<Users className="h-4 w-4" />}
+                            tone="violet"
+                        />
+                        <MetricCard
+                            title="Người dùng mới"
+                            value={Helper.formatNumber(Math.max(0, (activeUsers?.current ?? 0) - (activeUsers?.previous ?? 0)))}
+                            caption={`Kỳ trước: ${Helper.formatNumber(activeUsers?.previous ?? 0)} người dùng`}
                             icon={<Activity className="h-4 w-4" />}
                             tone="amber"
                         />
@@ -223,40 +221,68 @@ export default function StatisticalPage() {
                                 <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
                                     <div className="rounded-lg border p-3">
                                         <p className="text-xs text-muted-foreground">Doanh thu lũy kế</p>
-                                        <p className="mt-1 text-base font-semibold">{formatMoney(revenueSummary.revenue)}</p>
+                                        <p className="mt-1 text-base font-semibold">{Helper.formatCurrency(revenueSummary.revenue)}</p>
                                     </div>
                                     <div className="rounded-lg border p-3">
                                         <p className="text-xs text-muted-foreground">Tổng chi phí</p>
-                                        <p className="mt-1 text-base font-semibold">{formatMoney(revenueSummary.cost)}</p>
+                                        <p className="mt-1 text-base font-semibold">{Helper.formatCurrency(revenueSummary.cost)}</p>
                                     </div>
                                     <div className="rounded-lg border p-3">
                                         <p className="text-xs text-muted-foreground">Lợi nhuận</p>
-                                        <p className="mt-1 text-base font-semibold">{formatMoney(revenueSummary.profit)}</p>
+                                        <p className="mt-1 text-base font-semibold">{Helper.formatCurrency(revenueSummary.profit)}</p>
                                     </div>
                                     <div className="rounded-lg border p-3">
                                         <p className="text-xs text-muted-foreground">Biên lợi nhuận</p>
-                                        <p className="mt-1 text-base font-semibold">{formatPercent(revenueSummary.margin)}</p>
+                                        <p className="mt-1 text-base font-semibold">{Helper.formatPercent(revenueSummary.margin)}</p>
                                     </div>
                                 </div>
 
-                                <div className="space-y-2">
-                                    {revenue12Months.map((item) => {
-                                        const revenue = Number(item.revenue || 0);
-                                        const width = revenueSummary.maxRevenue > 0 ? (revenue / revenueSummary.maxRevenue) * 100 : 0;
-
-                                        return (
-                                            <div key={`${item.month}-${item.revenue}`} className="space-y-1">
-                                                <div className="flex items-center justify-between text-xs">
-                                                    <span className="font-medium">{formatMonth(item.month)}</span>
-                                                    <span className="text-muted-foreground">{formatMoney(revenue)}</span>
-                                                </div>
-                                                <div className="h-2.5 rounded-full bg-muted">
-                                                    <div className="h-2.5 rounded-full bg-linear-to-r from-cyan-500 to-indigo-500" style={{ width: `${Math.max(width, 6)}%` }} />
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
+                                <div className="flex gap-4 text-xs text-muted-foreground">
+                                    <span className="flex items-center gap-1">
+                                        <span className="inline-block h-2.5 w-2.5 rounded-sm bg-cyan-500" />
+                                        Doanh thu
+                                    </span>
+                                    <span className="flex items-center gap-1">
+                                        <span className="inline-block h-2.5 w-2.5 rounded-sm bg-rose-400" />
+                                        Chi phí
+                                    </span>
+                                    <span className="flex items-center gap-1">
+                                        <span className="inline-block h-2.5 w-2.5 rounded-sm bg-emerald-500" />
+                                        Lợi nhuận
+                                    </span>
                                 </div>
+
+                                <ResponsiveContainer width="100%" height={280}>
+                                    <BarChart
+                                        data={revenue12Months.map((item) => ({ label: Helper.formatMonth(item.month), revenue: Number(item.revenue || 0), cost: Number(item.cost || 0), profit: Number(item.profit || 0) }))}
+                                        barCategoryGap="25%"
+                                        barGap={2}
+                                    >
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-muted" />
+                                        <XAxis dataKey="label" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
+                                        <YAxis tickFormatter={(v: number) => (v >= 1_000_000 ? `${(v / 1_000_000).toFixed(0)}M` : `${(v / 1_000).toFixed(0)}K`)} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={52} />
+                                        <Tooltip
+                                            formatter={(value) => [Helper.formatCurrency(Number(value ?? 0)), ""]}
+                                            labelClassName="font-medium"
+                                            content={({ active, payload, label }) => {
+                                                if (!active || !payload?.length) return null;
+                                                return (
+                                                    <div className="rounded-lg border bg-background p-2 text-xs shadow-md">
+                                                        <p className="mb-1 font-medium">{label}</p>
+                                                        {payload.map((entry) => (
+                                                            <p key={entry.dataKey as string} style={{ color: entry.color }}>
+                                                                {entry.dataKey === "revenue" ? "Doanh thu" : entry.dataKey === "cost" ? "Chi phí" : "Lợi nhuận"}: {Helper.formatCurrency(Number(entry.value ?? 0))}
+                                                            </p>
+                                                        ))}
+                                                    </div>
+                                                );
+                                            }}
+                                        />
+                                        <Bar dataKey="revenue" fill="#06b6d4" radius={[3, 3, 0, 0]} maxBarSize={18} />
+                                        <Bar dataKey="cost" fill="#fb7185" radius={[3, 3, 0, 0]} maxBarSize={18} />
+                                        <Bar dataKey="profit" fill="#10b981" radius={[3, 3, 0, 0]} maxBarSize={18} />
+                                    </BarChart>
+                                </ResponsiveContainer>
                             </>
                         )}
                     </CardContent>
@@ -277,14 +303,14 @@ export default function StatisticalPage() {
                             <p className="text-sm text-muted-foreground">Chưa có dữ liệu sản phẩm.</p>
                         ) : (
                             topProducts.map((product, index) => (
-                                <div key={product.product_id} className="rounded-lg border p-3">
+                                <div key={product.productId} className="rounded-lg border p-3">
                                     <div className="mb-2 flex items-start justify-between gap-2">
-                                        <p className="line-clamp-2 text-sm font-medium">{product.product_name}</p>
+                                        <p className="line-clamp-2 text-sm font-medium">{product.name}</p>
                                         <Badge variant="outline">#{index + 1}</Badge>
                                     </div>
                                     <div className="flex items-center justify-between text-xs text-muted-foreground">
-                                        <span>Đã bán: {formatNumber(product.total_sold)}</span>
-                                        <span className="font-medium text-foreground">{formatMoney(product.total_revenue)}</span>
+                                        <span>Đã bán: {Helper.formatNumber(product.soldQuantity)}</span>
+                                        <span className="font-medium text-foreground">{Helper.formatCurrency(product.soldQuantity * Number(product.salePrice || 0))}</span>
                                     </div>
                                 </div>
                             ))
@@ -299,35 +325,53 @@ export default function StatisticalPage() {
                         <Boxes className="h-5 w-5 text-primary" />
                         Danh mục hiệu suất cao
                     </CardTitle>
-                    <CardDescription>Xếp hạng danh mục theo doanh thu trong kỳ {periodMeta.label.toLowerCase()}.</CardDescription>
+                    <CardDescription>Xếp hạng danh mục theo số lượng bán trong kỳ {periodMeta.label.toLowerCase()}.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     {loading ? (
-                        <Skeleton className="h-52 w-full" />
+                        <Skeleton className="h-72 w-full" />
                     ) : categories.length === 0 ? (
                         <p className="text-sm text-muted-foreground">Chưa có dữ liệu danh mục.</p>
                     ) : (
-                        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                            {categories
-                                .sort((a, b) => Number(b.total_revenue || 0) - Number(a.total_revenue || 0))
-                                .slice(0, 6)
-                                .map((category) => (
-                                    <div key={category.category_id} className="rounded-xl border bg-card p-4">
-                                        <div className="mb-2 flex items-center justify-between gap-2">
-                                            <p className="line-clamp-1 font-medium">{category.category_name}</p>
-                                            <Badge variant="secondary" className="gap-1">
-                                                <Percent className="h-3 w-3" />
-                                                Top
-                                            </Badge>
-                                        </div>
-                                        <div className="space-y-1 text-sm text-muted-foreground">
-                                            <p>Sản phẩm: {formatNumber(category.total_products)}</p>
-                                            <p>Đã bán: {formatNumber(category.total_sold)}</p>
-                                            <p className="font-medium text-foreground">{formatMoney(category.total_revenue)}</p>
-                                        </div>
-                                    </div>
-                                ))}
-                        </div>
+                        <ResponsiveContainer width="100%" height={300}>
+                            <PieChart>
+                                <Pie
+                                    data={[...categories]
+                                        .sort((a, b) => Number(b.quantity || 0) - Number(a.quantity || 0))
+                                        .slice(0, 6)
+                                        .map((cat) => ({ name: cat.categoryName, value: cat.quantity }))}
+                                    cx="50%"
+                                    cy="50%"
+                                    innerRadius={70}
+                                    outerRadius={110}
+                                    paddingAngle={3}
+                                    dataKey="value"
+                                    label={({ percent }: { percent?: number }) => `${((percent ?? 0) * 100).toFixed(1)}%`}
+                                    labelLine={false}
+                                >
+                                    {[...categories]
+                                        .sort((a, b) => Number(b.quantity || 0) - Number(a.quantity || 0))
+                                        .slice(0, 6)
+                                        .map((_, i) => {
+                                            const colors = ["#6366f1", "#f59e0b", "#10b981", "#fb7185", "#06b6d4", "#8b5cf6"];
+                                            return <Cell key={i} fill={colors[i] ?? "#6366f1"} />;
+                                        })}
+                                </Pie>
+                                <Tooltip
+                                    content={({ active, payload }) => {
+                                        if (!active || !payload?.length) return null;
+                                        return (
+                                            <div className="rounded-lg border bg-background p-2 text-xs shadow-md">
+                                                <p className="mb-1 font-medium">{payload[0]?.name}</p>
+                                                <p>Đã bán: {Helper.formatNumber(Number(payload[0]?.value ?? 0))}</p>
+                                                <p>Tăng trưởng: {Helper.formatPercent([...categories].find((c) => c.categoryName === payload[0]?.name)?.percentChange ?? 0)}</p>
+                                            </div>
+                                        );
+                                    }}
+                                />
+                                <Legend iconType="circle" iconSize={10} />
+                            </PieChart>
+                        </ResponsiveContainer>
                     )}
                 </CardContent>
             </Card>

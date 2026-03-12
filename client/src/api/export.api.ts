@@ -3,11 +3,6 @@ import { axiosInstance } from "@/lib/axios";
 const WARNING_PREFIX = "[WARNING][ExportApi]";
 
 export const ExportApi = {
-    /**
-     * Export schedule data
-     * GET /export/schedule
-     * Returns file blob for download
-     */
     exportSchedule: async (): Promise<Blob> => {
         try {
             const res = await axiosInstance.get("/export/schedule", {
@@ -20,11 +15,6 @@ export const ExportApi = {
         }
     },
 
-    /**
-     * Export my schedule data
-     * GET /export/my-schedule
-     * Returns file blob for download
-     */
     exportMySchedule: async (): Promise<Blob> => {
         try {
             const res = await axiosInstance.get("/export/my-schedule", {
@@ -37,11 +27,6 @@ export const ExportApi = {
         }
     },
 
-    /**
-     * Export late arrivals report
-     * GET /export/late-arrivals
-     * Returns file blob for download
-     */
     exportLateArrivals: async (): Promise<Blob> => {
         try {
             const res = await axiosInstance.get("/export/late-arrivals", {
@@ -54,9 +39,6 @@ export const ExportApi = {
         }
     },
 
-    /**
-     * Helper: trigger browser download from blob
-     */
     downloadBlob: (blob: Blob, filename: string) => {
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement("a");

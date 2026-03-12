@@ -1,51 +1,8 @@
 import { axiosInstance } from "@/lib/axios";
-import type { ApiResponse, PageResponse } from "@/types/api";
+import type { ApiResponse } from "@/types/api";
 import type { Category } from "@/types/navbar";
 
 const WARNING_PREFIX = "[WARNING][CategoryApi]";
-
-function createEmptyCategoryListResponse(page: number, size: number): ApiResponse<PageResponse<Category>> {
-    return {
-        status: 200,
-        message: "No category data",
-        data: {
-            data: [],
-            pageNumber: page,
-            pageSize: size,
-            totalPages: 0,
-            totalElements: 0,
-        },
-    };
-}
-
-function createEmptyCategoryDetailResponse(): ApiResponse<Category> {
-    return {
-        status: 404,
-        message: "Category not found",
-        data: null as unknown as Category,
-    };
-}
-
-function isPageCategory(value: unknown): value is PageResponse<Category> {
-    if (!value || typeof value !== "object") return false;
-    const payload = value as PageResponse<Category>;
-    return Array.isArray(payload.data) && typeof payload.pageNumber === "number";
-}
-
-function isWrappedCategory(value: unknown): value is ApiResponse<PageResponse<Category>> {
-    if (!value || typeof value !== "object") return false;
-    const payload = value as ApiResponse<PageResponse<Category>>;
-    return isPageCategory(payload.data);
-}
-
-function normalizeCategoryResponse(payload: unknown, page: number, size: number, message: string): ApiResponse<PageResponse<Category>> {
-    if (isWrappedCategory(payload)) return payload;
-    if (isPageCategory(payload)) {
-        return { status: 200, message, data: payload };
-    }
-    console.warn(`${WARNING_PREFIX} Invalid category response shape.`);
-    return createEmptyCategoryListResponse(page, size);
-}
 
 export const CategoryApi = {
     getPublicCategories: async (query?: { keyword?: string; sort?: string; page?: number; size?: number }) => {
@@ -53,10 +10,10 @@ export const CategoryApi = {
         const size = query?.size ?? 10;
         try {
             const res = await axiosInstance.get("/category/all", { params: { ...query, page, size } });
-            return normalizeCategoryResponse(res.data, page, size, "Category list fetched");
+            return res.data as ApiResponse<Category>;
         } catch (error) {
             console.error(`${WARNING_PREFIX} /category/all failed.`, error);
-            return createEmptyCategoryListResponse(page, size);
+            throw error;
         }
     },
 
@@ -65,29 +22,23 @@ export const CategoryApi = {
         const size = query?.size ?? 10;
         try {
             const res = await axiosInstance.get("/category/list", { params: { ...query, page, size } });
-            return normalizeCategoryResponse(res.data, page, size, "Category list fetched");
+            return res.data as ApiResponse<Category>;
         } catch (error) {
             console.error(`${WARNING_PREFIX} /category/list failed.`, error);
-            return createEmptyCategoryListResponse(page, size);
+            throw error;
         }
     },
 
-    getCategoryDetail: async (categoryId: number): Promise<ApiResponse<Category>> => {
+    getCategoryDetail: async (categoryId: number) => {
         try {
             const res = await axiosInstance.get(`/category/${categoryId}`);
-            const payload = res.data as ApiResponse<Category>;
-            if (!payload || typeof payload !== "object" || !payload.data || typeof payload.data !== "object") {
-                console.warn(`${WARNING_PREFIX} Invalid /category/{id} response shape.`);
-                return createEmptyCategoryDetailResponse();
-            }
-            return payload;
+            return res.data as ApiResponse<Category>;
         } catch (error) {
             console.error(`${WARNING_PREFIX} /category/{id} failed.`, error);
-            return createEmptyCategoryDetailResponse();
+            throw error;
         }
     },
 
-    /** POST /category/add — Create new category */
     addCategory: async (payload: Record<string, unknown>) => {
         try {
             const res = await axiosInstance.post("/category/add", payload);
@@ -98,7 +49,6 @@ export const CategoryApi = {
         }
     },
 
-    /** PUT /category/update — Update category */
     updateCategory: async (payload: Record<string, unknown>) => {
         try {
             const res = await axiosInstance.put("/category/update", payload);
@@ -109,7 +59,6 @@ export const CategoryApi = {
         }
     },
 
-    /** DELETE /category/{id}/delete — Delete category */
     deleteCategory: async (categoryId: number) => {
         try {
             const res = await axiosInstance.delete(`/category/${categoryId}/delete`);
@@ -120,7 +69,6 @@ export const CategoryApi = {
         }
     },
 
-    /** POST /category/{id}/restore — Restore deleted category */
     restoreCategory: async (categoryId: number) => {
         try {
             const res = await axiosInstance.post(`/category/${categoryId}/restore`);
@@ -131,7 +79,6 @@ export const CategoryApi = {
         }
     },
 
-    /** POST /category/move — Move category (change parent) */
     moveCategory: async (payload: Record<string, unknown>) => {
         try {
             const res = await axiosInstance.post("/category/move", payload);
@@ -142,7 +89,6 @@ export const CategoryApi = {
         }
     },
 
-    /** GET /category/{id}/parents — Get parent categories */
     getParentCategory: async (categoryId: number) => {
         try {
             const res = await axiosInstance.get(`/category/${categoryId}/parents`);

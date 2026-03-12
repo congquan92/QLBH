@@ -1,51 +1,8 @@
 import { axiosInstance } from "@/lib/axios";
-import type { ApiResponse, PageResponse } from "@/types/api";
+import type { ApiResponse } from "@/types/api";
 import type { Voucher, VoucherQuery } from "@/types/voucher";
 
 const WARNING_PREFIX = "[WARNING][VoucherApi]";
-
-function createEmptyVoucherListResponse(page: number, size: number): ApiResponse<PageResponse<Voucher>> {
-    return {
-        status: 200,
-        message: "No voucher data",
-        data: {
-            data: [],
-            pageNumber: page,
-            pageSize: size,
-            totalPages: 0,
-            totalElements: 0,
-        },
-    };
-}
-
-function createEmptyVoucherDetailResponse(): ApiResponse<Voucher> {
-    return {
-        status: 404,
-        message: "Voucher not found",
-        data: null as unknown as Voucher,
-    };
-}
-
-function isPageVoucher(value: unknown): value is PageResponse<Voucher> {
-    if (!value || typeof value !== "object") return false;
-    const payload = value as PageResponse<Voucher>;
-    return Array.isArray(payload.data) && typeof payload.pageNumber === "number";
-}
-
-function isWrappedVoucher(value: unknown): value is ApiResponse<PageResponse<Voucher>> {
-    if (!value || typeof value !== "object") return false;
-    const payload = value as ApiResponse<PageResponse<Voucher>>;
-    return isPageVoucher(payload.data);
-}
-
-function normalizeVoucherList(payload: unknown, page: number, size: number): ApiResponse<PageResponse<Voucher>> {
-    if (isWrappedVoucher(payload)) return payload;
-    if (isPageVoucher(payload)) {
-        return { status: 200, message: "Voucher list fetched", data: payload };
-    }
-    console.warn(`${WARNING_PREFIX} Invalid voucher list response shape.`);
-    return createEmptyVoucherListResponse(page, size);
-}
 
 export const VoucherApi = {
     getPublicOrMyVouchers: async (query?: VoucherQuery) => {
@@ -53,10 +10,10 @@ export const VoucherApi = {
         const size = query?.size ?? 10;
         try {
             const res = await axiosInstance.get("/voucher/list", { params: { ...query, page, size } });
-            return normalizeVoucherList(res.data, page, size);
+            return res.data as ApiResponse<Voucher[]>;
         } catch (error) {
             console.error(`${WARNING_PREFIX} /voucher/list failed.`, error);
-            return createEmptyVoucherListResponse(page, size);
+            throw error;
         }
     },
 
@@ -65,10 +22,10 @@ export const VoucherApi = {
         const size = query?.size ?? 10;
         try {
             const res = await axiosInstance.get("/voucher/admin/list", { params: { ...query, page, size } });
-            return normalizeVoucherList(res.data, page, size);
+            return res.data as ApiResponse<Voucher[]>;
         } catch (error) {
             console.error(`${WARNING_PREFIX} /voucher/admin/list failed.`, error);
-            return createEmptyVoucherListResponse(page, size);
+            throw error;
         }
     },
 
@@ -77,25 +34,20 @@ export const VoucherApi = {
         const size = query?.size ?? 10;
         try {
             const res = await axiosInstance.get("/voucher/my-available", { params: { ...query, page, size } });
-            return normalizeVoucherList(res.data, page, size);
+            return res.data as ApiResponse<Voucher[]>;
         } catch (error) {
             console.error(`${WARNING_PREFIX} /voucher/my-available failed.`, error);
-            return createEmptyVoucherListResponse(page, size);
+            throw error;
         }
     },
 
     getDetail: async (id: number): Promise<ApiResponse<Voucher>> => {
         try {
             const res = await axiosInstance.get(`/voucher/detail/${id}`);
-            const payload = res.data as ApiResponse<Voucher>;
-            if (!payload || typeof payload !== "object" || !payload.data) {
-                console.warn(`${WARNING_PREFIX} Invalid /voucher/detail/{id} response shape.`);
-                return createEmptyVoucherDetailResponse();
-            }
-            return payload;
+            return res.data as ApiResponse<Voucher>;
         } catch (error) {
             console.error(`${WARNING_PREFIX} /voucher/detail/{id} failed.`, error);
-            return createEmptyVoucherDetailResponse();
+            throw error;
         }
     },
 
@@ -105,7 +57,7 @@ export const VoucherApi = {
             return res.data;
         } catch (error) {
             console.warn(`${WARNING_PREFIX} /voucher/add failed.`, error);
-            return { status: 500, message: "Create voucher failed", data: null };
+            throw error;
         }
     },
 
@@ -115,7 +67,7 @@ export const VoucherApi = {
             return res.data;
         } catch (error) {
             console.warn(`${WARNING_PREFIX} /voucher/update/{id} failed.`, error);
-            return { status: 500, message: "Update voucher failed", data: null };
+            throw error;
         }
     },
 };
