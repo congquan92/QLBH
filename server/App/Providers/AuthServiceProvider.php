@@ -13,36 +13,36 @@ class AuthServiceProvider extends ServiceProvider
 {
     public function boot(): void
     {
-        // 1. Quyền ưu tiên tuyệt đối cho ADMIN
         Gate::before(function ($user, $ability) {
             if ($user->role?->name === RoleType::ADMIN->value) {
                 return true;
             }
         });
 
-        // 2. Định nghĩa Gate động dựa trên Database
-        try {
-            // Lấy danh sách tên tất cả Permission đang ACTIVE
-            $permissions = Cache::rememberForever('active_permissions_list', function () {
-                return Permission::where('status', 'ACTIVE')->pluck('name');
-            });
-
-            foreach ($permissions as $permissionName) {
-                Gate::define($permissionName, function ($user) use ($permissionName) {
-                    
-                    if (!$user->role) return false;
-
-                    // LOGIC MỚI: Kiểm tra trực tiếp Role -> GroupPermissions -> Permissions
-                    // Cách này bỏ qua bảng 'pages', giúp check quyền hành động (Create, Update, Delete) cực nhanh
-                    return $user->role->groupPermissions()
-                        ->whereHas('permissions', function ($query) use ($permissionName) {
-                            $query->where('name', $permissionName)
-                                  ->where('permissions.status', 'ACTIVE');
-                        })->exists();
+        // CHỈ CHẠY LOGIC GATE KHI KHÔNG PHẢI TRONG TERMINAL/SEEDER
+        if (!app()->runningInConsole()) {
+            try {
+                $permissions = Cache::rememberForever('active_permissions_list', function () {
+                    // Kiểm tra bảng tồn tại để tránh lỗi khi migrate chưa xong
+                    if (!\Schema::hasTable('permissions'))
+                        return collect();
+                    return Permission::where('status', 'ACTIVE')->pluck('name');
                 });
+
+                foreach ($permissions as $permissionName) {
+                    Gate::define($permissionName, function ($user) use ($permissionName) {
+                        if (!$user->role)
+                            return false;
+                        return $user->role->groupPermissions()
+                            ->whereHas('permissions', function ($query) use ($permissionName) {
+                                $query->where('name', $permissionName)
+                                    ->where('permissions.status', 'ACTIVE');
+                            })->exists();
+                    });
+                }
+            } catch (\Exception $e) {
+                Log::error("Phân quyền Gate lỗi: " . $e->getMessage());
             }
-        } catch (\Exception $e) {
-            Log::error("Phân quyền Gate lỗi: " . $e->getMessage());
         }
     }
 }

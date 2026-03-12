@@ -13,6 +13,7 @@
         "barryvdh/laravel-dompdf": "^3.1",
         "cloudinary/cloudinary_php": "^3.1",
         "darkaonline/l5-swagger": "^10.1",
+        "fakerphp/faker": "^1.24",
         "firebase/php-jwt": "^6.10",
         "getbrevo/brevo-php": "1.x.x",
         "laravel/framework": "^12.52",
@@ -23,7 +24,6 @@
         "tymon/jwt-auth": "^2.2"
     },
     "require-dev": {
-        "fakerphp/faker": "^1.23",
         "knuckleswtf/scribe": "^5.8",
         "laravel/pail": "^1.2.2",
         "laravel/pint": "^1.24",
