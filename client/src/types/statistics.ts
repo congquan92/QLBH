@@ -2,22 +2,16 @@ import type { ApiResponse } from "@/types/api";
 
 export interface ActiveUserStats {
     period: number;
-    total_users: number;
-    active_users: number;
-    new_users: number;
-    growth_rate: number;
-    [key: string]: unknown;
+    current: number;
+    previous: number;
+    percentChange: number;
 }
 
 export interface OrderStats {
     period: number;
-    total_orders: number;
-    completed_orders: number;
-    cancelled_orders: number;
-    pending_orders: number;
-    total_revenue: number;
-    average_order_value: number;
-    [key: string]: unknown;
+    current: number;
+    previous: number;
+    percentChange: number;
 }
 
 export interface MonthlyRevenue {
@@ -25,24 +19,23 @@ export interface MonthlyRevenue {
     revenue: number;
     cost: number;
     profit: number;
-    [key: string]: unknown;
 }
 
 export interface TopProduct {
-    product_id: number;
-    product_name: string;
-    total_sold: number;
-    total_revenue: number;
-    [key: string]: unknown;
+    productId: number;
+    name: string;
+    soldQuantity: number;
+    percentChange: number;
+    listPrice: string;
+    salePrice: string;
+    urlCoverImage: string | null;
 }
 
 export interface CategoryStats {
-    category_id: number;
-    category_name: string;
-    total_products: number;
-    total_sold: number;
-    total_revenue: number;
-    [key: string]: unknown;
+    categoryName: string;
+    quantity: number;
+    previousQuantity: number;
+    percentChange: number;
 }
 
 export type ActiveUserStatsResponse = ApiResponse<ActiveUserStats>;

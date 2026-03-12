@@ -38,7 +38,7 @@ export default function CategoriesPage() {
         setCategories(response.data.data);
         // Auto-expand all parents that have children
         const initExpanded: Record<number, boolean> = {};
-        for (const cat of response.data.data) {
+        for (const cat of response.data) {
             if ((cat.childCategory?.length ?? 0) > 0) initExpanded[cat.id] = true;
         }
         setExpanded(initExpanded);
@@ -217,11 +217,11 @@ export default function CategoriesPage() {
                                 <Loader2 className="h-4 w-4 animate-spin" />
                                 Đang tải danh mục...
                             </div>
-                        ) : categories.length === 0 ? (
+                        ) : categories?.length === 0 ? (
                             <p className="text-sm text-muted-foreground">Không có danh mục.</p>
                         ) : (
                             <div className="space-y-2">
-                                {categories.map((category) => {
+                                {categories?.map((category) => {
                                     const hasChildren = (category.childCategory?.length ?? 0) > 0;
                                     const isExpanded = !!expanded[category.id];
                                     const isActive = category.status === "ACTIVE";
