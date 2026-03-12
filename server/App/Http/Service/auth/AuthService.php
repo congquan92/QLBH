@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Service\auth;
+namespace App\Http\Service\Auth;
 
 use App\Enums\OTPType;
 use App\Enums\Rank;
