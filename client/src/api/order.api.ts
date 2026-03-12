@@ -1,69 +1,8 @@
 import { axiosInstance } from "@/lib/axios";
-import type { ApiResponse, PageResponse } from "@/types/api";
-import type { CreateOrderPayload, OrderSummary } from "@/types/order";
+import type { ApiResponse } from "@/types/api";
+import type { CreateOrderPayload } from "@/types/order";
 
 const WARNING_PREFIX = "[WARNING][OrderApi]";
-
-function createEmptyOrderListResponse(page: number, size: number): ApiResponse<PageResponse<OrderSummary>> {
-    return {
-        status: 200,
-        message: "No order data",
-        data: {
-            data: [],
-            pageNumber: page,
-            pageSize: size,
-            totalPages: 0,
-            totalElements: 0,
-        },
-    };
-}
-
-function createEmptyOrderDetailResponse(): ApiResponse<OrderSummary> {
-    return {
-        status: 404,
-        message: "Order detail not found",
-        data: null as unknown as OrderSummary,
-    };
-}
-
-function isPageOrder(value: unknown): value is PageResponse<OrderSummary> {
-    if (!value || typeof value !== "object") return false;
-    const payload = value as PageResponse<OrderSummary>;
-    return Array.isArray(payload.data) && typeof payload.pageNumber === "number";
-}
-
-function isWrappedOrder(value: unknown): value is ApiResponse<PageResponse<OrderSummary>> {
-    if (!value || typeof value !== "object") return false;
-    const payload = value as ApiResponse<PageResponse<OrderSummary>>;
-    return isPageOrder(payload.data);
-}
-
-function normalizeOrderList(payload: unknown, page: number, size: number): ApiResponse<PageResponse<OrderSummary>> {
-    if (isWrappedOrder(payload)) return payload;
-    if (isPageOrder(payload)) {
-        return { status: 200, message: "Order list fetched", data: payload };
-    }
-    console.warn(`${WARNING_PREFIX} Invalid order list response shape.`);
-    return createEmptyOrderListResponse(page, size);
-}
-
-function normalizeOrderDetail(payload: unknown): ApiResponse<OrderSummary> {
-    if (payload && typeof payload === "object") {
-        const wrapped = payload as ApiResponse<OrderSummary>;
-        if (wrapped.data && typeof wrapped.data === "object") {
-            return wrapped;
-        }
-        if (typeof (payload as OrderSummary).id === "number") {
-            return {
-                status: 200,
-                message: "Order detail fetched",
-                data: payload as OrderSummary,
-            };
-        }
-    }
-    console.warn(`${WARNING_PREFIX} Invalid order detail response shape.`);
-    return createEmptyOrderDetailResponse();
-}
 
 export const OrderApi = {
     create: async (payload: CreateOrderPayload): Promise<ApiResponse<unknown>> => {
@@ -91,10 +30,10 @@ export const OrderApi = {
         const size = query?.size ?? 10;
         try {
             const res = await axiosInstance.get("/order/list", { params: { ...query, page, size } });
-            return normalizeOrderList(res.data, page, size);
+            return res.data as ApiResponse<unknown>; // chua check lai
         } catch (error) {
             console.error(`${WARNING_PREFIX} /order/list failed.`, error);
-            return createEmptyOrderListResponse(page, size);
+            throw error;
         }
     },
 
@@ -103,30 +42,30 @@ export const OrderApi = {
         const size = query?.size ?? 10;
         try {
             const res = await axiosInstance.get("/order/admin/list", { params: { ...query, page, size } });
-            return normalizeOrderList(res.data, page, size);
+            return res.data as ApiResponse<unknown>; // chua check lai
         } catch (error) {
             console.error(`${WARNING_PREFIX} /order/admin/list failed.`, error);
-            return createEmptyOrderListResponse(page, size);
+            throw error;
         }
     },
 
     getMyOrderDetail: async (id: number) => {
         try {
             const res = await axiosInstance.get(`/order/${id}`);
-            return normalizeOrderDetail(res.data);
+            return res.data as ApiResponse<unknown>; // chua check lai
         } catch (error) {
             console.error(`${WARNING_PREFIX} /order/{id} failed.`, error);
-            return createEmptyOrderDetailResponse();
+            throw error;
         }
     },
 
     getAdminOrderDetail: async (id: number) => {
         try {
             const res = await axiosInstance.get(`/order/admin/${id}`);
-            return normalizeOrderDetail(res.data);
+            return res.data as ApiResponse<unknown>; // chua check lai
         } catch (error) {
             console.error(`${WARNING_PREFIX} /order/admin/{id} failed.`, error);
-            return createEmptyOrderDetailResponse();
+            throw error;
         }
     },
 
@@ -136,7 +75,7 @@ export const OrderApi = {
             return res.data;
         } catch (error) {
             console.warn(`${WARNING_PREFIX} /order/changestatus/{id} failed.`, error);
-            return { status: 500, message: "Change order status failed", data: null };
+            throw error;
         }
     },
 
@@ -146,7 +85,7 @@ export const OrderApi = {
             return res.data;
         } catch (error) {
             console.warn(`${WARNING_PREFIX} /order/complete/{id} failed.`, error);
-            return { status: 500, message: "Complete order failed", data: null };
+            throw error;
         }
     },
 
@@ -156,7 +95,7 @@ export const OrderApi = {
             return res.data;
         } catch (error) {
             console.warn(`${WARNING_PREFIX} /order/cancel/{id} failed.`, error);
-            return { status: 500, message: "Cancel order failed", data: null };
+            throw error;
         }
     },
 };

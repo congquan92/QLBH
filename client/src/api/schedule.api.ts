@@ -2,18 +2,7 @@ import { axiosInstance } from "@/lib/axios";
 import type { ApiResponse } from "@/types/api";
 import type { DailyStaff, MySchedule, WeeklyReport } from "@/types/schedule";
 
-function toErrorMessage(error: unknown): string {
-    if (error && typeof error === "object" && "message" in error) {
-        return String(error.message);
-    }
-    return "Đã xảy ra lỗi";
-}
-
 export const ScheduleApi = {
-    /**
-     * Get weekly attendance report
-     * GET /schedules/weekly-report?date=YYYY-MM-DD
-     */
     getWeeklyReport: async (date?: string): Promise<ApiResponse<WeeklyReport>> => {
         try {
             const res = await axiosInstance.get("/schedules/weekly-report", {
@@ -22,14 +11,10 @@ export const ScheduleApi = {
             return res.data;
         } catch (error) {
             console.warn("[ScheduleApi] /schedules/weekly-report failed", error);
-            throw new Error(toErrorMessage(error));
+            throw error;
         }
     },
 
-    /**
-     * Get daily staff schedule
-     * GET /schedules/daily?date=YYYY-MM-DD
-     */
     getDailyStaff: async (date?: string): Promise<ApiResponse<DailyStaff>> => {
         try {
             const res = await axiosInstance.get("/schedules/daily", {
@@ -38,14 +23,10 @@ export const ScheduleApi = {
             return res.data;
         } catch (error) {
             console.warn("[ScheduleApi] /schedules/daily failed", error);
-            throw new Error(toErrorMessage(error));
+            throw error;
         }
     },
 
-    /**
-     * Get my schedule
-     * GET /schedules/my-schedule?date=YYYY-MM-DD
-     */
     getMySchedule: async (date?: string): Promise<ApiResponse<MySchedule>> => {
         try {
             const res = await axiosInstance.get("/schedules/my-schedule", {
@@ -54,21 +35,17 @@ export const ScheduleApi = {
             return res.data;
         } catch (error) {
             console.warn("[ScheduleApi] /schedules/my-schedule failed", error);
-            throw new Error(toErrorMessage(error));
+            throw error;
         }
     },
 
-    /**
-     * Get position default schedule
-     * GET /schedules/positions/{positionId}
-     */
     getPositionSchedule: async (positionId: number): Promise<ApiResponse<unknown>> => {
         try {
             const res = await axiosInstance.get(`/schedules/positions/${positionId}`);
             return res.data;
         } catch (error) {
             console.warn("[ScheduleApi] /schedules/positions/{id} failed", error);
-            throw new Error(toErrorMessage(error));
+            throw error;
         }
     },
 
@@ -81,7 +58,7 @@ export const ScheduleApi = {
             return res.data;
         } catch (error) {
             console.warn("[ScheduleApi] /schedules/weekly/{userId} failed", error);
-            throw new Error(toErrorMessage(error));
+            throw error;
         }
     },
 
@@ -92,7 +69,7 @@ export const ScheduleApi = {
             return res.data;
         } catch (error) {
             console.warn("[ScheduleApi] /schedules/positions/{id}/default failed", error);
-            throw new Error(toErrorMessage(error));
+            throw error;
         }
     },
 
@@ -103,7 +80,7 @@ export const ScheduleApi = {
             return res.data;
         } catch (error) {
             console.warn("[ScheduleApi] /schedules/assignments [POST] failed", error);
-            throw new Error(toErrorMessage(error));
+            throw error;
         }
     },
 
@@ -114,7 +91,7 @@ export const ScheduleApi = {
             return res.data;
         } catch (error) {
             console.warn("[ScheduleApi] /schedules/{id} [PUT] failed", error);
-            throw new Error(toErrorMessage(error));
+            throw error;
         }
     },
 
@@ -125,7 +102,7 @@ export const ScheduleApi = {
             return res.data;
         } catch (error) {
             console.warn("[ScheduleApi] /schedules/assignments [DELETE] failed", error);
-            throw new Error(toErrorMessage(error));
+            throw error;
         }
     },
 };

@@ -16,4 +16,8 @@ export const Helper = {
             .replace(/\s+/g, "-")
             .replace(/[^\w-]+/g, "");
     },
+    errorMessage(error: unknown) {
+        const msg = error instanceof Error ? ((error as Error & { response?: { data?: { message?: string } } }).response?.data?.message ?? error.message) : "Thao tác thất bại";
+        return msg;
+    },
 };

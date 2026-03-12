@@ -12,6 +12,7 @@ import type { Category, CategoryChild } from "@/types/navbar";
 import { ChevronDown, ChevronRight, FolderTree, Loader2, Pencil, Plus, RotateCcw, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { Helper } from "@/lib/helper";
 
 type CategoryForm = {
     id?: number;
@@ -34,11 +35,10 @@ export default function CategoriesPage() {
     async function fetchData() {
         setIsLoading(true);
         const response = await CategoryApi.getAdminCategories({ page: 1, size: 200 });
-        const list = response.data.data;
-        setCategories(list);
+        setCategories(response.data.data);
         // Auto-expand all parents that have children
         const initExpanded: Record<number, boolean> = {};
-        for (const cat of list) {
+        for (const cat of response.data.data) {
             if ((cat.childCategory?.length ?? 0) > 0) initExpanded[cat.id] = true;
         }
         setExpanded(initExpanded);
@@ -100,8 +100,7 @@ export default function CategoriesPage() {
             resetForm();
             await fetchData();
         } catch (error) {
-            const msg = error instanceof Error ? ((error as Error & { response?: { data?: { message?: string } } }).response?.data?.message ?? error.message) : "Thao tác thất bại";
-            toast.error(msg);
+            toast.error(Helper.errorMessage(error));
         } finally {
             setIsSaving(false);
         }
@@ -116,8 +115,7 @@ export default function CategoriesPage() {
             if (form.id === id) resetForm();
             await fetchData();
         } catch (error) {
-            const msg = error instanceof Error ? ((error as Error & { response?: { data?: { message?: string } } }).response?.data?.message ?? error.message) : "Thao tác thất bại";
-            toast.error(msg);
+            toast.error(Helper.errorMessage(error));
         } finally {
             setIsSaving(false);
         }
@@ -130,8 +128,7 @@ export default function CategoriesPage() {
             toast.success("Đã khôi phục danh mục.");
             await fetchData();
         } catch (error) {
-            const msg = error instanceof Error ? ((error as Error & { response?: { data?: { message?: string } } }).response?.data?.message ?? error.message) : "Thao tác thất bại";
-            toast.error(msg);
+            toast.error(Helper.errorMessage(error));
         } finally {
             setIsSaving(false);
         }

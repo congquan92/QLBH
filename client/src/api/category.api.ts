@@ -1,22 +1,8 @@
 import { axiosInstance } from "@/lib/axios";
-import type { ApiResponse, PageResponse } from "@/types/api";
+import type { ApiResponse } from "@/types/api";
 import type { Category } from "@/types/navbar";
 
 const WARNING_PREFIX = "[WARNING][CategoryApi]";
-
-function createEmptyCategoryListResponse(page: number, size: number): ApiResponse<PageResponse<Category>> {
-    return {
-        status: 200,
-        message: "No category data",
-        data: {
-            data: [],
-            pageNumber: page,
-            pageSize: size,
-            totalPages: 0,
-            totalElements: 0,
-        },
-    };
-}
 
 export const CategoryApi = {
     getPublicCategories: async (query?: { keyword?: string; sort?: string; page?: number; size?: number }) => {
@@ -27,7 +13,7 @@ export const CategoryApi = {
             return res.data as ApiResponse<Category>;
         } catch (error) {
             console.error(`${WARNING_PREFIX} /category/all failed.`, error);
-            return createEmptyCategoryListResponse(page, size);
+            throw error;
         }
     },
 
@@ -39,7 +25,7 @@ export const CategoryApi = {
             return res.data as ApiResponse<Category>;
         } catch (error) {
             console.error(`${WARNING_PREFIX} /category/list failed.`, error);
-            return createEmptyCategoryListResponse(page, size);
+            throw error;
         }
     },
 

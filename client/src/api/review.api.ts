@@ -4,79 +4,14 @@ import type { CreateReviewPayload, Review, ReviewQuery, UpdateReviewPayload } fr
 
 const WARNING_PREFIX = "[WARNING][ReviewApi]";
 
-function createEmptyReviewListResponse(page: number, size: number): ApiResponse<PageResponse<Review>> {
-    return {
-        status: 200,
-        message: "No review data",
-        data: {
-            data: [],
-            pageNumber: page,
-            pageSize: size,
-            totalPages: 0,
-            totalElements: 0,
-        },
-    };
-}
-
-function createEmptyReviewDetailResponse(): ApiResponse<Review> {
-    return {
-        status: 404,
-        message: "Review not found",
-        data: null as unknown as Review,
-    };
-}
-
-function isPageReview(value: unknown): value is PageResponse<Review> {
-    if (!value || typeof value !== "object") return false;
-    const payload = value as PageResponse<Review>;
-    return Array.isArray(payload.data) && typeof payload.pageNumber === "number";
-}
-
-function isWrappedReview(value: unknown): value is ApiResponse<PageResponse<Review>> {
-    if (!value || typeof value !== "object") return false;
-    const payload = value as ApiResponse<PageResponse<Review>>;
-    return isPageReview(payload.data);
-}
-
-function normalizeReviewList(payload: unknown, page: number, size: number): ApiResponse<PageResponse<Review>> {
-    if (isWrappedReview(payload)) return payload;
-    if (isPageReview(payload)) {
-        return {
-            status: 200,
-            message: "Review list fetched",
-            data: payload,
-        };
-    }
-    console.warn(`${WARNING_PREFIX} Invalid review list response shape.`);
-    return createEmptyReviewListResponse(page, size);
-}
-
-function normalizeReviewDetail(payload: unknown): ApiResponse<Review> {
-    if (payload && typeof payload === "object") {
-        const wrapped = payload as ApiResponse<Review>;
-        if (wrapped.data && typeof wrapped.data === "object") {
-            return wrapped;
-        }
-        if (typeof (payload as Review).id === "number") {
-            return {
-                status: 200,
-                message: "Review detail fetched",
-                data: payload as Review,
-            };
-        }
-    }
-    console.warn(`${WARNING_PREFIX} Invalid review detail response shape.`);
-    return createEmptyReviewDetailResponse();
-}
-
 export const ReviewApi = {
     getPublicReviewById: async (id: number): Promise<ApiResponse<Review>> => {
         try {
             const res = await axiosInstance.get(`/reviews/${id}`);
-            return normalizeReviewDetail(res.data);
+            return res.data as ApiResponse<Review>;
         } catch (error) {
             console.error(`${WARNING_PREFIX} /reviews/{id} failed.`, error);
-            return createEmptyReviewDetailResponse();
+            throw error;
         }
     },
 
@@ -87,10 +22,10 @@ export const ReviewApi = {
             const res = await axiosInstance.get("/reviews", {
                 params: { ...query, page, size },
             });
-            return normalizeReviewList(res.data, page, size);
+            return res.data as ApiResponse<PageResponse<Review>>;
         } catch (error) {
             console.error(`${WARNING_PREFIX} /reviews failed.`, error);
-            return createEmptyReviewListResponse(page, size);
+            throw error;
         }
     },
 
@@ -109,23 +44,24 @@ export const ReviewApi = {
                 return wrapped;
             }
             console.warn(`${WARNING_PREFIX} Invalid /reviews/me/{productId} response shape.`);
-            return { status: 200, message: "No review data", data: [] };
+            return res.data as ApiResponse<Review[]>;
         } catch (error) {
             console.error(`${WARNING_PREFIX} /reviews/me/{productId} failed.`, error);
-            return { status: 200, message: "No review data", data: [] };
+            throw error;
         }
     },
 
     create: async (payload: CreateReviewPayload) => {
         try {
             const res = await axiosInstance.post("/reviews", payload);
-            return res.data;
+            return res.data as ApiResponse<Review>;
         } catch (error) {
             console.warn(`${WARNING_PREFIX} /reviews [POST] failed.`, error);
-            return { status: 500, message: "Create review failed", data: null };
+            throw error;
         }
     },
 
+    // check backend
     update: async (id: number, payload: UpdateReviewPayload) => {
         console.warn(`${WARNING_PREFIX} /reviews/{id} [PUT] is not exposed in backend routes.`, { id, payload });
         return { status: 501, message: "Update review endpoint is not available", data: null };

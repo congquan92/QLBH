@@ -38,14 +38,6 @@ function normalizeList<T>(payload: unknown, message: string): ApiResponse<PageRe
     };
 }
 
-function toErrorMessage(error: unknown) {
-    if (typeof error === "object" && error && "response" in error) {
-        const response = (error as { response?: { data?: { message?: string } } }).response;
-        return response?.data?.message ?? "Thao tác thất bại";
-    }
-    return "Thao tác thất bại";
-}
-
 export const AdminCrudApi = {
     getSuppliers: async (query?: { keyword?: string; sort?: string; status?: string; page?: number; size?: number }) => {
         try {
