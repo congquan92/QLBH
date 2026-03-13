@@ -55,6 +55,7 @@ export const UserAuthUtil = {
         try {
             const parsed = JSON.parse(raw) as Partial<UserSession>;
             if (!parsed || typeof parsed !== "object" || !parsed.token || !parsed.role) {
+                window.localStorage.removeItem(USER_SESSION_STORAGE_KEY);
                 return null;
             }
 
@@ -71,6 +72,7 @@ export const UserAuthUtil = {
                 phone: typeof parsed.phone === "string" ? parsed.phone : undefined,
             };
         } catch {
+            window.localStorage.removeItem(USER_SESSION_STORAGE_KEY);
             return null;
         }
     },

@@ -16,12 +16,9 @@ class RoleService
      */
     public function findAll(?string $keyword, ?string $sort, int $page, int $size)
     {
-        // Load quan hệ Role -> Pages -> GroupPermissions
-        $query = Role::with([
-            'groupPermissions.page',           // Để biết GroupPermission này thuộc Page nào
-            'groupPermissions.permissions'     // Để lấy các hành động (create, view,...)
-        ]);
-
+        // Load qua relation chuẩn để tránh gọi with() trên Query Builder
+        $query = Role::with(['groupPermissions.page', 'groupPermissions.permissions']);
+        
         $column = 'id';
         $direction = 'desc';
 

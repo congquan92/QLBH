@@ -1,5 +1,6 @@
 import axios from "axios";
 import { AdminAuthUtil } from "@/lib/admin-auth";
+import { handleAuthFailure } from "@/lib/auth-failure";
 import { UserAuthUtil } from "@/lib/user-auth";
 import type { AxiosRequestConfig } from "axios";
 
@@ -82,8 +83,7 @@ async function refreshAccessToken(): Promise<string | null> {
         .then((response) => {
             const token = response.data?.access_token;
             if (!token) {
-                AdminAuthUtil.clearSession();
-                UserAuthUtil.clearSession();
+                handleAuthFailure();
                 return null;
             }
             if (preferredSession?.source === "admin") {
@@ -94,11 +94,7 @@ async function refreshAccessToken(): Promise<string | null> {
             return token;
         })
         .catch(() => {
-            if (preferredSession?.source === "admin") {
-                AdminAuthUtil.clearSession();
-            } else {
-                UserAuthUtil.clearSession();
-            }
+            handleAuthFailure();
             return null;
         })
         .finally(() => {
@@ -123,7 +119,16 @@ axiosInstance.interceptors.response.use(
         const status = error?.response?.status;
         const originalConfig = (error?.config ?? {}) as RetryableRequestConfig;
 
-        if (status !== 401 || originalConfig._retry || shouldSkipRefresh(originalConfig.url)) {
+        if (status !== 401) {
+            return Promise.reject(error);
+        }
+
+        if (shouldSkipRefresh(originalConfig.url)) {
+            return Promise.reject(error);
+        }
+
+        if (originalConfig._retry) {
+            handleAuthFailure();
             return Promise.reject(error);
         }
 

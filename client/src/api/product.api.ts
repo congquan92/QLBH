@@ -10,7 +10,6 @@ type ProductListQuery = {
     page?: number;
     size?: number;
 };
-
 function normalizeListQuery(pageOrQuery?: number | ProductListQuery, size?: number) {
     if (typeof pageOrQuery === "object") {
         return {
@@ -29,41 +28,8 @@ function normalizeListQuery(pageOrQuery?: number | ProductListQuery, size?: numb
     };
 }
 
-function createEmptyProductListResponse(page: number, size: number): ApiResponse<PageResponse<Product>> {
-    return {
-        status: 200,
-        message: "No product data",
-        data: {
-            data: [],
-            pageNumber: page,
-            pageSize: size,
-            totalPages: 0,
-            totalElements: 0,
-        },
-    };
-}
-
-function createEmptyProductDetailResponse(): ApiResponse<ProductDetail> {
-    return {
-        status: 404,
-        message: "Product detail not found",
-        data: null as unknown as ProductDetail,
-    };
-}
-
-function isValidProductListResponse(payload: unknown): payload is ApiResponse<PageResponse<Product>> {
-    if (!payload || typeof payload !== "object") return false;
-    const data = (payload as ApiResponse<PageResponse<Product>>).data;
-    return !!data && Array.isArray(data.data) && typeof data.pageNumber === "number" && typeof data.pageSize === "number";
-}
-
-function isValidProductDetailResponse(payload: unknown): payload is ApiResponse<ProductDetail> {
-    if (!payload || typeof payload !== "object") return false;
-    const data = (payload as ApiResponse<ProductDetail>).data;
-    return !!data && typeof data.id === "number" && typeof data.name === "string";
-}
-
 export const ProductApi = {
+    // check lai
     getAllProducts: async (pageOrQuery: number | ProductListQuery = 1, size?: number): Promise<ApiResponse<PageResponse<Product>>> => {
         const query = normalizeListQuery(pageOrQuery, size);
         try {
@@ -71,31 +37,20 @@ export const ProductApi = {
                 params: query,
             });
 
-            if (!isValidProductListResponse(res.data)) {
-                console.warn(`${WARNING_PREFIX} Invalid /product/list response shape.`);
-                return createEmptyProductListResponse(query.page, query.size);
-            }
-
             return res.data;
         } catch (error) {
             console.error(`${WARNING_PREFIX} /product/list failed.`, error);
-            return createEmptyProductListResponse(query.page, query.size);
+            throw error;
         }
     },
 
     getProductDetail: async (id: string): Promise<ApiResponse<ProductDetail>> => {
         try {
             const res = await axiosInstance.get<ApiResponse<ProductDetail>>(`/product/detail/${id}`);
-
-            if (!isValidProductDetailResponse(res.data)) {
-                console.warn(`${WARNING_PREFIX} Invalid /product/detail/{id} response shape.`);
-                return createEmptyProductDetailResponse();
-            }
-
             return res.data;
         } catch (error) {
             console.error(`${WARNING_PREFIX} /product/detail/{id} failed.`, error);
-            return createEmptyProductDetailResponse();
+            throw error;
         }
     },
 
@@ -106,15 +61,10 @@ export const ProductApi = {
                 params: query,
             });
 
-            if (!isValidProductListResponse(res.data)) {
-                console.warn(`${WARNING_PREFIX} Invalid /product/category/{id} response shape.`);
-                return createEmptyProductListResponse(query.page, query.size);
-            }
-
             return res.data;
         } catch (error) {
             console.error(`${WARNING_PREFIX} /product/category/{id} failed.`, error);
-            return createEmptyProductListResponse(query.page, query.size);
+            throw error;
         }
     },
 
@@ -124,14 +74,11 @@ export const ProductApi = {
             const res = await axiosInstance.get<ApiResponse<PageResponse<Product>>>("/product/admin/list", {
                 params: { page, size },
             });
-            if (!isValidProductListResponse(res.data)) {
-                console.warn(`${WARNING_PREFIX} Invalid /product/admin/list response shape.`);
-                return createEmptyProductListResponse(page, size);
-            }
+
             return res.data;
         } catch (error) {
             console.error(`${WARNING_PREFIX} /product/admin/list failed.`, error);
-            return createEmptyProductListResponse(page, size);
+            throw error;
         }
     },
 
@@ -142,14 +89,11 @@ export const ProductApi = {
     getAdminProductDetail: async (id: number): Promise<ApiResponse<ProductDetail>> => {
         try {
             const res = await axiosInstance.get<ApiResponse<ProductDetail>>(`/product/detail/${id}`);
-            if (!isValidProductDetailResponse(res.data)) {
-                console.warn(`${WARNING_PREFIX} Invalid /product/detail/{id} response shape.`);
-                return createEmptyProductDetailResponse();
-            }
+
             return res.data;
         } catch (error) {
             console.error(`${WARNING_PREFIX} /product/detail/{id} failed.`, error);
-            return createEmptyProductDetailResponse();
+            throw error;
         }
     },
 
