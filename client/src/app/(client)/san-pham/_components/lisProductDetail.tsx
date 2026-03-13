@@ -1,7 +1,7 @@
 "use client";
 
 import { CartApi } from "@/api/cart.api";
-import ProductGrid from "@/components/feature/ProductGrid";
+import ProductGrid from "@/components/feature/page/ProductGrid";
 import { ProductDetail } from "@/types/product";
 import Image from "next/image";
 import { useEffect, useState } from "react";

@@ -1,5 +1,5 @@
 import { axiosInstance } from "@/lib/axios";
-import type { ApiResponse } from "@/types/api";
+import type { ApiResponse, PageResponse } from "@/types/api";
 import type { Category } from "@/types/navbar";
 
 const WARNING_PREFIX = "[WARNING][CategoryApi]";
@@ -10,7 +10,7 @@ export const CategoryApi = {
         const size = query?.size ?? 10;
         try {
             const res = await axiosInstance.get("/category/all", { params: { ...query, page, size } });
-            return res.data as ApiResponse<Category>;
+            return res.data as ApiResponse<PageResponse<Category>>;
         } catch (error) {
             console.error(`${WARNING_PREFIX} /category/all failed.`, error);
             throw error;

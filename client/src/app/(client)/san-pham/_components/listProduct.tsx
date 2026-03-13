@@ -1,6 +1,6 @@
 "use client";
 
-import ProductGrid from "@/components/feature/ProductGrid";
+import ProductGrid from "@/components/feature/page/ProductGrid";
 import { Product, ProductListResponse } from "@/types/product";
 import ProductPagination from "./ProductPagination";
 
