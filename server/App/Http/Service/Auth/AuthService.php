@@ -12,19 +12,14 @@ use App\Exceptions\MessageError;
 use App\Http\Mapper\RoleMapper;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\RegisterRequest;
-use App\Http\Requests\IntrospectRequest;
-
 use App\Http\Responses\Auth\AuthenticationResponse;
 use App\Http\Service\BrevoService;
-use App\Jobs\SendOtpJob;
 use App\Models\Role;
 use App\Models\UserRank;
 use Carbon\Carbon;
 use DB;
 use Exception;
 use Hash;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
-use Illuminate\Support\Facades\Redis;
 use Tymon\JWTAuth\JWTGuard;
 use App\Models\User;
 
@@ -156,7 +151,7 @@ class AuthService
             "valid" => true,
             "id" => $user->id,
             "email" => $user->email,
-            "roles" => $user->role ? [$user->role->name] : []
+            "roles" =>  RoleMapper::toRoleResponse($user->role)
         ];
     }
 }
