@@ -1,6 +1,6 @@
 import { axiosInstance } from "@/lib/axios";
 
-import type { RbacGroupPermission, RbacGroupPermissionPayload, RbacPageCatalogItem, RbacRole, RbacRolePayload } from "@/types/rbac";
+import type { RbacGroupPermission, RbacGroupPermissionPayload, RbacGroupPermissionUpdatePayload, RbacPageCatalogItem, RbacRole, RbacRolePayload } from "@/types/rbac";
 
 const WARNING_PREFIX = "[WARNING][RbacApi]";
 
@@ -70,7 +70,7 @@ export const RbacApi = {
         return res.data as RbacGroupPermission; // chua check lai
     },
 
-    updateGroupPermission: async (id: number, payload: Partial<RbacGroupPermissionPayload>) => {
+    updateGroupPermission: async (id: number, payload: RbacGroupPermissionUpdatePayload) => {
         const res = await axiosInstance.put(`/group-permissions/${id}`, payload);
         return res.data;
     },

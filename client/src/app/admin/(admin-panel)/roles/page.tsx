@@ -2,22 +2,16 @@
 
 import { RbacApi } from "@/api/rbac.api";
 import { AdminPageShell } from "@/components/feature/admin-page-shell";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { ChevronDown, ChevronRight, Loader2, Pencil, Plus, Shield, Trash2 } from "lucide-react";
-import React, { useEffect, useMemo, useState } from "react";
+import { Loader2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import type { RbacPageCatalogItem, RbacRole, RbacRolePayload } from "@/types/rbac";
-
-type RoleFormState = {
-    id?: number;
-    name: string;
-    description: string;
-    status: string;
-};
+import type { RbacGroupPermission, RbacPageCatalogItem, RbacRole, RbacRolePayload } from "@/types/rbac";
+import { Helper } from "@/lib/helper";
+import EditGroupDialog, { type EditGroupForm } from "./components/EditGroup-dialog";
+import { RoleFormDialog, type RoleFormState } from "./components/RoleForm-dialog";
+import { Plus } from "lucide-react";
+import { TablePermission } from "@/app/admin/(admin-panel)/roles/components/TablePermission";
 
 const emptyForm: RoleFormState = {
     name: "",
@@ -32,7 +26,11 @@ export default function RolesPage() {
     const [isSaving, setIsSaving] = useState(false);
     const [form, setForm] = useState<RoleFormState>(emptyForm);
     const [dialogOpen, setDialogOpen] = useState(false);
+    const [editGroupOpen, setEditGroupOpen] = useState(false);
+    const [editGroupForm, setEditGroupForm] = useState<EditGroupForm | null>(null);
     const [expanded, setExpanded] = useState<Record<number, boolean>>({});
+    const [expandedGroups, setExpandedGroups] = useState<Record<number, boolean>>({});
+    const [draftGroupIds, setDraftGroupIds] = useState<Map<number, Set<number>>>(new Map());
 
     const pageCatalog = useMemo(() => {
         const map = new Map<number, RbacPageCatalogItem>();
@@ -49,13 +47,23 @@ export default function RolesPage() {
         return Array.from(map.values()).sort((a, b) => (a.sort_order ?? 9999) - (b.sort_order ?? 9999));
     }, [pages, roles]);
 
-    const rolePageIdSet = useMemo(() => {
+    const roleGroupIdSet = useMemo(() => {
         const map = new Map<number, Set<number>>();
         for (const role of roles) {
-            map.set(role.id, new Set((role.page ?? []).map((p) => p.id)));
+            if (draftGroupIds.has(role.id)) {
+                map.set(role.id, new Set(draftGroupIds.get(role.id)!));
+            } else {
+                const explicitIds = role.assigned_group_permission_ids ?? [];
+                if (explicitIds.length > 0) {
+                    map.set(role.id, new Set(explicitIds));
+                } else {
+                    const derivedIds = (role.page ?? []).flatMap((page) => (page.items ?? []).map((group) => group.id));
+                    map.set(role.id, new Set(derivedIds));
+                }
+            }
         }
         return map;
-    }, [roles]);
+    }, [roles, draftGroupIds]);
 
     async function fetchAll() {
         setIsLoading(true);
@@ -63,6 +71,7 @@ export default function RolesPage() {
             const [roleRes, pageRes] = await Promise.all([RbacApi.getRoles({ page: 1, size: 100, sort: "id:asc" }), RbacApi.getPages({ page: 1, size: 200, sort: "sort_order:asc" })]);
             setRoles((roleRes as unknown as { data: RbacRole[] }).data ?? []);
             setPages((pageRes as unknown as { data: RbacPageCatalogItem[] }).data ?? []);
+            setDraftGroupIds(new Map());
         } finally {
             setIsLoading(false);
         }
@@ -91,7 +100,7 @@ export default function RolesPage() {
             name: form.name.trim(),
             description: form.description.trim() || undefined,
             status: form.status,
-            ...(form.id ? {} : { page_ids: [] }),
+            group_permission_ids: [],
         };
         setIsSaving(true);
         try {
@@ -105,35 +114,20 @@ export default function RolesPage() {
             setDialogOpen(false);
             await fetchAll();
         } catch (error) {
-            const message = error instanceof Error ? error.message : "Thao tác vai trò thất bại.";
-            toast.error(message);
+            toast.error(Helper.errorMessage(error));
         } finally {
             setIsSaving(false);
         }
     }
 
-    async function togglePageForRole(role: RbacRole, pageId: number) {
-        const currentIds = new Set((role.page ?? []).map((p) => p.id));
-        if (currentIds.has(pageId)) {
-            currentIds.delete(pageId);
+    function toggleGroupForRole(role: RbacRole, groupId: number) {
+        const currentIds = new Set(roleGroupIdSet.get(role.id));
+        if (currentIds.has(groupId)) {
+            currentIds.delete(groupId);
         } else {
-            currentIds.add(pageId);
+            currentIds.add(groupId);
         }
-        const newPageIds = Array.from(currentIds);
-        // Optimistic update
-        setRoles((prev) =>
-            prev.map((r) => {
-                if (r.id !== role.id) return r;
-                const updatedPages = pageCatalog.filter((p) => newPageIds.includes(p.id)) as typeof r.page;
-                return { ...r, page: updatedPages };
-            }),
-        );
-        try {
-            await RbacApi.updateRole(role.id, { name: role.name, status: role.status, page_ids: newPageIds });
-        } catch {
-            toast.error("Cập nhật quyền thất bại. Đang khôi phục...");
-            await fetchAll();
-        }
+        setDraftGroupIds((prev) => new Map(prev).set(role.id, currentIds));
     }
 
     async function removeRole(roleId: number) {
@@ -144,65 +138,182 @@ export default function RolesPage() {
             toast.success("Xóa vai trò thành công.");
             await fetchAll();
         } catch (error) {
-            const message = error instanceof Error ? error.message : "Xóa vai trò thất bại.";
-            toast.error(message);
+            toast.error(Helper.errorMessage(error));
         } finally {
             setIsSaving(false);
         }
     }
 
+    function openEditGroupDialog(group: RbacGroupPermission, pageId: number) {
+        setEditGroupForm({
+            id: group.id,
+            name: group.name,
+            url: group.url ?? "",
+            icon: group.icon ?? "",
+            description: group.description ?? "",
+            status: group.status ?? "ACTIVE",
+            pageId,
+        });
+        setEditGroupOpen(true);
+    }
+
+    async function saveEditGroup() {
+        if (!editGroupForm) return;
+
+        const prevPage = pageCatalog.find((p) => (p.items ?? []).some((g) => g.id === editGroupForm.id));
+        const prevPageId = prevPage?.id ?? null;
+
+        setIsSaving(true);
+        try {
+            await RbacApi.updateGroupPermission(editGroupForm.id, {
+                name: editGroupForm.name,
+                url: editGroupForm.url || undefined,
+                icon: editGroupForm.icon || undefined,
+                description: editGroupForm.description || undefined,
+                status: editGroupForm.status,
+            });
+
+            if (editGroupForm.pageId !== prevPageId) {
+                if (editGroupForm.pageId !== null) {
+                    const targetPage = pageCatalog.find((p) => p.id === editGroupForm.pageId);
+                    if (targetPage) {
+                        const existingIds = (targetPage.items ?? []).map((g) => g.id).filter((id) => id !== editGroupForm.id);
+                        await RbacApi.updatePage(editGroupForm.pageId, {
+                            title: targetPage.title,
+                            icon: targetPage.icon,
+                            sort_order: targetPage.sort_order,
+                            group_permission_ids: [...existingIds, editGroupForm.id],
+                        });
+                    }
+                } else if (prevPageId !== null) {
+                    const oldPage = pageCatalog.find((p) => p.id === prevPageId);
+                    if (oldPage) {
+                        const remainingIds = (oldPage.items ?? []).map((g) => g.id).filter((id) => id !== editGroupForm.id);
+                        await RbacApi.updatePage(prevPageId, {
+                            title: oldPage.title,
+                            icon: oldPage.icon,
+                            sort_order: oldPage.sort_order,
+                            group_permission_ids: remainingIds,
+                        });
+                    }
+                }
+            }
+
+            toast.success("Đã cập nhật trang cha của nhóm quyền.");
+            setEditGroupOpen(false);
+            setEditGroupForm(null);
+            await fetchAll();
+        } catch (error) {
+            toast.error(Helper.errorMessage(error));
+        } finally {
+            setIsSaving(false);
+        }
+    }
+
+    function updateEditGroupForm(value: EditGroupForm) {
+        setEditGroupForm(value);
+    }
+
     function toggleExpand(pageId: number) {
-        setExpanded((prev) => ({ ...prev, [pageId]: !(prev[pageId] !== false) }));
+        setExpanded((prev) => ({ ...prev, [pageId]: !prev[pageId] }));
+    }
+
+    function toggleExpandGroup(groupId: number) {
+        setExpandedGroups((prev) => ({ ...prev, [groupId]: !prev[groupId] }));
+    }
+
+    function pageCheckedState(roleId: number, pageGroups: NonNullable<RbacPageCatalogItem["items"]>): "all" | "some" | "none" {
+        const set = roleGroupIdSet.get(roleId);
+        if (!set || pageGroups.length === 0) return "none";
+        const checkedCount = pageGroups.filter((g) => set.has(g.id)).length;
+        if (checkedCount === 0) return "none";
+        if (checkedCount === pageGroups.length) return "all";
+        return "some";
+    }
+
+    function toggleAllGroupsInPage(role: RbacRole, pageGroups: NonNullable<RbacPageCatalogItem["items"]>) {
+        const state = pageCheckedState(role.id, pageGroups);
+        const currentIds = new Set(roleGroupIdSet.get(role.id));
+        if (state === "all") {
+            for (const g of pageGroups) currentIds.delete(g.id);
+        } else {
+            for (const g of pageGroups) currentIds.add(g.id);
+        }
+        setDraftGroupIds((prev) => new Map(prev).set(role.id, currentIds));
+    }
+
+    async function saveAllChanges() {
+        setIsSaving(true);
+        try {
+            await Promise.all(
+                Array.from(draftGroupIds.entries()).map(([roleId, groupSet]) => {
+                    const role = roles.find((r) => r.id === roleId);
+                    if (!role) return Promise.resolve();
+                    return RbacApi.updateRole(roleId, {
+                        name: role.name,
+                        status: role.status,
+                        group_permission_ids: Array.from(groupSet),
+                    });
+                }),
+            );
+            toast.success(`Đã lưu thay đổi quyền cho ${draftGroupIds.size} vai trò.`);
+            setDraftGroupIds(new Map());
+            await fetchAll();
+        } catch (error) {
+            toast.error(Helper.errorMessage(error));
+        } finally {
+            setIsSaving(false);
+        }
     }
 
     return (
         <AdminPageShell title="Vai trò & Quyền" description="Quản lý vai trò và phạm vi quyền của từng nhóm người dùng" requiredPermissions={["VIEW_ROLES"]}>
-            {/* Toolbar */}
             <div className="mb-4 flex items-center justify-between">
                 <p className="text-sm text-muted-foreground">
                     {roles.length} vai trò &middot; {pageCatalog.length} trang
+                    {draftGroupIds.size > 0 && <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">{draftGroupIds.size} vai trò chưa lưu</span>}
                 </p>
-                <Button onClick={openCreateDialog}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Tạo vai trò mới
-                </Button>
+                <div className="flex gap-2">
+                    {draftGroupIds.size > 0 && (
+                        <>
+                            <Button variant="outline" onClick={() => setDraftGroupIds(new Map())} disabled={isSaving}>
+                                Hủy thay đổi
+                            </Button>
+                            <Button
+                                variant="default"
+                                onClick={() => {
+                                    if (confirm(`Lưu thay đổi quyền cho ${draftGroupIds.size} vai trò?`)) {
+                                        void saveAllChanges();
+                                    }
+                                }}
+                                disabled={isSaving}
+                            >
+                                {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                Lưu thay đổi
+                            </Button>
+                        </>
+                    )}
+                    <Button onClick={openCreateDialog} disabled={isSaving}>
+                        <Plus className="mr-2 h-4 w-4" />
+                        Tạo vai trò mới
+                    </Button>
+                </div>
             </div>
 
-            {/* Create / Edit Dialog */}
-            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-                <DialogContent className="sm:max-w-md">
-                    <DialogHeader>
-                        <DialogTitle>{form.id ? "Cập nhật vai trò" : "Tạo vai trò mới"}</DialogTitle>
-                        <DialogDescription>{form.id ? "Chỉnh sửa thông tin cơ bản. Phân quyền trang thực hiện trực tiếp trên bảng bên dưới." : "Nhập thông tin vai trò. Sau khi tạo, phân quyền trang trên bảng bên dưới."}</DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4 py-2">
-                        <div className="space-y-2">
-                            <Label htmlFor="dlg-role-name">Tên vai trò</Label>
-                            <Input id="dlg-role-name" value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} placeholder="VD: QUẢN LÝ KHO" />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="dlg-role-desc">Mô tả</Label>
-                            <Input id="dlg-role-desc" value={form.description} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} placeholder="Mô tả ngắn về vai trò" />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="dlg-role-status">Trạng thái</Label>
-                            <select id="dlg-role-status" className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={form.status} onChange={(e) => setForm((p) => ({ ...p, status: e.target.value }))}>
-                                <option value="ACTIVE">ACTIVE</option>
-                                <option value="INACTIVE">INACTIVE</option>
-                            </select>
-                        </div>
-                    </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={isSaving}>
-                            Hủy
-                        </Button>
-                        <Button onClick={() => void submitRole()} disabled={isSaving}>
-                            {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            {form.id ? "Lưu thay đổi" : "Tạo vai trò"}
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+            <RoleFormDialog open={dialogOpen} isSaving={isSaving} form={form} onOpenChange={setDialogOpen} onFormChange={setForm} onSubmit={() => void submitRole()} />
+
+            <EditGroupDialog
+                open={editGroupOpen}
+                onClose={() => {
+                    setEditGroupOpen(false);
+                    setEditGroupForm(null);
+                }}
+                form={editGroupForm}
+                setForm={updateEditGroupForm}
+                pages={pageCatalog}
+                isSaving={isSaving}
+                onSave={saveEditGroup}
+            />
 
             {/* Permission Matrix Table */}
             {isLoading ? (
@@ -211,124 +322,21 @@ export default function RolesPage() {
                     Đang tải dữ liệu...
                 </div>
             ) : (
-                <div className="overflow-x-auto rounded-md border">
-                    <table className="w-full border-collapse text-sm">
-                        <thead>
-                            <tr className="border-b bg-muted/50">
-                                <th className="sticky left-0 z-10 min-w-60 bg-muted/50 px-4 py-3 text-left font-semibold">Trang / Nhóm quyền / Quyền</th>
-                                {roles.map((role) => (
-                                    <th key={role.id} className="min-w-32 border-l px-3 py-3 text-center align-top">
-                                        <div className="flex flex-col items-center gap-1.5">
-                                            <div className="flex items-center gap-1 font-medium">
-                                                <Shield className="h-3.5 w-3.5 text-primary" />
-                                                <span className="whitespace-nowrap">{role.name}</span>
-                                            </div>
-                                            <Badge variant={role.status === "ACTIVE" ? "default" : "secondary"} className="text-xs">
-                                                {role.status}
-                                            </Badge>
-                                            {role.description && <span className="max-w-28 truncate text-xs text-muted-foreground">{role.description}</span>}
-                                            <div className="mt-1 flex gap-1">
-                                                <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => openEditDialog(role)} title="Chỉnh sửa">
-                                                    <Pencil className="h-3 w-3" />
-                                                </Button>
-                                                <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-destructive hover:text-destructive" onClick={() => void removeRole(role.id)} disabled={isSaving} title="Xóa">
-                                                    <Trash2 className="h-3 w-3" />
-                                                </Button>
-                                            </div>
-                                        </div>
-                                    </th>
-                                ))}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {pageCatalog.map((page) => {
-                                const isExpanded = expanded[page.id] !== false;
-                                const groups = page.items ?? [];
-                                return (
-                                    <React.Fragment key={page.id}>
-                                        {/* PAGE row */}
-                                        <tr className="border-b bg-primary/5 hover:bg-primary/10">
-                                            <td className="sticky left-0 z-10 bg-primary/5 px-4 py-2.5">
-                                                <button className="flex items-center gap-2 font-semibold text-foreground hover:text-primary" onClick={() => toggleExpand(page.id)}>
-                                                    {groups.length > 0 ? isExpanded ? <ChevronDown className="h-4 w-4 shrink-0" /> : <ChevronRight className="h-4 w-4 shrink-0" /> : <span className="w-4 shrink-0" />}
-                                                    <span>{page.title}</span>
-                                                    {groups.length > 0 && <span className="text-xs font-normal text-muted-foreground">({groups.length} nhóm)</span>}
-                                                </button>
-                                            </td>
-                                            {roles.map((role) => (
-                                                <td key={role.id} className="border-l px-3 py-2.5 text-center">
-                                                    <input
-                                                        type="checkbox"
-                                                        className="h-4 w-4 cursor-pointer accent-primary"
-                                                        checked={rolePageIdSet.get(role.id)?.has(page.id) ?? false}
-                                                        onChange={() => void togglePageForRole(role, page.id)}
-                                                        title={`${role.name} – ${page.title}`}
-                                                    />
-                                                </td>
-                                            ))}
-                                        </tr>
-
-                                        {/* GROUP PERMISSION rows */}
-                                        {isExpanded &&
-                                            groups.map((group) => {
-                                                const perms = group.permissions ?? [];
-                                                return (
-                                                    <React.Fragment key={group.id}>
-                                                        <tr className="border-b bg-muted/10 hover:bg-muted/20">
-                                                            <td className="sticky left-0 z-10 bg-muted/10 px-4 py-2">
-                                                                <div className="flex items-center gap-2 pl-7 text-muted-foreground">
-                                                                    <ChevronRight className="h-3 w-3 shrink-0 opacity-40" />
-                                                                    <span className="font-medium">{group.name}</span>
-                                                                    {group.url && <code className="rounded bg-muted px-1.5 py-0.5 text-xs">{group.url}</code>}
-                                                                    {perms.length > 0 && <span className="text-xs text-muted-foreground/60">({perms.length} quyền)</span>}
-                                                                </div>
-                                                            </td>
-                                                            {roles.map((role) => {
-                                                                const hasPage = rolePageIdSet.get(role.id)?.has(page.id) ?? false;
-                                                                return (
-                                                                    <td key={role.id} className="border-l px-3 py-2 text-center">
-                                                                        <span className={`inline-block h-2.5 w-2.5 rounded-full ${hasPage ? "bg-green-500" : "bg-muted"}`} title={hasPage ? "Có quyền (qua trang cha)" : "Không có quyền"} />
-                                                                    </td>
-                                                                );
-                                                            })}
-                                                        </tr>
-
-                                                        {/* PERMISSION rows */}
-                                                        {perms.map((perm) => (
-                                                            <tr key={perm.id} className="border-b bg-muted/5 hover:bg-muted/10">
-                                                                <td className="sticky left-0 z-10 bg-muted/5 px-4 py-1.5">
-                                                                    <div className="flex items-center gap-2 pl-14 text-xs text-muted-foreground">
-                                                                        <span className="text-muted-foreground/40">└</span>
-                                                                        <code className="font-mono text-foreground/70">{perm.name}</code>
-                                                                        {perm.description && <span className="text-muted-foreground/60">&middot; {perm.description}</span>}
-                                                                    </div>
-                                                                </td>
-                                                                {roles.map((role) => {
-                                                                    const hasPage = rolePageIdSet.get(role.id)?.has(page.id) ?? false;
-                                                                    return (
-                                                                        <td key={role.id} className="border-l px-3 py-1.5 text-center">
-                                                                            {hasPage ? <span className="text-xs font-semibold text-green-600">✓</span> : <span className="text-xs text-muted-foreground/30">·</span>}
-                                                                        </td>
-                                                                    );
-                                                                })}
-                                                            </tr>
-                                                        ))}
-                                                    </React.Fragment>
-                                                );
-                                            })}
-                                    </React.Fragment>
-                                );
-                            })}
-                            {pageCatalog.length === 0 && (
-                                <tr>
-                                    <td colSpan={roles.length + 1} className="px-4 py-12 text-center text-muted-foreground">
-                                        Không có dữ liệu trang quyền.
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
-                </div>
+                <TablePermission
+                    roles={roles}
+                    pageCatalog={pageCatalog}
+                    expanded={expanded}
+                    expandedGroups={expandedGroups}
+                    roleGroupIdSet={roleGroupIdSet}
+                    onToggleExpand={toggleExpand}
+                    onToggleExpandGroup={toggleExpandGroup}
+                    pageCheckedState={pageCheckedState}
+                    onToggleAllGroupsInPage={toggleAllGroupsInPage}
+                    onEditRole={openEditDialog}
+                    onDeleteRole={(roleId) => void removeRole(roleId)}
+                    onEditGroup={(group, pageId) => openEditGroupDialog(group, pageId)}
+                    onToggleGroup={(role, groupId) => toggleGroupForRole(role, groupId)}
+                />
             )}
         </AdminPageShell>
     );
