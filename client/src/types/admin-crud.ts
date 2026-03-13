@@ -56,7 +56,8 @@ export interface SalaryScale {
 export interface UserRank {
     id: number;
     name?: string;
-    min_spent?: number | string;
+    minSpent?: number | string;
+    status?: string;
     [key: string]: unknown;
 }
 

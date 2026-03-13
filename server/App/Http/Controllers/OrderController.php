@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\DeliveryStatus;
 use App\Http\Requests\orders\OrderCreationRequest;
 use App\Http\Responses\ApiResponse;
 use App\Http\Service\OrderService;

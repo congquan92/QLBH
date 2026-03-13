@@ -12,6 +12,7 @@ class GroupPermission extends Model
         'description',
         'url',
         'icon',
+        'page_id',
         'status'
     ];
     protected $casts = [
@@ -25,4 +26,16 @@ class GroupPermission extends Model
     {
         return $this->belongsToMany(Permission::class, 'permission_group_detail');
     }
+    // App/Models/GroupPermission.php
+
+// App/Models/GroupPermission.php
+public function roles()
+{
+    return $this->belongsToMany(
+        Role::class, 
+        'roles_group_permissions', 
+        'group_permission_id', // Khóa ngoại của chính nó
+        'role_id'              // Khóa ngoại của Role
+    );
+}
 }

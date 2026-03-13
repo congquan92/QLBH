@@ -76,14 +76,14 @@ class StatisticalService
             // Doanh thu từ đơn hàng hoàn thành
             $revenue = Order::whereYear('created_at', $year)
                 ->whereMonth('created_at', $month)
-                ->where('status', 'COMPLETED') // Giả định status
-                ->sum('total_price') ?: 0;
+                ->where('order_status', 'COMPLETED') // Giả định status
+                ->sum('total_amount') ?: 0;
 
             // Chi phí từ nhập hàng hoàn thành
             $cost = ImportProduct::whereYear('created_at', $year)
                 ->whereMonth('created_at', $month)
                 ->where('status', 'COMPLETED')
-                ->sum('total_amount') ?: 0;
+                ->sum('totalAmount') ?: 0;
 
             $profit = $revenue - $cost;
 

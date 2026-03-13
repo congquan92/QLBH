@@ -60,6 +60,7 @@ class GroupPermissionController extends Controller
             'url'            => 'nullable|string',
             'icon'           => 'nullable|string',
             'status'         => 'nullable|string',
+            "page_id"        => 'nullable|exists:pages,id',
             'permission_ids' => 'nullable|array',
             'permission_ids.*' => 'exists:permissions,id'
         ]);

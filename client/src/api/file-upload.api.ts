@@ -3,10 +3,6 @@ import { axiosInstance } from "@/lib/axios";
 const WARNING_PREFIX = "[WARNING][FileUploadApi]";
 
 export const FileUploadApi = {
-    /**
-     * Upload file
-     * POST /file/upload (multipart/form-data)
-     */
     upload: async (file: File): Promise<{ url: string; [key: string]: unknown }> => {
         try {
             const formData = new FormData();
@@ -21,10 +17,6 @@ export const FileUploadApi = {
         }
     },
 
-    /**
-     * Delete file
-     * DELETE /file/delete
-     */
     deleteFile: async (url: string) => {
         try {
             const res = await axiosInstance.delete("/file/delete", { data: { url } });

@@ -6,12 +6,8 @@ export type ResolvedCategoryPath = {
     child?: CategoryChild;
 };
 
-function isActive(status: string) {
-    return status === "ACTIVE";
-}
-
 export function findRootCategoryBySlug(categories: Category[], slug: string) {
-    return categories.find((category) => isActive(category.status) && Helper.generateSlug(category.name) === slug);
+    return categories.find((category) => category.status === "ACTIVE" && Helper.generateSlug(category.name) === slug);
 }
 
 export function findChildCategoryBySlugs(categories: Category[], parentSlug: string, childSlug: string): ResolvedCategoryPath | null {
@@ -20,7 +16,7 @@ export function findChildCategoryBySlugs(categories: Category[], parentSlug: str
         return null;
     }
 
-    const child = parent.childCategory.find((item) => isActive(item.status) && Helper.generateSlug(item.name) === childSlug);
+    const child = parent.childCategory.find((item) => item.status === "ACTIVE" && Helper.generateSlug(item.name) === childSlug);
     if (!child) {
         return null;
     }

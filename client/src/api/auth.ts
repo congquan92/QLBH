@@ -36,6 +36,9 @@ export const AuthApi = {
 
     introspect: async (): Promise<{ valid: boolean; id: number; email: string; roles: string[] }> => {
         const res = await axiosInstance.get<{ valid: boolean; id: number; email: string; roles: string[] }>("/auth/introspect");
+        if (!res.data?.valid) {
+            throw new Error("Phiên đăng nhập không còn hợp lệ.");
+        }
         return res.data;
     },
 

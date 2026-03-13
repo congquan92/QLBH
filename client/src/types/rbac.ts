@@ -1,5 +1,3 @@
-import type { ApiResponse, PageResponse } from "@/types/api";
-
 export interface RbacPermission {
     id: number;
     name: string;
@@ -13,6 +11,7 @@ export interface RbacGroupPermission {
     status?: string;
     url?: string;
     icon?: string;
+    page_id?: number | null;
     permissions?: RbacPermission[];
 }
 
@@ -29,6 +28,7 @@ export interface RbacRole {
     name: string;
     description?: string | null;
     status?: string;
+    assigned_group_permission_ids?: number[];
     page?: RbacPage[];
 }
 
@@ -36,7 +36,7 @@ export interface RbacRolePayload {
     name: string;
     description?: string;
     status?: "ACTIVE" | "INACTIVE" | string;
-    page_ids?: number[];
+    group_permission_ids?: number[];
 }
 
 export interface RbacGroupPermissionPayload {
@@ -48,6 +48,16 @@ export interface RbacGroupPermissionPayload {
     permission_ids: number[];
 }
 
+export interface RbacGroupPermissionUpdatePayload {
+    name?: string;
+    description?: string;
+    status?: string;
+    url?: string;
+    icon?: string;
+    page_id?: number | null;
+    permission_ids?: number[];
+}
+
 export interface RbacPageCatalogItem {
     id: number;
     title: string;
@@ -55,6 +65,3 @@ export interface RbacPageCatalogItem {
     sort_order?: number;
     items?: RbacGroupPermission[];
 }
-
-export type RoleListResponse = ApiResponse<PageResponse<RbacRole>>;
-export type GroupPermissionListResponse = ApiResponse<PageResponse<RbacGroupPermission>>;
