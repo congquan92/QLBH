@@ -1,6 +1,6 @@
 "use client";
 
-import { useAdminAuth } from "@/components/feature/admin-auth-provider";
+import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { LeaveApi } from "@/api/leave.api";
 import { AdminCrudApi } from "@/api/admin-crud.api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";

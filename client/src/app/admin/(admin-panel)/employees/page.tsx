@@ -1,6 +1,6 @@
 "use client";
 
-import { useAdminAuth } from "@/components/feature/admin-auth-provider";
+import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { UserApi } from "@/api/user.api";
 import { RbacApi } from "@/api/rbac.api";
 import { AdminPageShell } from "@/components/feature/admin-page-shell";

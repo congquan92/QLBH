@@ -1,7 +1,6 @@
 "use client";
 
-import { useAdminAuth } from "@/components/feature/admin-auth-provider";
-import { AdminAuthUtil } from "@/lib/admin-auth";
+import { AdminAuthUtil, useAdminAuth } from "@/hooks/useAdminAuth";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";

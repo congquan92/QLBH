@@ -1,6 +1,6 @@
 "use client";
 
-import { useAdminAuth } from "@/components/feature/admin-auth-provider";
+import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { JobHistoryApi } from "@/api/job-history.api";
 import { UserApi } from "@/api/user.api";
 import { AdminCrudApi } from "@/api/admin-crud.api";
