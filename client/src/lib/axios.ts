@@ -1,5 +1,5 @@
 import axios from "axios";
-import { AdminAuthUtil } from "@/hooks/useAdminAuth";
+import { AdminAuthUtil } from "@/lib/AdminAuth-util";
 import { UserAuthUtil } from "@/lib/user-auth";
 import type { AxiosRequestConfig, InternalAxiosRequestConfig } from "axios";
 
