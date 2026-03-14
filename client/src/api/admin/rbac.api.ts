@@ -1,4 +1,4 @@
-import { axiosInstance } from "@/lib/axios";
+import { adminAxiosInstance as axiosInstance } from "@/lib/axios";
 
 import type { RbacGroupPermission, RbacGroupPermissionPayload, RbacGroupPermissionUpdatePayload, RbacPageCatalogItem, RbacRole, RbacRolePayload } from "@/types/rbac";
 

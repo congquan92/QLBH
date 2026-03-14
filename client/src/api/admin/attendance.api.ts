@@ -1,5 +1,4 @@
-import { axiosInstance } from "@/lib/axios";
-
+import { adminAxiosInstance as axiosInstance } from "@/lib/axios";
 
 export const AttendanceApi = {
     /**

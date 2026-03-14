@@ -1,6 +1,6 @@
 "use client";
 
-import { AttendanceApi } from "@/api/attendance.api";
+import { AttendanceApi } from "@/api/admin/attendance.api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { LogIn, LogOut, Loader2, Clock, Calendar } from "lucide-react";

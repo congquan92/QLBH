@@ -1,6 +1,6 @@
 "use client";
 
-import { FileUploadApi } from "@/api/file-upload.api";
+import { FileUploadApi } from "@/api/admin/file-upload.api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";

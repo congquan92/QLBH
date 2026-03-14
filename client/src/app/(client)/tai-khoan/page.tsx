@@ -2,12 +2,13 @@
 
 import { OrderApi } from "@/api/order.api";
 import { UserApi } from "@/api/user.api";
-import { UserRouteGate } from "@/components/feature/user-route-gate";
+import { UserRouteGate } from "@/components/feature/RouteUserGate";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { UserAuthStore } from "@/hooks/useClientAuth";
 import { Helper } from "@/lib/helper";
-import { UserAuthStore } from "@/stores/user-auth.store";
+
 import { OrderSummary } from "@/types/order";
 import { UserAddress, UserProfile } from "@/types/user";
 import { Loader2, LogOut, MapPinHouse, PackageSearch, Save, ShieldCheck, UserRound } from "lucide-react";

@@ -1,6 +1,6 @@
 "use client";
 
-import { RbacApi } from "@/api/rbac.api";
+import { RbacApi } from "@/api/admin/rbac.api";
 import { AdminPageShell } from "@/components/feature/admin-page-shell";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";

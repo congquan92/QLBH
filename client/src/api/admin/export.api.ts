@@ -1,4 +1,4 @@
-import { axiosInstance } from "@/lib/axios";
+import { adminAxiosInstance as axiosInstance } from "@/lib/axios";
 
 const WARNING_PREFIX = "[WARNING][ExportApi]";
 

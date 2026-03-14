@@ -1,7 +1,8 @@
 "use client";
 
+import { UserAuthStore } from "@/hooks/useClientAuth";
 import { UserAuthUtil } from "@/lib/user-auth";
-import { UserAuthStore } from "@/stores/user-auth.store";
+
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 
