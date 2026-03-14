@@ -6,7 +6,6 @@ import { create } from "zustand";
 const ADMIN_SESSION_STORAGE_KEY = "qlbh_admin_session";
 const ADMIN_STORAGE_PREFIX = "qlbh_admin";
 const ADMIN_LOGIN_PATH = "/admin/login";
-const ADMIN_AUTH_COOKIE = "qlbh_admin_auth";
 
 export interface AdminSession {
     token: string;
@@ -165,14 +164,11 @@ function readStoredSession(): AdminSession | null {
 function writeStoredSession(session: AdminSession) {
     if (!isBrowser()) return;
     window.localStorage.setItem(ADMIN_SESSION_STORAGE_KEY, JSON.stringify(session));
-    // Middleware uses cookie presence as a fast pre-check.
-    document.cookie = `${ADMIN_AUTH_COOKIE}=1; Path=/; Max-Age=2592000; SameSite=Lax`;
 }
 
 function clearStoredSession() {
     if (!isBrowser()) return;
     window.localStorage.removeItem(ADMIN_SESSION_STORAGE_KEY);
-    document.cookie = `${ADMIN_AUTH_COOKIE}=; Path=/; Max-Age=0; SameSite=Lax`;
 }
 
 function hasAdminAccess(session: AdminSession | null) {
