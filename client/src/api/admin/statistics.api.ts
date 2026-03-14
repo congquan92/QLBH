@@ -1,4 +1,4 @@
-import { axiosInstance } from "@/lib/axios";
+import { adminAxiosInstance as axiosInstance } from "@/lib/axios";
 import type { ActiveUserStats, CategoryStats, MonthlyRevenue, OrderStats, TopProduct } from "@/types/statistics";
 
 export const StatisticsApi = {

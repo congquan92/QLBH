@@ -1,6 +1,6 @@
 "use client";
 
-import { AdminCrudApi } from "@/api/admin-crud.api";
+import { AdminCrudApi } from "@/api/admin/admin-crud.api";
 import { VoucherApi } from "@/api/voucher.api";
 import { AdminPageShell } from "@/components/feature/admin-page-shell";
 import { Button } from "@/components/ui/button";

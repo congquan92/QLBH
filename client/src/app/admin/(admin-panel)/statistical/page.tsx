@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { StatisticsApi } from "@/api/statistics.api";
+import { StatisticsApi } from "@/api/admin/statistics.api";
 import { AdminPageShell } from "@/components/feature/admin-page-shell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";

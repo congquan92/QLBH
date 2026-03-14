@@ -1,4 +1,4 @@
-import { axiosInstance } from "@/lib/axios";
+import { adminAxiosInstance as axiosInstance } from "@/lib/axios";
 import type { ApiResponse, PageResponse } from "@/types/api";
 import type { CreateLeavePayload, LeaveRequest } from "@/types/leave";
 

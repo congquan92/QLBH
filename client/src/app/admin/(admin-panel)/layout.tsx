@@ -1,6 +1,6 @@
 "use client";
 
-import { AdminRouteGate } from "@/components/feature/admin-route-gate";
+import { AdminRouteGate } from "@/components/feature/RouteAdminGate";
 import { MobileBlocker } from "@/components/feature/mobile-blocker";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";

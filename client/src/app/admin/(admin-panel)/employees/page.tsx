@@ -2,7 +2,7 @@
 
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { UserApi } from "@/api/user.api";
-import { RbacApi } from "@/api/rbac.api";
+import { RbacApi } from "@/api/admin/rbac.api";
 import { AdminPageShell } from "@/components/feature/admin-page-shell";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";

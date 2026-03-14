@@ -4,16 +4,20 @@ import { UserAuthUtil } from "@/lib/user-auth";
 import type { AxiosRequestConfig, InternalAxiosRequestConfig } from "axios";
 
 type AuthScope = "admin" | "user";
+type ScopeResolver = (config: InternalAxiosRequestConfig) => AuthScope;
 
 type RetryableRequestConfig = AxiosRequestConfig & {
     _retry?: boolean;
     _authScope?: AuthScope;
 };
 
-export const axiosInstance = axios.create({
-    baseURL: process.env.NEXT_PUBLIC_API_URL,
-    withCredentials: true,
-});
+const createBaseAxios = () =>
+    axios.create({
+        baseURL: process.env.NEXT_PUBLIC_API_URL,
+        withCredentials: true,
+    });
+
+export const publicAxiosInstance = createBaseAxios();
 
 const REFRESH_EXCLUDED_PATHS = ["/auth/login", "/auth/logout", "/auth/refresh", "/auth/register", "/auth/social/google", "/otp/send", "/otp/verify-otp", "/user/forgot-password"];
 const ADMIN_LOGIN_PATH = "/admin/login";
@@ -82,6 +86,10 @@ function resolveAuthScope(url?: string): AuthScope {
     }
 
     return "user";
+}
+
+function inferScope(config: InternalAxiosRequestConfig): AuthScope {
+    return resolveAuthScope(config.url);
 }
 
 function getScopeToken(scope: AuthScope) {
@@ -162,51 +170,62 @@ async function refreshAccessToken(scope: AuthScope): Promise<string | null> {
     return refreshByScope[scope];
 }
 
-axiosInstance.interceptors.request.use((config) => {
-    const scope = resolveAuthScope(config.url);
-    const token = getScopeToken(scope);
-    const configWithScope = config as InternalAxiosRequestConfig & { _authScope?: AuthScope };
+function attachAuthInterceptors(instance: ReturnType<typeof createBaseAxios>, scopeResolver: ScopeResolver) {
+    instance.interceptors.request.use((config) => {
+        const scope = scopeResolver(config);
+        const token = getScopeToken(scope);
+        const configWithScope = config as InternalAxiosRequestConfig & { _authScope?: AuthScope };
 
-    configWithScope._authScope = scope;
-    if (token) {
-        (configWithScope.headers as Record<string, unknown>).Authorization = `Bearer ${token}`;
-    }
-
-    return config;
-});
-
-axiosInstance.interceptors.response.use(
-    (response) => response,
-    async (error) => {
-        const status = error?.response?.status;
-        const originalConfig = (error?.config ?? {}) as RetryableRequestConfig;
-
-        if (status !== 401) {
-            return Promise.reject(error);
+        // Store resolved scope so retry uses the same token bucket.
+        configWithScope._authScope = scope;
+        if (token) {
+            (configWithScope.headers as Record<string, unknown>).Authorization = `Bearer ${token}`;
         }
 
-        if (shouldSkipRefresh(originalConfig.url)) {
-            return Promise.reject(error);
-        }
+        return config;
+    });
 
-        const scope = originalConfig._authScope ?? resolveAuthScope(originalConfig.url);
+    instance.interceptors.response.use(
+        (response) => response,
+        async (error) => {
+            const status = error?.response?.status;
+            const originalConfig = (error?.config ?? {}) as RetryableRequestConfig;
 
-        if (originalConfig._retry) {
-            handleScopeAuthFailure(scope);
-            return Promise.reject(error);
-        }
+            if (status !== 401) {
+                return Promise.reject(error);
+            }
 
-        originalConfig._retry = true;
-        const nextToken = await refreshAccessToken(scope);
-        if (!nextToken) {
-            return Promise.reject(error);
-        }
+            if (shouldSkipRefresh(originalConfig.url)) {
+                return Promise.reject(error);
+            }
 
-        originalConfig.headers = {
-            ...(originalConfig.headers as Record<string, unknown> | undefined),
-            Authorization: `Bearer ${nextToken}`,
-        };
+            const scope = originalConfig._authScope ?? resolveAuthScope(originalConfig.url);
 
-        return axiosInstance.request(originalConfig);
-    },
-);
+            if (originalConfig._retry) {
+                handleScopeAuthFailure(scope);
+                return Promise.reject(error);
+            }
+
+            originalConfig._retry = true;
+            const nextToken = await refreshAccessToken(scope);
+            if (!nextToken) {
+                return Promise.reject(error);
+            }
+
+            originalConfig.headers = {
+                ...(originalConfig.headers as Record<string, unknown> | undefined),
+                Authorization: `Bearer ${nextToken}`,
+            };
+
+            return instance.request(originalConfig);
+        },
+    );
+}
+
+export const adminAxiosInstance = createBaseAxios();
+export const userAxiosInstance = createBaseAxios();
+export const axiosInstance = createBaseAxios();
+
+attachAuthInterceptors(adminAxiosInstance, () => "admin");
+attachAuthInterceptors(userAxiosInstance, () => "user");
+attachAuthInterceptors(axiosInstance, inferScope);
