@@ -3,7 +3,6 @@
 interface AdminPageShellProps {
     title: string;
     description: string;
-    requiredPermissions?: string[];
     children?: React.ReactNode;
 }
 

@@ -2,7 +2,7 @@ import type { ApiResponse, PageResponse } from "@/types/api";
 
 export interface UserProfile {
     id: number;
-    username?: string;
+    userName?: string;
     fullName?: string;
     email?: string;
     phone?: string;
