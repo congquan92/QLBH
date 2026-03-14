@@ -33,7 +33,7 @@ class RoleService
         }
 
         $paginator = $query->orderBy($column, $direction)->paginate($size, ['*'], 'page', $page);
-        
+
         $dtoItems = $paginator->getCollection()->map(function ($role) {
             return RoleMapper::toRoleResponse($role);
         });
@@ -46,7 +46,7 @@ class RoleService
     /**
      * Xem chi tiết 1 Role kèm các Page đã gán
      */
-   public function getById($id)
+    public function getById($id)
     {
         // Khi lấy chi tiết, ta lấy các Page và chỉ các GroupPermission mà Role này sở hữu
         $role = Role::findOrFail($id);
@@ -56,7 +56,7 @@ class RoleService
     /**
      * Tạo mới Role và gắn Pages (Many-to-Many)
      */
-   public function create(array $data)
+    public function create(array $data)
     {
         return DB::transaction(function () use ($data) {
             $role = Role::create([
@@ -77,26 +77,26 @@ class RoleService
     /**
      * Cập nhật Role và danh sách quyền mục con
      */
-public function update($id, array $data)
-{
-    return DB::transaction(function () use ($id, $data) {
-        $role = Role::findOrFail($id);
-        $role->update($data);
+    public function update($id, array $data)
+    {
+        return DB::transaction(function () use ($id, $data) {
+            $role = Role::findOrFail($id);
+            $role->update($data);
 
-        if (isset($data['group_permission_ids'])) {
-            // Sau khi sửa Model, sync() sẽ thực hiện DELETE chuẩn xác
-            $role->groupPermissions()->sync($data['group_permission_ids']);
-        }
+            if (isset($data['group_permission_ids'])) {
+                // Sau khi sửa Model, sync() sẽ thực hiện DELETE chuẩn xác
+                $role->groupPermissions()->sync($data['group_permission_ids']);
+            }
 
-        // LÀM MỚI dữ liệu để xóa cache cũ trong bộ nhớ
-        $role->refresh();
-        
-        // Nạp lại dữ liệu quan hệ đã được lọc
-        $role->load('groupPermissions.page');
+            // LÀM MỚI dữ liệu để xóa cache cũ trong bộ nhớ
+            $role->refresh();
 
-        return RoleMapper::toRoleResponse($role);
-    });
-}
+            // Nạp lại dữ liệu quan hệ đã được lọc
+            $role->load('groupPermissions.page');
+
+            return RoleMapper::toRoleResponse($role);
+        });
+    }
 
     public function detachGroupPermissions($id, array $groupPermissionIds)
     {

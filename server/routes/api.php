@@ -66,7 +66,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/auth/refresh', [AuthController::class, 'refresh']);
     Route::get('/auth/introspect', [AuthController::class, 'introspect']);
 
-    // User Management
+    // User 
     Route::get('/user/list', [UserController::class, 'findAll'])->middleware('can:VIEW_USERS');
     Route::get('/user/me', [UserController::class, 'getMyInfo']);
     Route::get('/user/{userId}', [UserController::class, 'getDetailUser'])->middleware('can:VIEW_USER_DETAIL');
