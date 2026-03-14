@@ -8,10 +8,10 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import type { RbacGroupPermission, RbacPageCatalogItem, RbacRole, RbacRolePayload } from "@/types/rbac";
 import { Helper } from "@/lib/helper";
-import EditGroupDialog, { type EditGroupForm } from "./components/EditGroup-dialog";
-import { RoleFormDialog, type RoleFormState } from "./components/RoleForm-dialog";
+import EditGroupDialog, { type EditGroupForm } from "./_components/EditGroup-dialog";
+import { RoleFormDialog, type RoleFormState } from "./_components/RoleForm-dialog";
 import { Plus } from "lucide-react";
-import { TablePermission } from "@/app/admin/(admin-panel)/roles/components/TablePermission";
+import { TablePermission } from "@/app/admin/(admin-panel)/roles/_components/TablePermission";
 
 const emptyForm: RoleFormState = {
     name: "",
