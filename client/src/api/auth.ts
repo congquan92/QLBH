@@ -1,6 +1,13 @@
 import { axiosInstance } from "@/lib/axios";
 import type { LoginResponse, LoginRole, RegisterPayload } from "@/types/auth";
 
+type IntrospectResponse = {
+    valid: boolean;
+    id: number;
+    email: string;
+    roles?: unknown;
+};
+
 export const AuthApi = {
     login: async (username: string, password: string): Promise<LoginResponse> => {
         const res = await axiosInstance.post<LoginResponse>("/auth/login", { username, password });
@@ -34,8 +41,8 @@ export const AuthApi = {
         return res.data;
     },
 
-    introspect: async (): Promise<{ valid: boolean; id: number; email: string; roles: string[] }> => {
-        const res = await axiosInstance.get<{ valid: boolean; id: number; email: string; roles: string[] }>("/auth/introspect");
+    introspect: async (): Promise<IntrospectResponse> => {
+        const res = await axiosInstance.get<IntrospectResponse>("/auth/introspect");
         if (!res.data?.valid) {
             throw new Error("Phiên đăng nhập không còn hợp lệ.");
         }

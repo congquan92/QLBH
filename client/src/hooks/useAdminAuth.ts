@@ -1,12 +1,10 @@
 import { AuthApi } from "@/api/auth";
-import { UserAuthUtil } from "@/lib/user-auth";
 import type { LoginResponse, LoginRole } from "@/types/auth";
 import { useCallback, useEffect, useMemo } from "react";
 import { create } from "zustand";
 
 const ADMIN_SESSION_STORAGE_KEY = "qlbh_admin_session";
-const STORAGE_PREFIX = "qlbh_";
-const USER_LOGIN_PATH = "/dang-nhap";
+const ADMIN_STORAGE_PREFIX = "qlbh_admin";
 const ADMIN_LOGIN_PATH = "/admin/login";
 
 export interface AdminSession {
@@ -214,7 +212,7 @@ function clearStorageByPrefix(storage: Storage) {
 
     for (let index = 0; index < storage.length; index += 1) {
         const key = storage.key(index);
-        if (key?.startsWith(STORAGE_PREFIX)) {
+        if (key?.startsWith(ADMIN_STORAGE_PREFIX)) {
             keysToRemove.push(key);
         }
     }
@@ -236,8 +234,21 @@ async function clearBrowserCaches() {
 }
 
 function resolveRedirectTarget() {
-    if (!isBrowser()) return ADMIN_LOGIN_PATH;
-    return window.location.pathname.startsWith("/admin") ? ADMIN_LOGIN_PATH : USER_LOGIN_PATH;
+    return ADMIN_LOGIN_PATH;
+}
+
+function extractRoleNames(value: unknown): string[] {
+    if (Array.isArray(value)) {
+        return value.map((item) => normalizeRoleName(String(item ?? ""))).filter(Boolean);
+    }
+
+    if (value && typeof value === "object") {
+        const payload = value as { name?: unknown };
+        const roleName = normalizeRoleName(typeof payload.name === "string" ? payload.name : "");
+        return roleName ? [roleName] : [];
+    }
+
+    return [];
 }
 
 export const AdminAuthUtil = {
@@ -349,7 +360,7 @@ const useAdminAuthStore = create<AdminAuthState>((set, get) => ({
                 ...localSession,
                 userId: profile.id,
                 email: profile.email,
-                roles: profile.roles,
+                roles: extractRoleNames(profile.roles),
             };
 
             AdminAuthUtil.persistSession(nextSession);
@@ -382,7 +393,7 @@ const useAdminAuthStore = create<AdminAuthState>((set, get) => ({
             ...currentSession,
             userId: profile.id,
             email: profile.email,
-            roles: profile.roles,
+            roles: extractRoleNames(profile.roles),
         };
 
         AdminAuthUtil.persistSession(nextSession);
@@ -408,7 +419,7 @@ const useAdminAuthStore = create<AdminAuthState>((set, get) => ({
                 ...nextSession,
                 userId: profile.id,
                 email: profile.email,
-                roles: profile.roles,
+                roles: extractRoleNames(profile.roles),
             };
 
             AdminAuthUtil.persistSession(enrichedSession);
@@ -430,12 +441,11 @@ const useAdminAuthStore = create<AdminAuthState>((set, get) => ({
     },
 }));
 
-export function handleAuthFailure() {
+export function handleAdminAuthFailure() {
     if (!isBrowser() || isHandlingAuthFailure) return;
 
     isHandlingAuthFailure = true;
     AdminAuthUtil.clearSession();
-    UserAuthUtil.clearSession();
     useAdminAuthStore.setState({ session: null, isLoading: false, hasHydrated: true });
     clearStorageByPrefix(window.localStorage);
     clearStorageByPrefix(window.sessionStorage);
@@ -444,6 +454,8 @@ export function handleAuthFailure() {
         window.location.replace(resolveRedirectTarget());
     });
 }
+
+export const handleAuthFailure = handleAdminAuthFailure;
 
 export function useAdminAuth() {
     const session = useAdminAuthStore((state) => state.session);
