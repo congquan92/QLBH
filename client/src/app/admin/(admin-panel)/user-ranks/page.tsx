@@ -1,6 +1,6 @@
 "use client";
 
-import { AdminCrudApi } from "@/api/admin-crud.api";
+import { AdminCrudApi } from "@/api/admin/admin-crud.api";
 import { AdminPageShell } from "@/components/feature/admin-page-shell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";

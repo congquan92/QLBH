@@ -1,4 +1,4 @@
-import { axiosInstance } from "@/lib/axios";
+import { adminAxiosInstance as axiosInstance } from "@/lib/axios";
 import type { ApiResponse } from "@/types/api";
 import type { DailyStaff, MySchedule, WeeklyReport } from "@/types/schedule";
 

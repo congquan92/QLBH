@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { UserAuthUtil } from "@/lib/user-auth";
-import { UserAuthStore } from "@/stores/user-auth.store";
+
 import { Eye, EyeOff, Loader2, UserRound } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -16,6 +16,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
 import { AxiosError } from "axios";
+import { UserAuthStore } from "@/hooks/useClientAuth";
 
 const loginSchema = z.object({
     username: z.string().min(1, "Vui lòng nhập tên đăng nhập"),

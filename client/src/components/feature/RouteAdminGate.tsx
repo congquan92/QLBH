@@ -1,6 +1,6 @@
 "use client";
 
-import { useAdminAuth } from "@/components/feature/admin-auth-provider";
+import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { useRouter } from "next/navigation";
 import { Loader2, ShieldX } from "lucide-react";
 import { useEffect } from "react";

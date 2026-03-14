@@ -1,8 +1,8 @@
 "use client";
 
-import { useAdminAuth } from "@/components/feature/admin-auth-provider";
-import { ScheduleApi } from "@/api/schedule.api";
-import { AdminCrudApi } from "@/api/admin-crud.api";
+import { useAdminAuth } from "@/hooks/useAdminAuth";
+import { ScheduleApi } from "@/api/admin/schedule.api";
+import { AdminCrudApi } from "@/api/admin/admin-crud.api";
 import { UserApi } from "@/api/user.api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";

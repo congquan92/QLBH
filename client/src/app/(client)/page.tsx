@@ -1,7 +1,7 @@
 import { CategoryApi } from "@/api/category.api";
 import { ProductApi } from "@/api/product.api";
-import BannerCarousel, { Banner } from "@/components/feature/bannerCarousel";
-import ProductGrid from "@/components/feature/ProductGrid";
+import BannerCarousel, { Banner } from "@/components/feature/page/bannerCarousel";
+import ProductGrid from "@/components/feature/page/ProductGrid";
 import { Helper } from "@/lib/helper";
 import { Category } from "@/types/navbar";
 import Link from "next/link";

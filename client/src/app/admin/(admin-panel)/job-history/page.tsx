@@ -1,9 +1,9 @@
 "use client";
 
-import { useAdminAuth } from "@/components/feature/admin-auth-provider";
-import { JobHistoryApi } from "@/api/job-history.api";
+import { useAdminAuth } from "@/hooks/useAdminAuth";
+import { JobHistoryApi } from "@/api/admin/job-history.api";
 import { UserApi } from "@/api/user.api";
-import { AdminCrudApi } from "@/api/admin-crud.api";
+import { AdminCrudApi } from "@/api/admin/admin-crud.api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

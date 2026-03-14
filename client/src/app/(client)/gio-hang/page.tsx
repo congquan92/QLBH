@@ -2,9 +2,10 @@
 
 import { CartApi } from "@/api/cart.api";
 import { Button } from "@/components/ui/button";
+import { UserAuthStore } from "@/hooks/useClientAuth";
 import { Helper } from "@/lib/helper";
 import { UserAuthUtil } from "@/lib/user-auth";
-import { UserAuthStore } from "@/stores/user-auth.store";
+
 import { CartItem } from "@/types/cart";
 import { Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
 import Image from "next/image";

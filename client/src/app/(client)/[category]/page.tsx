@@ -27,7 +27,7 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
     const keyword = query.keyword?.trim() || undefined;
     const sort = query.sort?.trim() || undefined;
 
-    const categoriesResponse = await CategoryApi.getPublicCategories({ page: 1, size: 50, sort: "id:asc" });
+    const categoriesResponse = await CategoryApi.getPublicCategories();
     const resolvedCategory = findRootCategoryBySlug(categoriesResponse.data.data, category);
 
     if (!resolvedCategory) {

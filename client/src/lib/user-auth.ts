@@ -1,6 +1,7 @@
 import type { LoginResponse, LoginRole } from "@/types/auth";
 
 const USER_SESSION_STORAGE_KEY = "qlbh_user_session";
+const USER_AUTH_COOKIE = "qlbh_user_auth";
 
 export interface UserSession {
     token: string;
@@ -30,6 +31,17 @@ function extractStringArray(value: unknown): string[] {
     return value.map((item) => String(item ?? "").trim()).filter(Boolean);
 }
 
+function setUserAuthCookie() {
+    if (!isBrowser()) return;
+    // Route middleware can only read cookies, not localStorage.
+    document.cookie = `${USER_AUTH_COOKIE}=1; Path=/; Max-Age=2592000; SameSite=Lax`;
+}
+
+function clearUserAuthCookie() {
+    if (!isBrowser()) return;
+    document.cookie = `${USER_AUTH_COOKIE}=; Path=/; Max-Age=0; SameSite=Lax`;
+}
+
 export const UserAuthUtil = {
     buildSession(loginResponse: LoginResponse): UserSession {
         return {
@@ -44,6 +56,7 @@ export const UserAuthUtil = {
     persistSession(session: UserSession) {
         if (!isBrowser()) return;
         window.localStorage.setItem(USER_SESSION_STORAGE_KEY, JSON.stringify(session));
+        setUserAuthCookie();
     },
 
     getSession(): UserSession | null {
@@ -80,6 +93,7 @@ export const UserAuthUtil = {
     clearSession() {
         if (!isBrowser()) return;
         window.localStorage.removeItem(USER_SESSION_STORAGE_KEY);
+        clearUserAuthCookie();
     },
 
     patchSession(partial: Partial<UserSession>) {

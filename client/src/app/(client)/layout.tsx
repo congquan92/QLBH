@@ -1,6 +1,6 @@
 import Footer from "@/components/shared/footer";
 import Navbar from "@/components/shared/navbar";
-import Topbar from "@/components/feature/topbar";
+import Topbar from "@/components/feature/page/topbar";
 
 export default function ClientLayout({
     children,
