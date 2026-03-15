@@ -1,32 +1,42 @@
 "use client";
 
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import type { RbacRole } from "@/types/rbac";
 import type { UserProfile } from "@/types/user";
 import { Loader2 } from "lucide-react";
 
+export type EditUserFormData = {
+    fullName: string;
+    gender: "MALE" | "FEMALE" | "OTHER";
+    dateOfBirth: string;
+    phone: string;
+};
+
 type Props = {
     editingUser: UserProfile | null;
-    roles: RbacRole[];
     isSaving: boolean;
-    editRoleId: string;
-    editStatus: "ACTIVE" | "INACTIVE";
-    onChangeRole: (roleId: string) => void;
+    form: EditUserFormData;
+    onChange: (form: EditUserFormData) => void;
     onChangeStatus: (status: "ACTIVE" | "INACTIVE") => void;
     onSave: () => void;
     onClose: () => void;
 };
 
-export function EditUserDialog({ editingUser, roles, isSaving, editRoleId, editStatus, onChangeRole, onChangeStatus, onSave, onClose }: Props) {
+export function EditUserDialog({ editingUser, isSaving, form, onChange, onSave, onClose }: Props) {
+    function set<K extends keyof EditUserFormData>(key: K, value: EditUserFormData[K]) {
+        onChange({ ...form, [key]: value });
+    }
+
     return (
         <Dialog open={Boolean(editingUser)} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="sm:max-w-lg">
+            <DialogContent className="max-h-[80vh] overflow-y-auto p-5 sm:max-w-2xl">
                 <DialogHeader>
-                    <DialogTitle>Sửa user</DialogTitle>
-                    <DialogDescription>Cập nhật vai trò và trạng thái user theo endpoint server hiện có.</DialogDescription>
+                    <DialogTitle>Cập nhật tài khoản user</DialogTitle>
+                    <DialogDescription>Chỉnh thông tin hồ sơ và trạng thái của tài khoản khách hàng.</DialogDescription>
                 </DialogHeader>
 
                 {editingUser && (
@@ -34,43 +44,52 @@ export function EditUserDialog({ editingUser, roles, isSaving, editRoleId, editS
                         {(() => {
                             const username = String(editingUser.username ?? editingUser.userName ?? "").trim();
                             return (
-                                <div className="rounded-md border bg-muted/40 p-3 text-sm">
-                                    <p className="font-medium">{String(editingUser.fullName ?? username ?? "Unknown")}</p>
-                                    <p className="text-xs text-muted-foreground">
-                                        ID #{editingUser.id} · @{username || "-"}
-                                    </p>
+                                <div className="flex items-center gap-3 rounded-md border bg-muted/40 p-3 text-sm">
+                                    <Avatar className="h-12 w-12">
+                                        <AvatarImage src={String((editingUser as { avatar?: unknown }).avatar ?? "")} alt={String(editingUser.fullName ?? username ?? "U")} />
+                                        <AvatarFallback>{String(editingUser.fullName ?? username ?? "U").charAt(0)}</AvatarFallback>
+                                    </Avatar>
+                                    <div>
+                                        <p className="font-medium">{String(editingUser.fullName ?? username ?? "Unknown")}</p>
+                                        <p className="text-xs text-muted-foreground">
+                                            ID #{editingUser.id} · @{username || "-"}
+                                        </p>
+                                    </div>
                                 </div>
                             );
                         })()}
 
-                        <div className="space-y-2">
-                            <Label>Vai trò</Label>
-                            <Select value={editRoleId} onValueChange={onChangeRole}>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Chọn vai trò" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {roles.map((role) => (
-                                        <SelectItem key={role.id} value={String(role.id)}>
-                                            {role.name}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                            <div className="space-y-2 md:col-span-2">
+                                <Label>Họ tên</Label>
+                                <Input value={form.fullName} onChange={(e) => set("fullName", e.target.value)} placeholder="Nhập họ tên khách hàng" />
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label>Giới tính</Label>
+                                <Select value={form.gender} onValueChange={(value: "MALE" | "FEMALE" | "OTHER") => set("gender", value)}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Chọn giới tính" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="MALE">Nam</SelectItem>
+                                        <SelectItem value="FEMALE">Nữ</SelectItem>
+                                        <SelectItem value="OTHER">Khác</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label>Ngày sinh</Label>
+                                <Input type="date" value={form.dateOfBirth} onChange={(e) => set("dateOfBirth", e.target.value)} />
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label>Số điện thoại</Label>
+                                <Input value={form.phone} onChange={(e) => set("phone", e.target.value)} placeholder="Nhập số điện thoại" />
+                            </div>
                         </div>
 
-                        <div className="space-y-2">
-                            <Label>Trạng thái</Label>
-                            <Select value={editStatus} onValueChange={(value: "ACTIVE" | "INACTIVE") => onChangeStatus(value)}>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Chọn trạng thái" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="ACTIVE">ACTIVE</SelectItem>
-                                    <SelectItem value="INACTIVE">INACTIVE</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
                     </div>
                 )}
 

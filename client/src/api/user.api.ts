@@ -55,7 +55,6 @@ export const UserApi = {
         const size = query?.size ?? 10;
         try {
             const res = await axiosInstance.get("/user/address/list", { params: { ...query, page, size } });
-
             return res.data as ApiResponse<PageResponse<UserAddress>>;
         } catch (error) {
             console.error(`${WARNING_PREFIX} /user/address/list failed.`, error);
@@ -109,6 +108,16 @@ export const UserApi = {
             return res.data;
         } catch (error) {
             console.warn(`${WARNING_PREFIX} /user/update failed.`, error);
+            throw error;
+        }
+    },
+
+    updateUserById: async (userId: number, payload: Record<string, unknown>) => {
+        try {
+            const res = await axiosInstance.put(`/user/${userId}/update`, payload);
+            return res.data;
+        } catch (error) {
+            console.warn(`${WARNING_PREFIX} /user/{userId}/update failed.`, error);
             throw error;
         }
     },

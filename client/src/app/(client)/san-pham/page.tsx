@@ -53,7 +53,7 @@ export default async function ProductPage({ searchParams }: PageProps) {
                 </div>
             </div>
 
-            <ListProduct products={data.data.data} data={data} />
+            <ListProduct products={data.data.data} data={data} initialKeyword={keyword ?? ""} allowAdvancedFilter />
         </div>
     );
 }

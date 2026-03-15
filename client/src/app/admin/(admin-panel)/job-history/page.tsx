@@ -45,7 +45,7 @@ export default function JobHistoryPage() {
     const fetchData = useCallback(async () => {
         setIsLoading(true);
         try {
-            const [usersRes, positionsRes] = await Promise.all([canViewUsers ? UserApi.getUsers({ page: 1, size: 100 }) : Promise.resolve({ data: { data: [] } }), AdminCrudApi.getPositions({ sort: "name:asc" })]);
+            const [usersRes, positionsRes] = await Promise.all([canViewUsers ? UserApi.getUsers({ page: 1, size: 100, hasUserRole: false }) : Promise.resolve({ data: { data: [] } }), AdminCrudApi.getPositions({ sort: "name:asc" })]);
             setUsers(usersRes.data.data || []);
             setPositions(positionsRes.data.data || []);
         } catch (error) {

@@ -161,7 +161,6 @@ export function UserTable({ users, roles, isLoading, isSaving, onEdit, onToggleS
                                     <th className="px-4 py-3">User</th>
                                     <th className="px-4 py-3">Liên hệ</th>
                                     <th className="px-4 py-3">Vai trò</th>
-                                    <th className="px-4 py-3">Loại</th>
                                     <th className="px-4 py-3">Trạng thái</th>
                                     <th className="px-4 py-3">Thao tác</th>
                                 </tr>
@@ -170,7 +169,6 @@ export function UserTable({ users, roles, isLoading, isSaving, onEdit, onToggleS
                                 {filteredUsers.map((user) => {
                                     const status = String(user.status ?? "ACTIVE");
                                     const roleLabel = getRoleLabel(user);
-                                    const isCustomer = roleLabel.toUpperCase().includes("USER");
                                     const roleId = getRoleId(user);
                                     const username = getUsername(user);
 
@@ -209,9 +207,6 @@ export function UserTable({ users, roles, isLoading, isSaving, onEdit, onToggleS
                                                 </p>
                                             </td>
                                             <td className="px-4 py-3">
-                                                <Badge variant="outline">{isCustomer ? "Khách" : "Nội bộ"}</Badge>
-                                            </td>
-                                            <td className="px-4 py-3">
                                                 <Badge
                                                     className={
                                                         status === "ACTIVE" ? "bg-green-100 text-green-700 hover:bg-green-100" : status === "INACTIVE" ? "bg-red-100 text-red-700 hover:bg-red-100" : "bg-yellow-100 text-yellow-700 hover:bg-yellow-100"
@@ -238,7 +233,7 @@ export function UserTable({ users, roles, isLoading, isSaving, onEdit, onToggleS
 
                                 {filteredUsers.length === 0 && (
                                     <tr>
-                                        <td className="px-4 py-8 text-muted-foreground" colSpan={6}>
+                                        <td className="px-4 py-8 text-muted-foreground" colSpan={5}>
                                             Không có dữ liệu phù hợp.
                                         </td>
                                     </tr>

@@ -9,6 +9,8 @@ type ProductListQuery = {
     sort?: string;
     page?: number;
     size?: number;
+    minPrice?: number;
+    maxPrice?: number;
 };
 function normalizeListQuery(pageOrQuery?: number | ProductListQuery, size?: number) {
     if (typeof pageOrQuery === "object") {
@@ -17,6 +19,8 @@ function normalizeListQuery(pageOrQuery?: number | ProductListQuery, size?: numb
             size: pageOrQuery.size ?? 10,
             keyword: pageOrQuery.keyword,
             sort: pageOrQuery.sort,
+            minPrice: pageOrQuery.minPrice,
+            maxPrice: pageOrQuery.maxPrice,
         };
     }
 
@@ -25,6 +29,8 @@ function normalizeListQuery(pageOrQuery?: number | ProductListQuery, size?: numb
         size: size ?? 10,
         keyword: undefined,
         sort: undefined,
+        minPrice: undefined,
+        maxPrice: undefined,
     };
 }
 

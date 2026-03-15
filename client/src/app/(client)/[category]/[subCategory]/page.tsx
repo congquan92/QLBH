@@ -58,7 +58,7 @@ export default async function ChildCategoryPage({ params, searchParams }: ChildC
                 </div>
             </section>
 
-            <ListProduct products={productsResponse.data.data} data={productsResponse} />
+            <ListProduct products={productsResponse.data.data} data={productsResponse} categoryId={resolvedCategory.child.id} initialKeyword={keyword ?? ""} />
         </div>
     );
 }

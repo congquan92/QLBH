@@ -59,7 +59,7 @@ export default function SchedulePage() {
                 const res = await ScheduleApi.getMySchedule(selectedDate);
                 setMySchedule(res.data);
             } else if (viewMode === "assign" && canManageSchedule) {
-                const [shiftsRes, usersRes] = await Promise.all([AdminCrudApi.getShifts({ page: 1, size: 100 }), UserApi.getUsers({ page: 1, size: 100 })]);
+                const [shiftsRes, usersRes] = await Promise.all([AdminCrudApi.getShifts({ page: 1, size: 100 }), UserApi.getUsers({ page: 1, size: 100, hasUserRole: false })]);
                 setShifts(shiftsRes.data.data);
                 setEmployees(usersRes.data.data);
             }

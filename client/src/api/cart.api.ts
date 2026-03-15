@@ -1,16 +1,15 @@
 import { axiosInstance } from "@/lib/axios";
-import type { ApiResponse, PageResponse } from "@/types/api";
-import type { AddCartItemPayload, CartItem, UpdateCartItemPayload } from "@/types/cart";
+import type { AddCartItemPayload, CartItem, CartListResponse, UpdateCartItemPayload } from "@/types/cart";
 
 const WARNING_PREFIX = "[WARNING][CartApi]";
 
 export const CartApi = {
-    getMyCart: async (query?: { sort?: string; page?: number; size?: number }) => {
+    getMyCart: async (query?: { sort?: string; page?: number; size?: number }): Promise<CartListResponse> => {
         const page = query?.page ?? 1;
         const size = query?.size ?? 10;
         try {
             const res = await axiosInstance.get("/carts", { params: { ...query, page, size } });
-            return res.data as ApiResponse<PageResponse<CartItem>>; // kiem tra lai , chua check
+            return res.data as CartListResponse;
         } catch (error) {
             console.error(`${WARNING_PREFIX} /carts [GET] failed.`, error);
             throw error;

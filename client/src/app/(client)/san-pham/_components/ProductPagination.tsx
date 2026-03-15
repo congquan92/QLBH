@@ -1,18 +1,20 @@
 "use client";
 
 import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink } from "@/components/ui/pagination";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ProductPaginationProps {
     currentPage: number;
     totalPages: number;
+    onPageChange?: (page: number) => void;
 }
 
-export default function ProductPagination({ currentPage, totalPages }: ProductPaginationProps) {
+export default function ProductPagination({ currentPage, totalPages, onPageChange }: ProductPaginationProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
+    const pathname = usePathname();
 
     // Không hiển thị pagination nếu chỉ có 1 trang
     // if (totalPages <= 1) {
@@ -20,9 +22,14 @@ export default function ProductPagination({ currentPage, totalPages }: ProductPa
     // }
 
     const handlePageChange = (page: number) => {
+        if (onPageChange) {
+            onPageChange(page);
+            return;
+        }
+
         const params = new URLSearchParams(searchParams.toString());
         params.set("page", page.toString());
-        router.push(`/san-pham?${params.toString()}`);
+        router.push(`${pathname}?${params.toString()}`);
     };
 
     const getPageNumbers = () => {

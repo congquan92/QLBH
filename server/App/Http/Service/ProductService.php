@@ -21,7 +21,7 @@ use Illuminate\Support\Facades\Log;
 class ProductService
 {
 
-    public function findAll(?string $keyword, ?string $sort, int $page, int $size): PageResponse
+    public function findAll(?string $keyword, ?string $sort, int $page, int $size, mixed $minPrice = null, mixed $maxPrice = null): PageResponse
     {
 
         $query = Product::where('status', Status::ACTIVE);
@@ -42,6 +42,14 @@ class ProductService
                 $q->where('name', 'like', "%{$keyword}%")
                     ->orWhere('description', 'like', "%{$keyword}%");
             });
+        }
+
+        if ($minPrice !== null && is_numeric($minPrice)) {
+            $query->where('sale_price', '>=', (float) $minPrice);
+        }
+
+        if ($maxPrice !== null && is_numeric($maxPrice)) {
+            $query->where('sale_price', '<=', (float) $maxPrice);
         }
 
 
@@ -136,7 +144,7 @@ class ProductService
         return PageResponse::fromLaravelPaginator($paginator);
     }
 
-    public function findAllByCategory(int $categoryId, ?string $keyword, ?string $sort, int $page, int $size): PageResponse
+    public function findAllByCategory(int $categoryId, ?string $keyword, ?string $sort, int $page, int $size, mixed $minPrice = null, mixed $maxPrice = null): PageResponse
     {
         $category = Category::findOrFail($categoryId);
         $categoryIds = $category->getAllChildIds();
@@ -147,6 +155,14 @@ class ProductService
 
         if (!empty($keyword)) {
             $query->where('name', 'like', "%{$keyword}%");
+        }
+
+        if ($minPrice !== null && is_numeric($minPrice)) {
+            $query->where('sale_price', '>=', (float) $minPrice);
+        }
+
+        if ($maxPrice !== null && is_numeric($maxPrice)) {
+            $query->where('sale_price', '<=', (float) $maxPrice);
         }
 
         $column = 'id';

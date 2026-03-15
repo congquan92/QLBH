@@ -18,8 +18,11 @@ class ReviewDemoSeeder extends Seeder
 
         DB::transaction(function () use ($customerId, $orderId): void {
             $items = DB::table('order_items')->where('order_id', $orderId)->get();
+            $productIds = [];
 
             foreach ($items as $item) {
+                $productIds[] = $item->product_id;
+
                 DB::table('reviews')->updateOrInsert(
                     ['order_item_id' => $item->id, 'user_id' => $customerId],
                     [
@@ -43,6 +46,17 @@ class ReviewDemoSeeder extends Seeder
                     'is_reviewed' => true,
                     'updated_at' => now(),
                 ]);
+            }
+
+            $productIds = array_unique($productIds);
+            foreach ($productIds as $productId) {
+                $avgRating = (float) DB::table('reviews')
+                    ->where('product_id', $productId)
+                    ->avg('rating');
+
+                DB::table('products')
+                    ->where('id', $productId)
+                    ->update(['avg_rating' => round($avgRating, 2), 'updated_at' => now()]);
             }
         });
     }

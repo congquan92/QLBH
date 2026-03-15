@@ -13,9 +13,25 @@ class WorkforceDemoSeeder extends Seeder
     {
         DB::transaction(function (): void {
             $adminId = DB::table('users')->where('username', 'admin')->value('id');
-            $customerId = DB::table('users')->where('username', 'customer_demo')->value('id');
 
-            $staffUsers = DB::table('users')->whereIn('username', ['sale_ft_01', 'sale_pt_01', 'warehouse_01'])->get();
+            $staffUsers = DB::table('users')
+                ->whereIn('username', ['sale_ft_01', 'sale_pt_01', 'warehouse_01'])
+                ->get();
+
+            if ($staffUsers->isEmpty()) {
+                $staffUsers = DB::table('users')
+                    ->join('roles', 'roles.id', '=', 'users.role_id')
+                    ->whereIn('roles.name', ['ORDER_STAFF', 'WAREHOUSE_STAFF'])
+                    ->whereNotIn('users.username', ['admin', 'customer_demo'])
+                    ->select('users.*')
+                    ->limit(3)
+                    ->get();
+            }
+
+            if ($staffUsers->isEmpty()) {
+                return;
+            }
+
             $shifts = DB::table('shifts')->get()->keyBy('name');
 
             $morningShift = $shifts->get('Ca Sáng') ?? $shifts->get('Ca Sang') ?? $shifts->first();
@@ -58,13 +74,6 @@ class WorkforceDemoSeeder extends Seeder
                 DB::table('position_default_schedules')->updateOrInsert(
                     ['position_id' => $position->id, 'day_of_week' => 5, 'shift_id' => $afternoonShift->id],
                     ['updated_at' => now(), 'created_at' => now()]
-                );
-            }
-
-            if ($customerId) {
-                DB::table('attendances')->updateOrInsert(
-                    ['user_id' => $customerId, 'date' => $yesterday],
-                    ['check_in' => now()->subDay()->setTime(9, 0, 0), 'check_out' => now()->subDay()->setTime(11, 0, 0), 'is_holiday' => false, 'total_hours' => 2, 'status' => CheckInStatus::OT->value, 'shift_id' => $morningShift->id, 'updated_at' => now(), 'created_at' => now()]
                 );
             }
         });

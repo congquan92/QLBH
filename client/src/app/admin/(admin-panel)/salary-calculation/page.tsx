@@ -32,7 +32,7 @@ export default function SalaryCalculationPage() {
 
         setIsLoadingUsers(true);
         try {
-            const res = await UserApi.getUsers({ page: 1, size: 100 });
+            const res = await UserApi.getUsers({ page: 1, size: 100, hasUserRole: false });
             setUsers(res.data.data || []);
         } catch (error) {
             console.error("Failed to fetch users", error);

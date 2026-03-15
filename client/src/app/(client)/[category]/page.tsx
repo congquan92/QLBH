@@ -73,7 +73,7 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
                 </div>
             </section>
 
-            <ListProduct products={productsResponse.data.data} data={productsResponse} />
+            <ListProduct products={productsResponse.data.data} data={productsResponse} categoryId={resolvedCategory.id} initialKeyword={keyword ?? ""} />
         </div>
     );
 }

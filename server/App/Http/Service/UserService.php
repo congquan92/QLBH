@@ -131,19 +131,31 @@ class UserService
     public function update(UserUpdateRequest $req)
     {
         $currentUser = auth()->user();
+        $this->applyUserProfileData($currentUser, $req);
+    }
+
+    public function updateById(int $userId, UserUpdateRequest $req): void
+    {
+        $user = User::findOrFail($userId);
+        $this->applyUserProfileData($user, $req);
+    }
+
+    private function applyUserProfileData(User $user, UserUpdateRequest $req): void
+    {
         $map = [
             'fullName' => 'full_name',
             'gender' => 'gender',
             'dateOfBirth' => 'date_of_birth',
+            'phone' => 'phone',
             'avatar' => 'avatar',
         ];
 
         foreach ($map as $reqKey => $dbColumn) {
             if ($req->filled($reqKey)) {
-                $currentUser->{$dbColumn} = $req->input($reqKey);
+                $user->{$dbColumn} = $req->input($reqKey);
             }
         }
-        $currentUser->save();
+        $user->save();
     }
     public function changePassword(UserPasswordRequest $data): void
     {
@@ -316,6 +328,27 @@ class UserService
         $user->role_id = $role->id;
         $user->save();
     }
+
+    public function updateStatus(int $userId, string $status): array
+    {
+        $user = User::where('id', $userId)->firstOrFail();
+
+        $normalizedStatus = strtoupper(trim($status));
+        $userStatus = UserStatus::tryFrom($normalizedStatus);
+
+        if (!$userStatus) {
+            throw new BusinessException(ErrorCode::BAD_REQUEST, 'Trạng thái người dùng không hợp lệ !');
+        }
+
+        $user->status = $userStatus;
+        $user->save();
+
+        return [
+            'id' => $user->id,
+            'status' => $user->status?->value ?? $user->status,
+        ];
+    }
+
     public function updateAddress($addressId, UserUpdateAddressRequest $req)
     {
         $currentUser = auth()->user();

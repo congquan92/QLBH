@@ -28,7 +28,8 @@ class UserController extends Controller
         $sort = $request->query('sort');
         $page = (int) $request->query('page', 1);
         $size = (int) $request->query('size', 10);
-        $hasUserRole = $request->query('hasUserRole');
+        $hasUserRoleQuery = $request->query('hasUserRole');
+        $hasUserRole = filter_var($hasUserRoleQuery, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
         $result = $this->userService->findAll($keyword, $sort, $page, $size, $hasUserRole);
         return $this->success($result, 'Product list fetched successfully');
     }
@@ -84,6 +85,11 @@ class UserController extends Controller
     public function updateUser(UserUpdateRequest $request)
     {
         $this->userService->update($request);
+    }
+
+    public function updateUserById(UserUpdateRequest $request, $userId)
+    {
+        $this->userService->updateById((int) $userId, $request);
     }
 
     public function verifyAccount($userId, Request $request)

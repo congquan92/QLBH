@@ -1,6 +1,7 @@
 import { axiosInstance } from "@/lib/axios";
 import type { ApiResponse } from "@/types/api";
-import type { CreateOrderPayload } from "@/types/order";
+import type { CreateOrderPayload, OrderSummary } from "@/types/order";
+import type { PageResponse } from "@/types/api";
 
 const WARNING_PREFIX = "[WARNING][OrderApi]";
 
@@ -25,44 +26,44 @@ export const OrderApi = {
         }
     },
 
-    getMyOrders: async (query?: { keyword?: string; sort?: string; page?: number; size?: number; startDate?: string; endDate?: string; deliveryStatus?: string }) => {
+    getMyOrders: async (query?: { keyword?: string; sort?: string; page?: number; size?: number; startDate?: string; endDate?: string; deliveryStatus?: string }): Promise<ApiResponse<PageResponse<OrderSummary>>> => {
         const page = query?.page ?? 1;
         const size = query?.size ?? 10;
         try {
             const res = await axiosInstance.get("/order/list", { params: { ...query, page, size } });
-            return res.data as ApiResponse<unknown>; // chua check lai
+            return res.data as ApiResponse<PageResponse<OrderSummary>>;
         } catch (error) {
             console.error(`${WARNING_PREFIX} /order/list failed.`, error);
             throw error;
         }
     },
 
-    getAdminOrders: async (query?: { keyword?: string; sort?: string; page?: number; size?: number; startDate?: string; endDate?: string; deliveryStatus?: string }) => {
+    getAdminOrders: async (query?: { keyword?: string; sort?: string; page?: number; size?: number; startDate?: string; endDate?: string; deliveryStatus?: string }): Promise<ApiResponse<PageResponse<OrderSummary>>> => {
         const page = query?.page ?? 1;
         const size = query?.size ?? 10;
         try {
             const res = await axiosInstance.get("/order/admin/list", { params: { ...query, page, size } });
-            return res.data as ApiResponse<unknown>; // chua check lai
+            return res.data as ApiResponse<PageResponse<OrderSummary>>;
         } catch (error) {
             console.error(`${WARNING_PREFIX} /order/admin/list failed.`, error);
             throw error;
         }
     },
 
-    getMyOrderDetail: async (id: number) => {
+    getMyOrderDetail: async (id: number): Promise<ApiResponse<OrderSummary>> => {
         try {
             const res = await axiosInstance.get(`/order/${id}`);
-            return res.data as ApiResponse<unknown>; // chua check lai
+            return res.data as ApiResponse<OrderSummary>;
         } catch (error) {
             console.error(`${WARNING_PREFIX} /order/{id} failed.`, error);
             throw error;
         }
     },
 
-    getAdminOrderDetail: async (id: number) => {
+    getAdminOrderDetail: async (id: number): Promise<ApiResponse<OrderSummary>> => {
         try {
             const res = await axiosInstance.get(`/order/admin/${id}`);
-            return res.data as ApiResponse<unknown>; // chua check lai
+            return res.data as ApiResponse<OrderSummary>;
         } catch (error) {
             console.error(`${WARNING_PREFIX} /order/admin/{id} failed.`, error);
             throw error;
