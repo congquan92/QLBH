@@ -43,15 +43,75 @@ export function getCartItemPrice(item: CartItem) {
     return Number(item.price ?? item.listPriceSnapshot ?? item.product_variant?.price ?? 0);
 }
 
-export function getCartItemAttributes(item: CartItem) {
-    if (item.attributes && Object.keys(item.attributes).length > 0) {
-        return Object.entries(item.attributes).map(([key, value]) => ({ key, value }));
+function toAttributeDisplayValue(value: unknown) {
+    if (value === null || value === undefined) {
+        return "";
     }
 
-    return (item.product_variant?.variantAttributes ?? []).map((attribute) => ({
-        key: attribute.attribute,
-        value: attribute.value,
-    }));
+    if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+        return String(value);
+    }
+
+    if (typeof value === "object") {
+        const record = value as Record<string, unknown>;
+        const nestedCandidates = [record.value, record.name, record.label];
+        for (const candidate of nestedCandidates) {
+            if (typeof candidate === "string" || typeof candidate === "number" || typeof candidate === "boolean") {
+                return String(candidate);
+            }
+        }
+    }
+
+    return "";
+}
+
+function extractVariantAttributes(value: unknown) {
+    if (!Array.isArray(value)) {
+        return [] as Array<{ key: string; value: string }>;
+    }
+
+    return value
+        .map((entry) => {
+            if (!entry || typeof entry !== "object") {
+                return null;
+            }
+
+            const record = entry as Record<string, unknown>;
+            const key = toAttributeDisplayValue(record.attribute ?? record.key ?? record.name);
+            const attributeValue = toAttributeDisplayValue(record.value ?? record.label);
+            if (key === "" || attributeValue === "") {
+                return null;
+            }
+
+            return { key, value: attributeValue };
+        })
+        .filter((attribute): attribute is { key: string; value: string } => Boolean(attribute));
+}
+
+export function getCartItemAttributes(item: CartItem) {
+    const rawAttributes = item.attributes && typeof item.attributes === "object" ? (item.attributes as Record<string, unknown>) : null;
+    const nestedAttributes = extractVariantAttributes(rawAttributes?.variantAttributes);
+
+    if (nestedAttributes.length > 0) {
+        return nestedAttributes;
+    }
+
+    if (rawAttributes && Object.keys(rawAttributes).length > 0) {
+        return Object.entries(rawAttributes)
+            .filter(([key]) => key !== "variantAttributes")
+            .map(([key, value]) => ({
+                key,
+                value: toAttributeDisplayValue(value),
+            }))
+            .filter((attribute) => attribute.value !== "");
+    }
+
+    return (item.product_variant?.variantAttributes ?? [])
+        .map((attribute) => ({
+            key: toAttributeDisplayValue(attribute.attribute),
+            value: toAttributeDisplayValue(attribute.value),
+        }))
+        .filter((attribute) => attribute.key !== "" && attribute.value !== "");
 }
 
 export function isCartItemAvailable(item: CartItem) {

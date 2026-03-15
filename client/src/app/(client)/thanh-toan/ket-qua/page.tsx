@@ -1,5 +1,6 @@
 "use client";
 
+import { CartApi } from "@/api/cart.api";
 import { PaymentApi } from "@/api/payment.api";
 import { Loader2, ShieldCheck, ShieldX } from "lucide-react";
 import Link from "next/link";
@@ -68,6 +69,22 @@ function extractOrderCode(txnRef?: string) {
     return `#${orderId}`;
 }
 
+function extractOrderId(txnRef?: string) {
+    if (!txnRef) {
+        return null;
+    }
+
+    const normalized = txnRef.startsWith("ORD") ? txnRef.slice(3) : txnRef;
+    const [orderPart] = normalized.split("_");
+    const orderId = Number(orderPart);
+
+    if (!Number.isFinite(orderId) || orderId <= 0) {
+        return null;
+    }
+
+    return orderId;
+}
+
 export default function PaymentResultPage() {
     const searchParams = useSearchParams();
     const [state, setState] = useState<ResultState>("loading");
@@ -102,6 +119,19 @@ export default function PaymentResultPage() {
                 if (cancelled) return;
 
                 if (isSuccess) {
+                    const orderId = extractOrderId(queryPayload.vnp_TxnRef);
+                    if (orderId) {
+                        const pendingKey = `pending_vnpay_cart_${orderId}`;
+                        const rawPendingIds = sessionStorage.getItem(pendingKey);
+                        const pendingIds = rawPendingIds ? (JSON.parse(rawPendingIds) as number[]) : [];
+
+                        if (Array.isArray(pendingIds) && pendingIds.length > 0) {
+                            await Promise.allSettled(pendingIds.map((id) => CartApi.deleteItem(id)));
+                        }
+
+                        sessionStorage.removeItem(pendingKey);
+                    }
+
                     setState("success");
                     setMessage(response?.message || "Thanh toán thành công. Đơn hàng đã được xác nhận.");
                 } else {

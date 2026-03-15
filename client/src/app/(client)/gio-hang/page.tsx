@@ -251,15 +251,16 @@ export default function CartPage() {
                 throw new Error("Không thể xác định mã đơn hàng vừa tạo.");
             }
 
+            const selectedIdsSnapshot = selectedItems.map((item) => item.id);
+
             if (paymentType === "BANK_TRANSFER") {
                 const returnUrl = `${window.location.origin}/thanh-toan/ket-qua`;
                 const paymentResponse = await PaymentApi.addPayment(createdOrderId, { paymentType: "BANK_TRANSFER", returnUrl });
                 const paymentData = paymentResponse.data;
                 const paymentUrl = typeof paymentData === "string" ? paymentData : typeof paymentData?.paymentUrl === "string" ? paymentData.paymentUrl : "";
 
-                await clearCartAfterOrder(selectedItems);
-                setCartItems((current) => current.filter((item) => !selectedItemIds.includes(item.id)));
-                setSelectedItemIds([]);
+                // Chỉ xóa giỏ sau khi callback VNPay xác nhận thành công.
+                sessionStorage.setItem(`pending_vnpay_cart_${createdOrderId}`, JSON.stringify(selectedIdsSnapshot));
 
                 if (paymentUrl) {
                     window.location.assign(paymentUrl);
@@ -273,7 +274,7 @@ export default function CartPage() {
             setInvoice((detailResponse.data ?? null) as OrderSummary | null);
 
             await clearCartAfterOrder(selectedItems);
-            setCartItems((current) => current.filter((item) => !selectedItemIds.includes(item.id)));
+            setCartItems((current) => current.filter((item) => !selectedIdsSnapshot.includes(item.id)));
             setSelectedItemIds([]);
             setNote("");
             toast.success("Đặt hàng thành công. Hóa đơn đã được lưu.");
