@@ -4,7 +4,7 @@ import { CartCheckoutSummary } from "@/app/(client)/gio-hang/_components/cart-ch
 import { CartEmptyState } from "@/app/(client)/gio-hang/_components/cart-empty-state";
 import { CartInvoice } from "@/app/(client)/gio-hang/_components/cart-invoice";
 import { CartItemList } from "@/app/(client)/gio-hang/_components/cart-item-list";
-import { NewAddressForm, extractOrderId, getAddressValue, getCartItemPrice, getOrderItemsFromCart, isCartItemAvailable } from "@/app/(client)/gio-hang/_components/cart-utils";
+import { NewAddressForm, extractOrderId, getAddressValue, getCartItemPrice, getCartItemStock, getOrderItemsFromCart, isCartItemAvailable } from "@/app/(client)/gio-hang/_components/cart-utils";
 import { CartApi } from "@/api/cart.api";
 import { OrderApi } from "@/api/order.api";
 import { PaymentApi } from "@/api/payment.api";
@@ -24,6 +24,7 @@ export default function CartPage() {
     const isAuthLoading = UserAuthStore.useStore((state) => state.isLoading);
     const [cartItems, setCartItems] = useState<CartItem[]>([]);
     const [addresses, setAddresses] = useState<UserAddress[]>([]);
+    const [selectedItemIds, setSelectedItemIds] = useState<number[]>([]);
     const [lastLoadedToken, setLastLoadedToken] = useState<string | null>(null);
     const [selectedAddressId, setSelectedAddressId] = useState<number | null>(null);
     const [useNewAddress, setUseNewAddress] = useState(false);
@@ -31,6 +32,7 @@ export default function CartPage() {
     const [note, setNote] = useState("");
     const [isPlacingOrder, setIsPlacingOrder] = useState(false);
     const [invoice, setInvoice] = useState<OrderSummary | null>(null);
+    const [lastCheckoutAmount, setLastCheckoutAmount] = useState(0);
 
     const [newAddress, setNewAddress] = useState<NewAddressForm>({
         customer_name: String(session?.fullName ?? ""),
@@ -61,9 +63,10 @@ export default function CartPage() {
             }
 
             setCartItems(cartResponse.data);
+            setSelectedItemIds(cartResponse.data.filter((item) => isCartItemAvailable(item)).map((item) => item.id));
             const nextAddresses = addressResponse.data.data;
             setAddresses(nextAddresses);
-            const preferredAddress = nextAddresses.find((address) => address.isDefault) ?? nextAddresses[0] ?? null;
+            const preferredAddress = nextAddresses.find((address) => address.is_default === 1 || address.is_default === true || address.isDefault) ?? nextAddresses[0] ?? null;
             setSelectedAddressId(preferredAddress?.id ?? null);
             setLastLoadedToken(sessionToken);
         };
@@ -85,6 +88,12 @@ export default function CartPage() {
             return;
         }
 
+        const maxStock = getCartItemStock(item);
+        if (maxStock !== undefined && nextQuantity > maxStock) {
+            toast.error(`Số lượng vượt tồn kho. Tối đa còn ${maxStock} sản phẩm.`);
+            return;
+        }
+
         const response = await CartApi.updateItem(item.id, { quantity: nextQuantity });
         if (!response || response.status >= 400) {
             toast.error(response?.message || "Không thể cập nhật giỏ hàng.");
@@ -103,16 +112,45 @@ export default function CartPage() {
         }
 
         setCartItems((current) => current.filter((item) => item.id !== itemId));
+        setSelectedItemIds((current) => current.filter((id) => id !== itemId));
         toast.success("Đã xóa sản phẩm khỏi giỏ hàng.");
     };
+
+    const handleToggleSelectItem = (itemId: number) => {
+        setSelectedItemIds((current) => {
+            if (current.includes(itemId)) {
+                return current.filter((id) => id !== itemId);
+            }
+            return [...current, itemId];
+        });
+    };
+
+    const handleToggleSelectAll = () => {
+        const selectableIds = cartItems.filter((item) => isCartItemAvailable(item)).map((item) => item.id);
+        const isAllSelected = selectableIds.length > 0 && selectableIds.every((id) => selectedItemIds.includes(id));
+
+        if (isAllSelected) {
+            setSelectedItemIds([]);
+            return;
+        }
+
+        setSelectedItemIds(selectableIds);
+    };
+
+    useEffect(() => {
+        setSelectedItemIds((current) => current.filter((id) => cartItems.some((item) => item.id === id && isCartItemAvailable(item))));
+    }, [cartItems]);
 
     const totalAmount = cartItems.reduce((sum, item) => {
         const price = getCartItemPrice(item);
         return sum + price * item.quantity;
     }, 0);
 
-    const clearCartAfterOrder = async () => {
-        const tasks = cartItems.map((item) => CartApi.deleteItem(item.id));
+    const selectedItems = cartItems.filter((item) => selectedItemIds.includes(item.id));
+    const selectedTotalAmount = selectedItems.reduce((sum, item) => sum + getCartItemPrice(item) * item.quantity, 0);
+
+    const clearCartAfterOrder = async (items: CartItem[]) => {
+        const tasks = items.map((item) => CartApi.deleteItem(item.id));
         await Promise.allSettled(tasks);
     };
 
@@ -176,11 +214,18 @@ export default function CartPage() {
             return;
         }
 
-        const orderItems = getOrderItemsFromCart(cartItems.filter((item) => isCartItemAvailable(item)));
-        if (orderItems.length !== cartItems.length) {
-            toast.error("Có sản phẩm trong giỏ thiếu biến thể hoặc không còn khả dụng. Vui lòng kiểm tra lại sản phẩm.");
+        if (selectedItems.length === 0) {
+            toast.error("Vui lòng chọn ít nhất 1 sản phẩm để thanh toán.");
             return;
         }
+
+        const orderItems = getOrderItemsFromCart(selectedItems.filter((item) => isCartItemAvailable(item)));
+        if (orderItems.length !== selectedItems.length) {
+            toast.error("Có sản phẩm đã chọn thiếu biến thể hoặc không còn khả dụng. Vui lòng kiểm tra lại sản phẩm.");
+            return;
+        }
+
+        setLastCheckoutAmount(selectedTotalAmount);
 
         setIsPlacingOrder(true);
         setInvoice(null);
@@ -212,8 +257,9 @@ export default function CartPage() {
                 const paymentData = paymentResponse.data;
                 const paymentUrl = typeof paymentData === "string" ? paymentData : typeof paymentData?.paymentUrl === "string" ? paymentData.paymentUrl : "";
 
-                await clearCartAfterOrder();
-                setCartItems([]);
+                await clearCartAfterOrder(selectedItems);
+                setCartItems((current) => current.filter((item) => !selectedItemIds.includes(item.id)));
+                setSelectedItemIds([]);
 
                 if (paymentUrl) {
                     window.location.assign(paymentUrl);
@@ -226,8 +272,9 @@ export default function CartPage() {
             const detailResponse = await OrderApi.getMyOrderDetail(createdOrderId);
             setInvoice((detailResponse.data ?? null) as OrderSummary | null);
 
-            await clearCartAfterOrder();
-            setCartItems([]);
+            await clearCartAfterOrder(selectedItems);
+            setCartItems((current) => current.filter((item) => !selectedItemIds.includes(item.id)));
+            setSelectedItemIds([]);
             setNote("");
             toast.success("Đặt hàng thành công. Hóa đơn đã được lưu.");
         } catch (error) {
@@ -277,11 +324,21 @@ export default function CartPage() {
                 <CartEmptyState />
             ) : (
                 <div className="grid gap-8 lg:grid-cols-[1.5fr_0.8fr]">
-                    <CartItemList cartItems={cartItems} onQuantityChange={(item, nextQuantity) => void handleQuantityChange(item, nextQuantity)} onDelete={(itemId) => void handleDelete(itemId)} />
+                    <CartItemList
+                        cartItems={cartItems}
+                        selectedItemIds={selectedItemIds}
+                        onToggleSelectItem={handleToggleSelectItem}
+                        onToggleSelectAll={handleToggleSelectAll}
+                        onQuantityChange={(item, nextQuantity) => void handleQuantityChange(item, nextQuantity)}
+                        onDelete={(itemId) => void handleDelete(itemId)}
+                    />
 
                     <CartCheckoutSummary
                         cartItems={cartItems}
                         totalAmount={totalAmount}
+                        selectedItemCount={selectedItems.length}
+                        selectedTotalAmount={selectedTotalAmount}
+                        hasSelectedItems={selectedItems.length > 0}
                         addresses={addresses}
                         selectedAddressId={selectedAddressId}
                         useNewAddress={useNewAddress}
@@ -299,7 +356,7 @@ export default function CartPage() {
                 </div>
             )}
 
-            {invoice ? <CartInvoice invoice={invoice} fallbackTotalAmount={totalAmount} /> : null}
+            {invoice ? <CartInvoice invoice={invoice} fallbackTotalAmount={lastCheckoutAmount || totalAmount} /> : null}
         </div>
     );
 }

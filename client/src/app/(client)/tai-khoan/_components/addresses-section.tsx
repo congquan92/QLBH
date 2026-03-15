@@ -91,14 +91,16 @@ export function AddressesSection({ form, addresses, isSavingAddress, onFormChang
                             <article key={address.id} className="border border-gray-200 p-5">
                                 <div className="flex flex-wrap items-start justify-between gap-3">
                                     <div>
-                                        <h3 className="text-lg font-semibold text-gray-900">{address.customerName || address.fullName || "Địa chỉ giao hàng"}</h3>
-                                        <p className="mt-1 text-sm text-gray-600">{address.phoneNumber || address.phone}</p>
+                                        <h3 className="text-lg font-semibold text-gray-900">{address.customer_name || address.customerName || address.fullName || "Địa chỉ giao hàng"}</h3>
+                                        <p className="mt-1 text-sm text-gray-600">{address.phone_number || address.phoneNumber || address.phone}</p>
                                         <p className="mt-3 text-sm text-gray-600">{getAddressText(address)}</p>
                                     </div>
-                                    {address.isDefault ? <span className="border border-red-200 bg-red-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-red-600">Mặc định</span> : null}
+                                    {address.is_default === 1 || address.is_default === true || address.isDefault ? (
+                                        <span className="border border-red-200 bg-red-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-red-600">Mặc định</span>
+                                    ) : null}
                                 </div>
                                 <div className="mt-4 flex flex-wrap gap-3">
-                                    {!address.isDefault ? (
+                                    {!(address.is_default === 1 || address.is_default === true || address.isDefault) ? (
                                         <Button variant="outline" className="rounded-none" onClick={() => onSetDefault(address.id)}>
                                             Đặt mặc định
                                         </Button>

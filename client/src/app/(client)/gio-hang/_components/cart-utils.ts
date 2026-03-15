@@ -62,6 +62,15 @@ export function getCartLineTotal(item: CartItem) {
     return getCartItemPrice(item) * item.quantity;
 }
 
+export function getCartItemStock(item: CartItem) {
+    const stock = Number(item.product_variant?.quantity);
+    if (!Number.isFinite(stock) || stock < 0) {
+        return undefined;
+    }
+
+    return stock;
+}
+
 export function getOrderItemsFromCart(cartItems: CartItem[]) {
     return cartItems
         .map((item) => ({

@@ -8,6 +8,9 @@ import { NewAddressForm, getAddressValue } from "./cart-utils";
 interface CartCheckoutSummaryProps {
     cartItems: CartItem[];
     totalAmount: number;
+    selectedItemCount: number;
+    selectedTotalAmount: number;
+    hasSelectedItems: boolean;
     addresses: UserAddress[];
     selectedAddressId: number | null;
     useNewAddress: boolean;
@@ -26,6 +29,9 @@ interface CartCheckoutSummaryProps {
 export function CartCheckoutSummary({
     cartItems,
     totalAmount,
+    selectedItemCount,
+    selectedTotalAmount,
+    hasSelectedItems,
     addresses,
     selectedAddressId,
     useNewAddress,
@@ -49,6 +55,10 @@ export function CartCheckoutSummary({
                     <span className="font-medium text-gray-900">{cartItems.length}</span>
                 </div>
                 <div className="flex items-center justify-between">
+                    <span>Đã chọn thanh toán</span>
+                    <span className="font-medium text-gray-900">{selectedItemCount}</span>
+                </div>
+                <div className="flex items-center justify-between">
                     <span>Tổng tạm tính</span>
                     <span className="font-medium text-gray-900">{Helper.formatPrice(String(totalAmount))}</span>
                 </div>
@@ -56,8 +66,8 @@ export function CartCheckoutSummary({
 
             <div className="border-t border-gray-200 pt-4">
                 <p className="flex items-center justify-between text-lg font-bold text-gray-900">
-                    <span>Tổng cộng</span>
-                    <span>{Helper.formatPrice(String(totalAmount))}</span>
+                    <span>Tổng thanh toán</span>
+                    <span>{Helper.formatPrice(String(selectedTotalAmount))}</span>
                 </p>
             </div>
 
@@ -83,7 +93,9 @@ export function CartCheckoutSummary({
                                     <label key={address.id} className={`block cursor-pointer border p-3 text-sm ${selectedAddressId === address.id ? "border-red-600 bg-red-50" : "border-gray-200 bg-white"}`}>
                                         <input type="radio" name="shipping-address" className="mr-2" checked={selectedAddressId === address.id} onChange={() => onSelectAddress(address.id)} />
                                         <span className="font-semibold text-gray-900">{mapped.customerName || "Địa chỉ"}</span>
-                                        {address.isDefault ? <span className="ml-2 border border-red-200 bg-red-100 px-2 py-0.5 text-[10px] font-semibold uppercase text-red-700">Mặc định</span> : null}
+                                        {address.is_default === 1 || address.is_default === true || address.isDefault ? (
+                                            <span className="ml-2 border border-red-200 bg-red-100 px-2 py-0.5 text-[10px] font-semibold uppercase text-red-700">Mặc định</span>
+                                        ) : null}
                                         <p className="mt-1 text-xs text-gray-600">{mapped.phone}</p>
                                         <p className="mt-1 text-xs text-gray-600">{[mapped.detail, mapped.ward, mapped.district, mapped.province].filter(Boolean).join(", ")}</p>
                                     </label>
@@ -119,7 +131,7 @@ export function CartCheckoutSummary({
 
                 <textarea value={note} onChange={(event) => onNoteChange(event.target.value)} placeholder="Ghi chú đơn hàng (tuỳ chọn)" rows={3} className="w-full border border-gray-300 p-3 text-sm" />
 
-                <Button className="w-full rounded-none bg-red-600 hover:bg-red-700" onClick={onCheckout} disabled={isPlacingOrder || cartItems.length === 0}>
+                <Button className="w-full rounded-none bg-red-600 hover:bg-red-700" onClick={onCheckout} disabled={isPlacingOrder || cartItems.length === 0 || !hasSelectedItems}>
                     {isPlacingOrder ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}
                     {paymentType === "BANK_TRANSFER" ? "Đặt hàng và chuyển tới cổng thanh toán" : "Đặt hàng (COD)"}
                 </Button>

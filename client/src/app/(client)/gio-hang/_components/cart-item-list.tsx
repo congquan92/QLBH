@@ -7,16 +7,31 @@ import { getCartItemAttributes, getCartItemImage, getCartItemName, getCartItemPr
 
 interface CartItemListProps {
     cartItems: CartItem[];
+    selectedItemIds: number[];
+    onToggleSelectItem: (itemId: number) => void;
+    onToggleSelectAll: () => void;
     onQuantityChange: (item: CartItem, nextQuantity: number) => void;
     onDelete: (itemId: number) => void;
 }
 
-export function CartItemList({ cartItems, onQuantityChange, onDelete }: CartItemListProps) {
+export function CartItemList({ cartItems, selectedItemIds, onToggleSelectItem, onToggleSelectAll, onQuantityChange, onDelete }: CartItemListProps) {
+    const selectableIds = cartItems.filter((item) => isCartItemAvailable(item)).map((item) => item.id);
+    const isAllSelected = selectableIds.length > 0 && selectableIds.every((id) => selectedItemIds.includes(id));
+
     return (
         <div className="space-y-4">
+            <div className="flex items-center justify-between border border-gray-200 bg-gray-50 px-4 py-3 text-sm">
+                <label className="inline-flex items-center gap-2 font-medium text-gray-700">
+                    <input type="checkbox" checked={isAllSelected} onChange={onToggleSelectAll} disabled={selectableIds.length === 0} />
+                    Chọn tất cả sản phẩm khả dụng
+                </label>
+                <span className="text-gray-500">Đã chọn {selectedItemIds.length}</span>
+            </div>
+
             {cartItems.map((item) => {
                 const attributes = getCartItemAttributes(item);
                 const available = isCartItemAvailable(item);
+                const isSelected = selectedItemIds.includes(item.id);
 
                 return (
                     <article key={item.id} className="grid gap-4 border border-gray-200 bg-white p-4 sm:grid-cols-[120px_1fr]">
@@ -31,7 +46,10 @@ export function CartItemList({ cartItems, onQuantityChange, onDelete }: CartItem
                         <div className="flex flex-col justify-between gap-4">
                             <div>
                                 <div className="flex flex-wrap items-start justify-between gap-3">
-                                    <h2 className="text-lg font-semibold text-gray-900">{getCartItemName(item)}</h2>
+                                    <div className="flex items-start gap-3">
+                                        <input type="checkbox" checked={isSelected} onChange={() => onToggleSelectItem(item.id)} disabled={!available} className="mt-1" />
+                                        <h2 className="text-lg font-semibold text-gray-900">{getCartItemName(item)}</h2>
+                                    </div>
                                     {!available ? (
                                         <span className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-2 py-1 text-xs font-semibold text-red-700">
                                             <AlertCircle className="h-3.5 w-3.5" />
