@@ -64,7 +64,7 @@ export default function CustomersPage() {
         setIsLoading(true);
         try {
             const [usersRes, rolesRes, positionsRes] = await Promise.all([
-                UserApi.getUsers({ page: 1, size: 200, sort: "id:desc" }),
+                UserApi.getUsers({ page: 1, size: 200, sort: "id:desc", hasUserRole: true }),
                 RbacApi.getRoles({ page: 1, size: 100, sort: "id:asc" }),
                 AdminCrudApi.getPositions({ page: 1, size: 100, sort: "id:asc" }),
             ]);
@@ -222,7 +222,7 @@ export default function CustomersPage() {
     }
 
     return (
-        <AdminPageShell title="Quản lý user" description="Thêm, đăng ký, sửa role và khóa/mở user">
+        <AdminPageShell title="Quản lý khách hàng" description="Chỉ hiển thị tài khoản có vai trò USER">
             <UsersToolbar totalCount={users.length} showCreateForm={showCreateForm} showRegisterForm={showRegisterForm} onToggleCreateForm={() => setShowCreateForm((prev) => !prev)} onToggleRegisterForm={() => setShowRegisterForm((prev) => !prev)} />
 
             <CreateUserForm

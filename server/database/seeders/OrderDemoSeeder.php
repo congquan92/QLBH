@@ -19,12 +19,24 @@ class OrderDemoSeeder extends Seeder
             return;
         }
 
-        DB::transaction(function () use ($customer): void {
-            $this->seedOrders((int) $customer->id, (string) ($customer->full_name ?? 'Customer Demo'), (string) ($customer->phone ?? '0900000004'));
+        $deliveryAddress = $this->resolveDeliveryAddress((int) $customer->id);
+        if (!$deliveryAddress) {
+            return;
+        }
+
+        DB::transaction(function () use ($customer, $deliveryAddress): void {
+            $this->seedOrders(
+                (int) $customer->id,
+                (string) ($customer->full_name ?? 'Customer Demo'),
+                (string) ($customer->phone ?? '0900000004'),
+                $deliveryAddress
+            );
+            $this->syncCustomerSpent((int) $customer->id);
+            $this->syncProductSoldQuantity();
         });
     }
 
-    private function seedOrders(int $userId, string $customerName, string $customerPhone): void
+    private function seedOrders(int $userId, string $customerName, string $customerPhone, array $deliveryAddress): void
     {
         $variants = DB::table('product_variants')->whereIn('sku', ['DRIFT-BLK-M', 'DRIFT-GBE-L'])->get()->keyBy('sku');
         $products = DB::table('products')->whereIn('name', [self::PRODUCT_NAME])->get()->keyBy('name');
@@ -60,13 +72,13 @@ class OrderDemoSeeder extends Seeder
                 [
                     'customer_name' => $customerName,
                     'customer_phone' => $customerPhone,
-                    'delivery_ward_name' => 'Phường Bình Hưng Hoà A',
-                    'delivery_ward_code' => '21904',
-                    'delivery_district_id' => 1458,
-                    'delivery_province_id' => 209,
-                    'delivery_district_name' => 'Quận Bình Tân',
-                    'delivery_province_name' => 'Hồ Chí Minh',
-                    'delivery_address' => 'abcd, Quận Bình Tân',
+                    'delivery_ward_name' => $deliveryAddress['ward'],
+                    'delivery_ward_code' => $deliveryAddress['ward_id'],
+                    'delivery_district_id' => $deliveryAddress['district_id'],
+                    'delivery_province_id' => $deliveryAddress['province_id'],
+                    'delivery_district_name' => $deliveryAddress['district'],
+                    'delivery_province_name' => $deliveryAddress['province'],
+                    'delivery_address' => $deliveryAddress['address'],
                     'service_type_id' => 2,
                     'original_order_amount' => $amount,
                     'weight' => max(1, $weight),
@@ -118,6 +130,61 @@ class OrderDemoSeeder extends Seeder
                     ]
                 );
             }
+        }
+    }
+
+    private function resolveDeliveryAddress(int $userId): ?array
+    {
+        $defaultAddress = DB::table('user_address')
+            ->join('addresses', 'addresses.id', '=', 'user_address.address_id')
+            ->where('user_address.user_id', $userId)
+            ->where('user_address.is_default', true)
+            ->select('addresses.*')
+            ->first();
+
+        $address = $defaultAddress ?: DB::table('addresses')
+            ->where('user_id', $userId)
+            ->orderBy('id')
+            ->first();
+
+        if (!$address) {
+            return null;
+        }
+
+        return [
+            'ward' => (string) $address->ward,
+            'ward_id' => (string) $address->ward_id,
+            'district_id' => (int) $address->district_id,
+            'province_id' => (int) $address->province_id,
+            'district' => (string) $address->district,
+            'province' => (string) $address->province,
+            'address' => (string) $address->address,
+        ];
+    }
+
+    private function syncCustomerSpent(int $userId): void
+    {
+        $totalSpent = (float) DB::table('orders')
+            ->where('user_id', $userId)
+            ->where('payment_status', PaymentStatus::PAID->value)
+            ->sum('total_amount');
+
+        DB::table('users')
+            ->where('id', $userId)
+            ->update(['total_spent' => $totalSpent, 'updated_at' => now()]);
+    }
+
+    private function syncProductSoldQuantity(): void
+    {
+        $soldRows = DB::table('order_items')
+            ->select('product_id', DB::raw('SUM(quantity) as sold_quantity'))
+            ->groupBy('product_id')
+            ->get();
+
+        foreach ($soldRows as $row) {
+            DB::table('products')
+                ->where('id', $row->product_id)
+                ->update(['sold_quantity' => (int) $row->sold_quantity, 'updated_at' => now()]);
         }
     }
 }

@@ -40,9 +40,9 @@ class PositionSeeder extends Seeder
             ],
             'Nhân viên' => [
                 ['username' => 'staff_01', 'full_name' => 'Nguyễn Văn An',  'email' => 'staff_01@qlbh.local', 'phone' => '0911000001', 'gender' => Gender::MALE,   'role' => 'ORDER_STAFF',     'rank_id' => $defaultRankId, 'employment_type' => 'FULL_TIME'],
-            ],
-            'Nhân viên Bán hàng (Part-time)' => [
-                ['username' => 'sale_pt_01', 'full_name' => 'Trần Thị Bình', 'email' => 'sale_pt_01@qlbh.local', 'phone' => '0911000002', 'gender' => Gender::FEMALE, 'role' => 'ORDER_STAFF',     'rank_id' => $defaultRankId, 'employment_type' => 'PART_TIME'],
+                ['username' => 'sale_ft_01', 'full_name' => 'Lê Minh Khang',  'email' => 'sale_ft_01@qlbh.local', 'phone' => '0911000002', 'gender' => Gender::MALE,   'role' => 'ORDER_STAFF',     'rank_id' => $defaultRankId, 'employment_type' => 'FULL_TIME'],
+                ['username' => 'sale_pt_01', 'full_name' => 'Trần Thị Bình', 'email' => 'sale_pt_01@qlbh.local', 'phone' => '0911000003', 'gender' => Gender::FEMALE, 'role' => 'ORDER_STAFF',     'rank_id' => $defaultRankId, 'employment_type' => 'PART_TIME'],
+                ['username' => 'warehouse_01', 'full_name' => 'Phạm Văn Kho',  'email' => 'warehouse_01@qlbh.local', 'phone' => '0911000006', 'gender' => Gender::MALE,   'role' => 'WAREHOUSE_STAFF', 'rank_id' => $defaultRankId, 'employment_type' => 'FULL_TIME'],
             ],
             'Quản lý' => [
                 ['username' => 'manager_01', 'full_name' => 'Phạm Văn Đức', 'email' => 'manager_01@qlbh.local', 'phone' => '0911000004', 'gender' => Gender::MALE, 'role' => 'ADMIN', 'rank_id' => $defaultRankId, 'employment_type' => 'FULL_TIME'],

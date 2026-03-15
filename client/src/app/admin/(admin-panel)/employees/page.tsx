@@ -98,10 +98,10 @@ export default function EmployeesPage() {
 
         setIsLoading(true);
         try {
-            const [usersRes, rolesRes] = await Promise.all([UserApi.getUsers({ page: 1, size: 100, sort: "id:desc" }), canAssignRole ? RbacApi.getRoles({ page: 1, size: 50 }) : Promise.resolve(null)]);
+            const [usersRes, rolesRes] = await Promise.all([UserApi.getUsers({ page: 1, size: 100, sort: "id:desc", hasUserRole: false }), canAssignRole ? RbacApi.getRoles({ page: 1, size: 50 }) : Promise.resolve(null)]);
             setEmployees(usersRes.data.data);
             if (rolesRes) {
-                setRoles(rolesRes.data.data);
+                setRoles(rolesRes);
             }
         } catch (error) {
             console.error("Failed to fetch employees", error);
@@ -193,7 +193,7 @@ export default function EmployeesPage() {
         : employees;
 
     return (
-        <AdminPageShell title="Nhân viên" description="Quản lý hồ sơ nhân viên và trạng thái làm việc" requiredPermissions={["VIEW_USERS"]}>
+        <AdminPageShell title="Nhân viên" description="Quản lý hồ sơ nhân viên và trạng thái làm việc">
             {/* Create Employee Form */}
             {canCreateUser && (
                 <Card className="mb-4">

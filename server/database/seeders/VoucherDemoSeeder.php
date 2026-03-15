@@ -63,6 +63,15 @@ class VoucherDemoSeeder extends Seeder
                 'order_status' => DeliveryStatus::DELIVERED->value,
                 'updated_at' => now(),
             ]);
+
+            $totalSpent = (float) DB::table('orders')
+                ->where('user_id', $customerId)
+                ->where('payment_status', PaymentStatus::PAID->value)
+                ->sum('total_amount');
+
+            DB::table('users')
+                ->where('id', $customerId)
+                ->update(['total_spent' => $totalSpent, 'updated_at' => now()]);
         });
     }
 }
