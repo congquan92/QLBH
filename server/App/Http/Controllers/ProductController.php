@@ -25,10 +25,12 @@ class ProductController extends Controller
     {
         $keyword = $request->query('keyword');
         $sort = $request->query('sort');
+        $minPrice = $request->query('minPrice');
+        $maxPrice = $request->query('maxPrice');
         $page = (int) $request->query('page', 1);
         $size = (int) $request->query('size', 10);
 
-        $result = $this->productService->findAll($keyword, $sort, $page, $size);
+        $result = $this->productService->findAll($keyword, $sort, $page, $size, $minPrice, $maxPrice);
         return $this->success($result, 'Product list fetched successfully');
     }
 
@@ -59,10 +61,12 @@ class ProductController extends Controller
     {
         $keyword = $request->query('keyword');
         $sort = $request->query('sort');
+        $minPrice = $request->query('minPrice');
+        $maxPrice = $request->query('maxPrice');
         $page = (int) $request->query('page', 1);
         $size = (int) $request->query('size', 10);
 
-        $result = $this->productService->findAllByCategory($id, $keyword, $sort, $page, $size);
+        $result = $this->productService->findAllByCategory($id, $keyword, $sort, $page, $size, $minPrice, $maxPrice);
         return $this->success($result, 'Product list fetched successfully');
     }
     /**

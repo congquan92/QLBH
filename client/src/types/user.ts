@@ -13,6 +13,16 @@ export interface UserProfile {
 
 export interface UserAddress {
     id: number;
+    address?: string;
+    customerName?: string;
+    phoneNumber?: string;
+    province?: string;
+    district?: string;
+    ward?: string;
+    provinceId?: number;
+    districtId?: number;
+    wardId?: number;
+    addressType?: string;
     fullName?: string;
     phone?: string;
     provinceName?: string;

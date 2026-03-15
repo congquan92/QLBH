@@ -35,7 +35,10 @@ public function createPaymentUrl(Request $request, $orderId)
     $vnp_TmnCode = config('vnpay.vnp_TmnCode');
     $vnp_HashSecret = config('vnpay.vnp_HashSecret');
     $vnp_Url = config('vnpay.vnp_Url');
-    $vnp_Returnurl = config('vnpay.vnp_ReturnUrl');
+    $vnp_Returnurl = $request->input('returnUrl');
+    if (!$vnp_Returnurl || !filter_var($vnp_Returnurl, FILTER_VALIDATE_URL)) {
+        $vnp_Returnurl = config('vnpay.vnp_ReturnUrl');
+    }
 
     Log::info("VNPay Config Check:", [
         'vnp_TmnCode' => $vnp_TmnCode,

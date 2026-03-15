@@ -2,6 +2,7 @@ import type { ApiResponse } from "@/types/api";
 
 export interface AddPaymentPayload {
     paymentType: string;
+    returnUrl?: string;
     amount?: number;
     note?: string;
     [key: string]: unknown;

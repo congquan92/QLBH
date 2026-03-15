@@ -74,6 +74,9 @@ function AccountPageContent() {
     const [profile, setProfile] = useState<UserProfile | null>(null);
     const [orders, setOrders] = useState<OrderSummary[]>([]);
     const [addresses, setAddresses] = useState<UserAddress[]>([]);
+    const [orderDetails, setOrderDetails] = useState<Record<number, OrderSummary>>({});
+    const [expandedOrderId, setExpandedOrderId] = useState<number | null>(null);
+    const [loadingOrderId, setLoadingOrderId] = useState<number | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isSavingProfile, setIsSavingProfile] = useState(false);
     const [isSavingAddress, setIsSavingAddress] = useState(false);
@@ -201,6 +204,32 @@ function AccountPageContent() {
         toast.success("Đã đăng xuất khỏi khu khách hàng.");
     };
 
+    const handleToggleOrderDetail = async (orderId: number) => {
+        if (expandedOrderId === orderId) {
+            setExpandedOrderId(null);
+            return;
+        }
+
+        setExpandedOrderId(orderId);
+
+        if (orderDetails[orderId]) {
+            return;
+        }
+
+        setLoadingOrderId(orderId);
+        try {
+            const detailResponse = await OrderApi.getMyOrderDetail(orderId);
+            setOrderDetails((current) => ({
+                ...current,
+                [orderId]: (detailResponse.data ?? {}) as OrderSummary,
+            }));
+        } catch {
+            toast.error("Không thể tải chi tiết đơn hàng.");
+        } finally {
+            setLoadingOrderId(null);
+        }
+    };
+
     if (isLoading) {
         return <div className="mx-auto max-w-6xl px-4 py-16 text-center text-gray-500">Đang tải dữ liệu tài khoản...</div>;
     }
@@ -296,22 +325,60 @@ function AccountPageContent() {
                                 ) : (
                                     orders.map((order) => (
                                         <article key={order.id} className="border border-gray-200 p-5">
-                                            <div className="flex flex-wrap items-start justify-between gap-3">
-                                                <div>
-                                                    <p className="text-sm font-semibold uppercase tracking-[0.2em] text-red-600">Đơn #{order.id}</p>
-                                                    <h3 className="mt-2 text-lg font-semibold text-gray-900">Trạng thái: {order.orderStatus || "Đang xử lý"}</h3>
-                                                    <p className="mt-1 text-sm text-gray-600">Thanh toán: {order.paymentStatus || "Chưa cập nhật"}</p>
-                                                </div>
-                                                <p className="text-lg font-bold text-gray-900">{Helper.formatPrice(String(order.totalAmount ?? 0))}</p>
-                                            </div>
-                                            <div className="mt-4 space-y-2 text-sm text-gray-600">
-                                                {(order.orderItem ?? []).map((item, index) => (
-                                                    <div key={`${order.id}-${item.id ?? index}`} className="flex items-center justify-between gap-3 border-t border-gray-100 pt-2 first:border-t-0 first:pt-0">
-                                                        <span>{item.nameProductSnapshot || `Sản phẩm #${item.productId ?? item.productVariantId ?? index + 1}`}</span>
-                                                        <span>x{item.quantity}</span>
-                                                    </div>
-                                                ))}
-                                            </div>
+                                            {(() => {
+                                                const detail = orderDetails[order.id];
+                                                const mergedOrder = detail ? { ...order, ...detail } : order;
+                                                const statusText = mergedOrder.deliveryStatus || mergedOrder.orderStatus || "Đang xử lý";
+                                                const lineItems = mergedOrder.orderItemResponses ?? mergedOrder.orderItem ?? [];
+
+                                                return (
+                                                    <>
+                                                        <div className="flex flex-wrap items-start justify-between gap-3">
+                                                            <div>
+                                                                <p className="text-sm font-semibold uppercase tracking-[0.2em] text-red-600">Đơn #{order.id}</p>
+                                                                <h3 className="mt-2 text-lg font-semibold text-gray-900">Trạng thái: {statusText}</h3>
+                                                                <p className="mt-1 text-sm text-gray-600">Thanh toán: {mergedOrder.paymentStatus || "Chưa cập nhật"}</p>
+                                                            </div>
+                                                            <p className="text-lg font-bold text-gray-900">{Helper.formatPrice(String(mergedOrder.totalAmount ?? 0))}</p>
+                                                        </div>
+                                                        <div className="mt-4 space-y-2 text-sm text-gray-600">
+                                                            {lineItems.map((item, index) => (
+                                                                <div key={`${order.id}-${item.id ?? index}`} className="flex items-center justify-between gap-3 border-t border-gray-100 pt-2 first:border-t-0 first:pt-0">
+                                                                    <span>{item.nameProductSnapshot || `Sản phẩm #${item.productId ?? item.productVariantId ?? index + 1}`}</span>
+                                                                    <span>x{item.quantity}</span>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+
+                                                        <div className="mt-4">
+                                                            <Button variant="outline" className="rounded-none" onClick={() => void handleToggleOrderDetail(order.id)}>
+                                                                {expandedOrderId === order.id ? "Ẩn chi tiết" : "Xem chi tiết"}
+                                                            </Button>
+                                                        </div>
+
+                                                        {expandedOrderId === order.id && (
+                                                            <div className="mt-4 border-t border-gray-200 pt-4 text-sm text-gray-700">
+                                                                {loadingOrderId === order.id ? (
+                                                                    <p>Đang tải chi tiết đơn hàng...</p>
+                                                                ) : (
+                                                                    <>
+                                                                        <p>
+                                                                            <span className="font-semibold text-gray-900">Người nhận:</span> {mergedOrder.customerName || "-"} - {mergedOrder.customerPhone || "-"}
+                                                                        </p>
+                                                                        <p className="mt-1">
+                                                                            <span className="font-semibold text-gray-900">Địa chỉ giao:</span>{" "}
+                                                                            {[mergedOrder.deliveryAddress, mergedOrder.deliveryWardName, mergedOrder.deliveryDistrictName, mergedOrder.deliveryProvinceName].filter(Boolean).join(", ") || "-"}
+                                                                        </p>
+                                                                        <p className="mt-1">
+                                                                            <span className="font-semibold text-gray-900">Phương thức thanh toán:</span> {mergedOrder.paymentType || "-"}
+                                                                        </p>
+                                                                    </>
+                                                                )}
+                                                            </div>
+                                                        )}
+                                                    </>
+                                                );
+                                            })()}
                                         </article>
                                     ))
                                 )}
