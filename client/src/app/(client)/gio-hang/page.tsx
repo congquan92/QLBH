@@ -1,74 +1,23 @@
 "use client";
 
+import { CartCheckoutSummary } from "@/app/(client)/gio-hang/_components/cart-checkout-summary";
+import { CartEmptyState } from "@/app/(client)/gio-hang/_components/cart-empty-state";
+import { CartInvoice } from "@/app/(client)/gio-hang/_components/cart-invoice";
+import { CartItemList } from "@/app/(client)/gio-hang/_components/cart-item-list";
+import { NewAddressForm, extractOrderId, getAddressValue, getCartItemPrice, getOrderItemsFromCart, isCartItemAvailable } from "@/app/(client)/gio-hang/_components/cart-utils";
 import { CartApi } from "@/api/cart.api";
 import { OrderApi } from "@/api/order.api";
 import { PaymentApi } from "@/api/payment.api";
 import { UserApi } from "@/api/user.api";
-import { Button } from "@/components/ui/button";
 import { UserAuthStore } from "@/hooks/useClientAuth";
-import { Helper } from "@/lib/helper";
 import { UserAuthUtil } from "@/lib/user-auth";
 
 import { CartItem } from "@/types/cart";
 import { OrderSummary } from "@/types/order";
 import { UserAddress } from "@/types/user";
-import { Loader2, Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-
-type NewAddressForm = {
-    customer_name: string;
-    phone: string;
-    province: string;
-    district: string;
-    ward: string;
-    province_id: string;
-    district_id: string;
-    ward_id: string;
-    address: string;
-};
-
-function getAddressValue(address: UserAddress) {
-    return {
-        customerName: String(address.customerName ?? address.fullName ?? "").trim(),
-        phone: String(address.phoneNumber ?? address.phone ?? "").trim(),
-        province: String(address.province ?? address.provinceName ?? "").trim(),
-        district: String(address.district ?? address.districtName ?? "").trim(),
-        ward: String(address.ward ?? address.wardName ?? "").trim(),
-        provinceId: Number(address.provinceId ?? 0),
-        districtId: Number(address.districtId ?? 0),
-        wardId: Number(address.wardId ?? 0),
-        detail: String(address.address ?? address.detail ?? "").trim(),
-    };
-}
-
-function getOrderItemsFromCart(cartItems: CartItem[]) {
-    return cartItems
-        .filter((item) => typeof item.productVariantId === "number" && item.productVariantId > 0)
-        .map((item) => ({
-            productVariantId: Number(item.productVariantId),
-            quantity: item.quantity,
-        }));
-}
-
-function extractOrderId(value: unknown): number | null {
-    if (!value || typeof value !== "object") {
-        return null;
-    }
-
-    const record = value as Record<string, unknown>;
-    const candidates = [record.id, record.orderId, record.order_id];
-    for (const candidate of candidates) {
-        const parsed = Number(candidate);
-        if (Number.isFinite(parsed) && parsed > 0) {
-            return parsed;
-        }
-    }
-
-    return null;
-}
 
 export default function CartPage() {
     const session = UserAuthStore.useStore((state) => state.session);
@@ -111,7 +60,7 @@ export default function CartPage() {
                 return;
             }
 
-            setCartItems(cartResponse.data.data);
+            setCartItems(cartResponse.data);
             const nextAddresses = addressResponse.data.data;
             setAddresses(nextAddresses);
             const preferredAddress = nextAddresses.find((address) => address.isDefault) ?? nextAddresses[0] ?? null;
@@ -128,6 +77,11 @@ export default function CartPage() {
 
     const handleQuantityChange = async (item: CartItem, nextQuantity: number) => {
         if (nextQuantity < 1) {
+            return;
+        }
+
+        if (!isCartItemAvailable(item)) {
+            toast.error("Sản phẩm này hiện không khả dụng để cập nhật số lượng.");
             return;
         }
 
@@ -153,7 +107,7 @@ export default function CartPage() {
     };
 
     const totalAmount = cartItems.reduce((sum, item) => {
-        const price = Number(item.listPriceSnapshot ?? 0);
+        const price = getCartItemPrice(item);
         return sum + price * item.quantity;
     }, 0);
 
@@ -222,9 +176,9 @@ export default function CartPage() {
             return;
         }
 
-        const orderItems = getOrderItemsFromCart(cartItems);
+        const orderItems = getOrderItemsFromCart(cartItems.filter((item) => isCartItemAvailable(item)));
         if (orderItems.length !== cartItems.length) {
-            toast.error("Có sản phẩm trong giỏ thiếu biến thể. Vui lòng kiểm tra lại sản phẩm.");
+            toast.error("Có sản phẩm trong giỏ thiếu biến thể hoặc không còn khả dụng. Vui lòng kiểm tra lại sản phẩm.");
             return;
         }
 
@@ -320,209 +274,32 @@ export default function CartPage() {
             </div>
 
             {cartItems.length === 0 ? (
-                <div className="border border-dashed border-gray-300 bg-gray-50 p-12 text-center text-gray-600">
-                    <ShoppingBag className="mx-auto size-10 text-gray-400" />
-                    <p className="mt-4 text-lg font-medium text-gray-900">Giỏ hàng đang trống</p>
-                    <p className="mt-2 text-sm">Hãy quay lại khu sản phẩm để chọn biến thể và thêm vào giỏ.</p>
-                </div>
+                <CartEmptyState />
             ) : (
                 <div className="grid gap-8 lg:grid-cols-[1.5fr_0.8fr]">
-                    <div className="space-y-4">
-                        {cartItems.map((item) => (
-                            <article key={item.id} className="grid gap-4 border border-gray-200 bg-white p-4 sm:grid-cols-[120px_1fr]">
-                                <div className="relative aspect-square overflow-hidden bg-gray-100">
-                                    {item.urlImageSnapshot ? (
-                                        <Image src={item.urlImageSnapshot} alt={item.nameProductSnapshot || "Cart item"} fill className="object-cover" sizes="120px" />
-                                    ) : (
-                                        <div className="flex h-full items-center justify-center text-sm text-gray-400">No image</div>
-                                    )}
-                                </div>
+                    <CartItemList cartItems={cartItems} onQuantityChange={(item, nextQuantity) => void handleQuantityChange(item, nextQuantity)} onDelete={(itemId) => void handleDelete(itemId)} />
 
-                                <div className="flex flex-col justify-between gap-4">
-                                    <div>
-                                        <h2 className="text-lg font-semibold text-gray-900">{item.nameProductSnapshot || "Sản phẩm trong giỏ hàng"}</h2>
-                                        <p className="mt-2 text-sm text-gray-600">Đơn giá: {Helper.formatPrice(String(item.listPriceSnapshot ?? 0))}</p>
-                                    </div>
-
-                                    <div className="flex flex-wrap items-center justify-between gap-3">
-                                        <div className="flex items-center border border-gray-300">
-                                            <button onClick={() => void handleQuantityChange(item, item.quantity - 1)} className="p-2 transition-colors hover:bg-gray-100" disabled={item.quantity <= 1}>
-                                                <Minus className="size-4" />
-                                            </button>
-                                            <span className="min-w-12 border-x border-gray-300 px-4 py-2 text-center text-sm font-medium">{item.quantity}</span>
-                                            <button onClick={() => void handleQuantityChange(item, item.quantity + 1)} className="p-2 transition-colors hover:bg-gray-100">
-                                                <Plus className="size-4" />
-                                            </button>
-                                        </div>
-
-                                        <div className="flex items-center gap-3">
-                                            <p className="text-base font-bold text-red-600">{Helper.formatPrice(String(Number(item.listPriceSnapshot ?? 0) * item.quantity))}</p>
-                                            <Button variant="ghost" className="text-gray-500 hover:text-red-600" onClick={() => void handleDelete(item.id)}>
-                                                <Trash2 className="size-4" />
-                                            </Button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </article>
-                        ))}
-                    </div>
-
-                    <aside className="h-fit border border-gray-200 bg-gray-50 p-6 space-y-6">
-                        <h2 className="text-xl font-semibold text-gray-900">Tóm tắt đơn hàng</h2>
-                        <div className="mt-6 space-y-3 text-sm text-gray-600">
-                            <div className="flex items-center justify-between">
-                                <span>Số dòng sản phẩm</span>
-                                <span className="font-medium text-gray-900">{cartItems.length}</span>
-                            </div>
-                            <div className="flex items-center justify-between">
-                                <span>Tổng tạm tính</span>
-                                <span className="font-medium text-gray-900">{Helper.formatPrice(String(totalAmount))}</span>
-                            </div>
-                        </div>
-
-                        <div className="mt-6 border-t border-gray-200 pt-4">
-                            <p className="flex items-center justify-between text-lg font-bold text-gray-900">
-                                <span>Tổng cộng</span>
-                                <span>{Helper.formatPrice(String(totalAmount))}</span>
-                            </p>
-                        </div>
-
-                        <section className="space-y-3 border-t border-gray-200 pt-4">
-                            <h3 className="text-base font-semibold text-gray-900">Địa chỉ giao hàng</h3>
-                            <div className="flex gap-2">
-                                <button type="button" onClick={() => setUseNewAddress(false)} className={`border px-3 py-2 text-xs font-semibold ${!useNewAddress ? "border-red-600 bg-red-600 text-white" : "border-gray-300 bg-white text-gray-700"}`}>
-                                    Chọn từ tài khoản
-                                </button>
-                                <button type="button" onClick={() => setUseNewAddress(true)} className={`border px-3 py-2 text-xs font-semibold ${useNewAddress ? "border-red-600 bg-red-600 text-white" : "border-gray-300 bg-white text-gray-700"}`}>
-                                    Nhập địa chỉ mới
-                                </button>
-                            </div>
-
-                            {!useNewAddress ? (
-                                <div className="max-h-56 space-y-2 overflow-y-auto">
-                                    {addresses.length === 0 ? (
-                                        <p className="text-sm text-gray-500">Bạn chưa có địa chỉ trong tài khoản. Hãy chuyển sang tab "Nhập địa chỉ mới".</p>
-                                    ) : (
-                                        addresses.map((address) => {
-                                            const mapped = getAddressValue(address);
-                                            return (
-                                                <label key={address.id} className={`block cursor-pointer border p-3 text-sm ${selectedAddressId === address.id ? "border-red-600 bg-red-50" : "border-gray-200 bg-white"}`}>
-                                                    <input type="radio" name="shipping-address" className="mr-2" checked={selectedAddressId === address.id} onChange={() => setSelectedAddressId(address.id)} />
-                                                    <span className="font-semibold text-gray-900">{mapped.customerName || "Địa chỉ"}</span>
-                                                    {address.isDefault ? <span className="ml-2 border border-red-200 bg-red-100 px-2 py-0.5 text-[10px] font-semibold uppercase text-red-700">Mặc định</span> : null}
-                                                    <p className="mt-1 text-xs text-gray-600">{mapped.phone}</p>
-                                                    <p className="mt-1 text-xs text-gray-600">{[mapped.detail, mapped.ward, mapped.district, mapped.province].filter(Boolean).join(", ")}</p>
-                                                </label>
-                                            );
-                                        })
-                                    )}
-                                </div>
-                            ) : (
-                                <div className="grid gap-2 text-sm">
-                                    <input value={newAddress.customer_name} onChange={(event) => setNewAddress((current) => ({ ...current, customer_name: event.target.value }))} placeholder="Người nhận" className="h-9 border border-gray-300 px-3" />
-                                    <input value={newAddress.phone} onChange={(event) => setNewAddress((current) => ({ ...current, phone: event.target.value }))} placeholder="Số điện thoại" className="h-9 border border-gray-300 px-3" />
-                                    <input value={newAddress.province} onChange={(event) => setNewAddress((current) => ({ ...current, province: event.target.value }))} placeholder="Tỉnh/Thành" className="h-9 border border-gray-300 px-3" />
-                                    <input value={newAddress.province_id} onChange={(event) => setNewAddress((current) => ({ ...current, province_id: event.target.value }))} placeholder="Mã tỉnh" className="h-9 border border-gray-300 px-3" />
-                                    <input value={newAddress.district} onChange={(event) => setNewAddress((current) => ({ ...current, district: event.target.value }))} placeholder="Quận/Huyện" className="h-9 border border-gray-300 px-3" />
-                                    <input value={newAddress.district_id} onChange={(event) => setNewAddress((current) => ({ ...current, district_id: event.target.value }))} placeholder="Mã quận" className="h-9 border border-gray-300 px-3" />
-                                    <input value={newAddress.ward} onChange={(event) => setNewAddress((current) => ({ ...current, ward: event.target.value }))} placeholder="Phường/Xã" className="h-9 border border-gray-300 px-3" />
-                                    <input value={newAddress.ward_id} onChange={(event) => setNewAddress((current) => ({ ...current, ward_id: event.target.value }))} placeholder="Mã phường" className="h-9 border border-gray-300 px-3" />
-                                    <input value={newAddress.address} onChange={(event) => setNewAddress((current) => ({ ...current, address: event.target.value }))} placeholder="Địa chỉ chi tiết" className="h-9 border border-gray-300 px-3" />
-                                </div>
-                            )}
-                        </section>
-
-                        <section className="space-y-3 border-t border-gray-200 pt-4">
-                            <h3 className="text-base font-semibold text-gray-900">Hình thức chi trả</h3>
-                            <label className={`flex cursor-pointer items-center gap-2 border p-3 text-sm ${paymentType === "COD" ? "border-red-600 bg-red-50" : "border-gray-200 bg-white"}`}>
-                                <input type="radio" name="payment-type" checked={paymentType === "COD"} onChange={() => setPaymentType("COD")} />
-                                Tiền mặt (COD)
-                            </label>
-                            <label className={`flex cursor-pointer items-center gap-2 border p-3 text-sm ${paymentType === "BANK_TRANSFER" ? "border-red-600 bg-red-50" : "border-gray-200 bg-white"}`}>
-                                <input type="radio" name="payment-type" checked={paymentType === "BANK_TRANSFER"} onChange={() => setPaymentType("BANK_TRANSFER")} />
-                                Trực tuyến (VNPay)
-                            </label>
-
-                            <textarea value={note} onChange={(event) => setNote(event.target.value)} placeholder="Ghi chú đơn hàng (tuỳ chọn)" rows={3} className="w-full border border-gray-300 p-3 text-sm" />
-
-                            <Button className="w-full rounded-none bg-red-600 hover:bg-red-700" onClick={() => void handleCheckout()} disabled={isPlacingOrder || cartItems.length === 0}>
-                                {isPlacingOrder ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}
-                                {paymentType === "BANK_TRANSFER" ? "Đặt hàng và chuyển tới cổng thanh toán" : "Đặt hàng (COD)"}
-                            </Button>
-                        </section>
-                    </aside>
+                    <CartCheckoutSummary
+                        cartItems={cartItems}
+                        totalAmount={totalAmount}
+                        addresses={addresses}
+                        selectedAddressId={selectedAddressId}
+                        useNewAddress={useNewAddress}
+                        newAddress={newAddress}
+                        paymentType={paymentType}
+                        note={note}
+                        isPlacingOrder={isPlacingOrder}
+                        onSelectAddress={setSelectedAddressId}
+                        onUseNewAddressChange={setUseNewAddress}
+                        onNewAddressChange={(updater) => setNewAddress((current) => updater(current))}
+                        onPaymentTypeChange={setPaymentType}
+                        onNoteChange={setNote}
+                        onCheckout={() => void handleCheckout()}
+                    />
                 </div>
             )}
 
-            {invoice && (
-                <section className="mt-10 border border-gray-200 bg-white p-6">
-                    <div className="flex flex-wrap items-start justify-between gap-3 border-b border-gray-200 pb-4">
-                        <div>
-                            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-red-600">Hóa đơn giao dịch</p>
-                            <h2 className="mt-2 text-2xl font-bold text-gray-900">Đơn hàng #{invoice.id}</h2>
-                        </div>
-                        <div className="text-right text-sm text-gray-600">
-                            <p>
-                                Trạng thái đơn: <span className="font-semibold text-gray-900">{invoice.deliveryStatus || invoice.orderStatus || "PENDING"}</span>
-                            </p>
-                            <p>
-                                Thanh toán: <span className="font-semibold text-gray-900">{invoice.paymentStatus || "UNPAID"}</span>
-                            </p>
-                        </div>
-                    </div>
-
-                    <div className="mt-4 grid gap-3 text-sm text-gray-700 md:grid-cols-2">
-                        <p>
-                            <span className="font-semibold text-gray-900">Người nhận:</span> {invoice.customerName || "-"}
-                        </p>
-                        <p>
-                            <span className="font-semibold text-gray-900">Số điện thoại:</span> {invoice.customerPhone || "-"}
-                        </p>
-                        <p className="md:col-span-2">
-                            <span className="font-semibold text-gray-900">Địa chỉ:</span> {[invoice.deliveryAddress, invoice.deliveryWardName, invoice.deliveryDistrictName, invoice.deliveryProvinceName].filter(Boolean).join(", ") || "-"}
-                        </p>
-                    </div>
-
-                    <div className="mt-5 space-y-2 border-t border-gray-200 pt-4 text-sm">
-                        {(invoice.orderItemResponses ?? invoice.orderItem ?? []).map((item, index) => (
-                            <div key={`${item.id ?? index}`} className="flex items-center justify-between gap-3">
-                                <span className="text-gray-700">
-                                    {item.nameProductSnapshot || `Sản phẩm #${index + 1}`} x{item.quantity}
-                                </span>
-                                <span className="font-semibold text-gray-900">{Helper.formatPrice(String((Number(item.finalPrice ?? item.listPriceSnapShot ?? 0) || 0) * Number(item.quantity || 0)))}</span>
-                            </div>
-                        ))}
-                    </div>
-
-                    <div className="mt-5 border-t border-gray-200 pt-4 text-sm text-gray-700">
-                        <p className="flex items-center justify-between">
-                            <span>Tạm tính</span>
-                            <span>{Helper.formatPrice(String(invoice.originalOrderAmount ?? totalAmount))}</span>
-                        </p>
-                        <p className="mt-1 flex items-center justify-between">
-                            <span>Phí vận chuyển</span>
-                            <span>{Helper.formatPrice(String(invoice.totalFeeShip ?? 0))}</span>
-                        </p>
-                        <p className="mt-1 flex items-center justify-between">
-                            <span>Giảm giá</span>
-                            <span>- {Helper.formatPrice(String(invoice.discountValue ?? 0))}</span>
-                        </p>
-                        <p className="mt-2 flex items-center justify-between text-lg font-bold text-gray-900">
-                            <span>Thành tiền</span>
-                            <span>{Helper.formatPrice(String(invoice.totalAmount ?? 0))}</span>
-                        </p>
-                    </div>
-
-                    <div className="mt-6 flex flex-wrap gap-3">
-                        <Link href="/tai-khoan" className="bg-gray-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-black">
-                            Xem lịch sử mua hàng
-                        </Link>
-                        <Link href="/san-pham" className="border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 transition-colors hover:border-gray-900 hover:text-gray-900">
-                            Tiếp tục mua sắm
-                        </Link>
-                    </div>
-                </section>
-            )}
+            {invoice ? <CartInvoice invoice={invoice} fallbackTotalAmount={totalAmount} /> : null}
         </div>
     );
 }

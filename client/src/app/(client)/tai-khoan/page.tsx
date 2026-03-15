@@ -2,20 +2,21 @@
 
 import { OrderApi } from "@/api/order.api";
 import { UserApi } from "@/api/user.api";
+import { AccountSidebar, AccountSection } from "@/app/(client)/tai-khoan/_components/account-sidebar";
+import { AddressesSection } from "@/app/(client)/tai-khoan/_components/addresses-section";
+import { OrdersSection } from "@/app/(client)/tai-khoan/_components/orders-section";
+import { ProfileSection } from "@/app/(client)/tai-khoan/_components/profile-section";
+import { SecuritySection } from "@/app/(client)/tai-khoan/_components/security-section";
 import { UserRouteGate } from "@/components/feature/RouteUserGate";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { UserAuthStore } from "@/hooks/useClientAuth";
-import { Helper } from "@/lib/helper";
 
 import { OrderSummary } from "@/types/order";
+import { ApiResponse, PageResponse } from "@/types/api";
 import { UserAddress, UserProfile } from "@/types/user";
-import { Loader2, LogOut, MapPinHouse, PackageSearch, Save, ShieldCheck, UserRound } from "lucide-react";
+import { LogOut, MapPinHouse, PackageSearch, ShieldCheck, UserRound } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-
-type AccountSection = "profile" | "orders" | "addresses" | "security";
 
 type ProfileFormState = {
     fullName: string;
@@ -68,6 +69,14 @@ function buildAvatar(fullName?: string, avatar?: string) {
     return `https://ui-avatars.com/api/?name=${seed}&background=f5f5f5&color=111827`;
 }
 
+function normalizeAddressList(profile: UserProfile | null, addresses: UserAddress[]) {
+    if (addresses.length > 0) {
+        return addresses;
+    }
+
+    return profile?.addressResponses ?? [];
+}
+
 function AccountPageContent() {
     const session = UserAuthStore.useStore((state) => state.session);
     const [activeSection, setActiveSection] = useState<AccountSection>("profile");
@@ -92,12 +101,16 @@ function AccountPageContent() {
 
     const loadAccountData = useCallback(async () => {
         setIsLoading(true);
-        const [profileResponse, ordersResponse, addressesResponse] = await Promise.all([UserApi.getMyInfo(), OrderApi.getMyOrders({ page: 1, size: 10, sort: "id:desc" }), UserApi.getMyAddresses({ page: 1, size: 20, sort: "id:desc" })]);
+        const [profileResponse, ordersResponse, addressesResponse]: [ApiResponse<UserProfile>, ApiResponse<PageResponse<OrderSummary>>, ApiResponse<PageResponse<UserAddress>>] = await Promise.all([
+            UserApi.getMyInfo(),
+            OrderApi.getMyOrders({ page: 1, size: 10, sort: "id:desc" }),
+            UserApi.getMyAddresses({ page: 1, size: 20, sort: "id:desc" }),
+        ]);
 
         const nextProfile = profileResponse.data ?? null;
         setProfile(nextProfile);
         setOrders(ordersResponse.data.data);
-        setAddresses(addressesResponse.data.data);
+        setAddresses(normalizeAddressList(nextProfile, addressesResponse.data.data));
         setProfileForm({
             fullName: String(nextProfile?.fullName ?? session?.fullName ?? ""),
             gender: String(nextProfile?.gender ?? "OTHER") as "MALE" | "FEMALE" | "OTHER",
@@ -249,252 +262,40 @@ function AccountPageContent() {
             </div>
 
             <div className="grid gap-8 lg:grid-cols-[260px_1fr]">
-                <aside className="h-fit border border-gray-200 bg-gray-50 p-4">
-                    <div className="space-y-2">
-                        {accountSections.map((section) => {
-                            const Icon = section.icon;
-                            return (
-                                <button
-                                    key={section.id}
-                                    onClick={() => setActiveSection(section.id)}
-                                    className={`flex w-full items-center gap-3 border px-4 py-3 text-left text-sm font-medium transition-colors ${activeSection === section.id ? "border-red-600 bg-red-600 text-white" : "border-gray-200 bg-white text-gray-700 hover:border-gray-900 hover:text-gray-900"}`}
-                                >
-                                    <Icon className="h-4 w-4" />
-                                    {section.label}
-                                </button>
-                            );
-                        })}
-                    </div>
-                </aside>
+                <AccountSidebar sections={accountSections} activeSection={activeSection} onSelect={setActiveSection} />
 
                 <section className="space-y-8">
                     {activeSection === "profile" && (
-                        <div className="border border-gray-200 bg-white p-6">
-                            <h2 className="text-2xl font-semibold text-gray-900">Thông tin cá nhân</h2>
-                            <div className="mt-6 grid gap-4 md:grid-cols-2">
-                                <div className="space-y-2">
-                                    <Label>Họ tên</Label>
-                                    <Input value={profileForm.fullName} onChange={(event) => setProfileForm((current) => ({ ...current, fullName: event.target.value }))} />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>Ảnh đại diện</Label>
-                                    <Input value={profileForm.avatar} onChange={(event) => setProfileForm((current) => ({ ...current, avatar: event.target.value }))} />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>Giới tính</Label>
-                                    <select
-                                        value={profileForm.gender}
-                                        onChange={(event) => setProfileForm((current) => ({ ...current, gender: event.target.value as ProfileFormState["gender"] }))}
-                                        className="h-10 w-full rounded-none border border-gray-300 px-3 text-sm outline-none focus:ring-2 focus:ring-red-500"
-                                    >
-                                        <option value="MALE">Nam</option>
-                                        <option value="FEMALE">Nữ</option>
-                                        <option value="OTHER">Khác</option>
-                                    </select>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>Ngày sinh</Label>
-                                    <Input type="date" value={profileForm.dateOfBirth} onChange={(event) => setProfileForm((current) => ({ ...current, dateOfBirth: event.target.value }))} />
-                                </div>
-                            </div>
-
-                            <div className="mt-6 grid gap-4 rounded-none border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600 md:grid-cols-2">
-                                <div>
-                                    <p className="font-semibold text-gray-900">Email</p>
-                                    <p className="mt-1">{profile?.email || session?.email || "Chưa có email"}</p>
-                                </div>
-                                <div>
-                                    <p className="font-semibold text-gray-900">Số điện thoại</p>
-                                    <p className="mt-1">{profile?.phone || session?.phone || "Chưa có số điện thoại"}</p>
-                                </div>
-                            </div>
-
-                            <Button className="mt-6 rounded-none bg-red-600 hover:bg-red-700" onClick={() => void handleProfileSave()} disabled={isSavingProfile}>
-                                {isSavingProfile ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                                Lưu thông tin
-                            </Button>
-                        </div>
+                        <ProfileSection
+                            profile={profile}
+                            sessionName={session?.fullName}
+                            sessionEmail={session?.email}
+                            sessionPhone={session?.phone}
+                            form={profileForm}
+                            onFormChange={(updater) => setProfileForm((current) => updater(current))}
+                            isSaving={isSavingProfile}
+                            onSave={() => void handleProfileSave()}
+                        />
                     )}
 
                     {activeSection === "orders" && (
-                        <div className="border border-gray-200 bg-white p-6">
-                            <h2 className="text-2xl font-semibold text-gray-900">Đơn hàng gần đây</h2>
-                            <div className="mt-6 space-y-4">
-                                {orders.length === 0 ? (
-                                    <div className="border border-dashed border-gray-300 bg-gray-50 p-8 text-center text-sm text-gray-500">Bạn chưa có đơn hàng nào.</div>
-                                ) : (
-                                    orders.map((order) => (
-                                        <article key={order.id} className="border border-gray-200 p-5">
-                                            {(() => {
-                                                const detail = orderDetails[order.id];
-                                                const mergedOrder = detail ? { ...order, ...detail } : order;
-                                                const statusText = mergedOrder.deliveryStatus || mergedOrder.orderStatus || "Đang xử lý";
-                                                const lineItems = mergedOrder.orderItemResponses ?? mergedOrder.orderItem ?? [];
-
-                                                return (
-                                                    <>
-                                                        <div className="flex flex-wrap items-start justify-between gap-3">
-                                                            <div>
-                                                                <p className="text-sm font-semibold uppercase tracking-[0.2em] text-red-600">Đơn #{order.id}</p>
-                                                                <h3 className="mt-2 text-lg font-semibold text-gray-900">Trạng thái: {statusText}</h3>
-                                                                <p className="mt-1 text-sm text-gray-600">Thanh toán: {mergedOrder.paymentStatus || "Chưa cập nhật"}</p>
-                                                            </div>
-                                                            <p className="text-lg font-bold text-gray-900">{Helper.formatPrice(String(mergedOrder.totalAmount ?? 0))}</p>
-                                                        </div>
-                                                        <div className="mt-4 space-y-2 text-sm text-gray-600">
-                                                            {lineItems.map((item, index) => (
-                                                                <div key={`${order.id}-${item.id ?? index}`} className="flex items-center justify-between gap-3 border-t border-gray-100 pt-2 first:border-t-0 first:pt-0">
-                                                                    <span>{item.nameProductSnapshot || `Sản phẩm #${item.productId ?? item.productVariantId ?? index + 1}`}</span>
-                                                                    <span>x{item.quantity}</span>
-                                                                </div>
-                                                            ))}
-                                                        </div>
-
-                                                        <div className="mt-4">
-                                                            <Button variant="outline" className="rounded-none" onClick={() => void handleToggleOrderDetail(order.id)}>
-                                                                {expandedOrderId === order.id ? "Ẩn chi tiết" : "Xem chi tiết"}
-                                                            </Button>
-                                                        </div>
-
-                                                        {expandedOrderId === order.id && (
-                                                            <div className="mt-4 border-t border-gray-200 pt-4 text-sm text-gray-700">
-                                                                {loadingOrderId === order.id ? (
-                                                                    <p>Đang tải chi tiết đơn hàng...</p>
-                                                                ) : (
-                                                                    <>
-                                                                        <p>
-                                                                            <span className="font-semibold text-gray-900">Người nhận:</span> {mergedOrder.customerName || "-"} - {mergedOrder.customerPhone || "-"}
-                                                                        </p>
-                                                                        <p className="mt-1">
-                                                                            <span className="font-semibold text-gray-900">Địa chỉ giao:</span>{" "}
-                                                                            {[mergedOrder.deliveryAddress, mergedOrder.deliveryWardName, mergedOrder.deliveryDistrictName, mergedOrder.deliveryProvinceName].filter(Boolean).join(", ") || "-"}
-                                                                        </p>
-                                                                        <p className="mt-1">
-                                                                            <span className="font-semibold text-gray-900">Phương thức thanh toán:</span> {mergedOrder.paymentType || "-"}
-                                                                        </p>
-                                                                    </>
-                                                                )}
-                                                            </div>
-                                                        )}
-                                                    </>
-                                                );
-                                            })()}
-                                        </article>
-                                    ))
-                                )}
-                            </div>
-                        </div>
+                        <OrdersSection orders={orders} orderDetails={orderDetails} expandedOrderId={expandedOrderId} loadingOrderId={loadingOrderId} onToggleOrderDetail={(orderId) => void handleToggleOrderDetail(orderId)} />
                     )}
 
                     {activeSection === "addresses" && (
-                        <div className="space-y-6">
-                            <div className="border border-gray-200 bg-white p-6">
-                                <h2 className="text-2xl font-semibold text-gray-900">Thêm địa chỉ mới</h2>
-                                <div className="mt-6 grid gap-4 md:grid-cols-2">
-                                    <div className="space-y-2">
-                                        <Label>Người nhận</Label>
-                                        <Input value={addressForm.customer_name} onChange={(event) => setAddressForm((current) => ({ ...current, customer_name: event.target.value }))} />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>Số điện thoại</Label>
-                                        <Input value={addressForm.phone} onChange={(event) => setAddressForm((current) => ({ ...current, phone: event.target.value }))} />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>Tỉnh/Thành</Label>
-                                        <Input value={addressForm.province} onChange={(event) => setAddressForm((current) => ({ ...current, province: event.target.value }))} />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>Mã tỉnh</Label>
-                                        <Input value={addressForm.province_id} onChange={(event) => setAddressForm((current) => ({ ...current, province_id: event.target.value }))} />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>Quận/Huyện</Label>
-                                        <Input value={addressForm.district} onChange={(event) => setAddressForm((current) => ({ ...current, district: event.target.value }))} />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>Mã quận</Label>
-                                        <Input value={addressForm.district_id} onChange={(event) => setAddressForm((current) => ({ ...current, district_id: event.target.value }))} />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>Phường/Xã</Label>
-                                        <Input value={addressForm.ward} onChange={(event) => setAddressForm((current) => ({ ...current, ward: event.target.value }))} />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>Mã phường</Label>
-                                        <Input value={addressForm.ward_id} onChange={(event) => setAddressForm((current) => ({ ...current, ward_id: event.target.value }))} />
-                                    </div>
-                                    <div className="space-y-2 md:col-span-2">
-                                        <Label>Địa chỉ chi tiết</Label>
-                                        <Input value={addressForm.address} onChange={(event) => setAddressForm((current) => ({ ...current, address: event.target.value }))} />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>Loại địa chỉ</Label>
-                                        <Input value={addressForm.address_type} onChange={(event) => setAddressForm((current) => ({ ...current, address_type: event.target.value }))} placeholder="HOME / WORK" />
-                                    </div>
-                                </div>
-                                <Button className="mt-6 rounded-none bg-red-600 hover:bg-red-700" onClick={() => void handleAddAddress()} disabled={isSavingAddress}>
-                                    {isSavingAddress ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                                    Lưu địa chỉ
-                                </Button>
-                            </div>
-
-                            <div className="border border-gray-200 bg-white p-6">
-                                <h2 className="text-2xl font-semibold text-gray-900">Danh sách địa chỉ</h2>
-                                <div className="mt-6 space-y-4">
-                                    {addresses.length === 0 ? (
-                                        <div className="border border-dashed border-gray-300 bg-gray-50 p-8 text-center text-sm text-gray-500">Bạn chưa có địa chỉ giao hàng nào.</div>
-                                    ) : (
-                                        addresses.map((address) => (
-                                            <article key={address.id} className="border border-gray-200 p-5">
-                                                <div className="flex flex-wrap items-start justify-between gap-3">
-                                                    <div>
-                                                        <h3 className="text-lg font-semibold text-gray-900">{address.fullName || "Địa chỉ giao hàng"}</h3>
-                                                        <p className="mt-1 text-sm text-gray-600">{address.phone}</p>
-                                                        <p className="mt-3 text-sm text-gray-600">{[address.detail, address.wardName, address.districtName, address.provinceName].filter(Boolean).join(", ")}</p>
-                                                    </div>
-                                                    {address.isDefault && <span className="border border-red-200 bg-red-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-red-600">Mặc định</span>}
-                                                </div>
-                                                <div className="mt-4 flex flex-wrap gap-3">
-                                                    {!address.isDefault && (
-                                                        <Button variant="outline" className="rounded-none" onClick={() => void handleSetDefault(address.id)}>
-                                                            Đặt mặc định
-                                                        </Button>
-                                                    )}
-                                                    <Button variant="ghost" className="rounded-none text-red-600 hover:text-red-700" onClick={() => void handleDeleteAddress(address.id)}>
-                                                        Xóa địa chỉ
-                                                    </Button>
-                                                </div>
-                                            </article>
-                                        ))
-                                    )}
-                                </div>
-                            </div>
-                        </div>
+                        <AddressesSection
+                            form={addressForm}
+                            addresses={addresses}
+                            isSavingAddress={isSavingAddress}
+                            onFormChange={(updater) => setAddressForm((current) => updater(current))}
+                            onAddAddress={() => void handleAddAddress()}
+                            onSetDefault={(addressId) => void handleSetDefault(addressId)}
+                            onDeleteAddress={(addressId) => void handleDeleteAddress(addressId)}
+                        />
                     )}
 
                     {activeSection === "security" && (
-                        <div className="border border-gray-200 bg-white p-6">
-                            <h2 className="text-2xl font-semibold text-gray-900">Đổi mật khẩu</h2>
-                            <div className="mt-6 grid gap-4 md:grid-cols-3">
-                                <div className="space-y-2">
-                                    <Label>Mật khẩu cũ</Label>
-                                    <Input type="password" value={passwordForm.oldPassword} onChange={(event) => setPasswordForm((current) => ({ ...current, oldPassword: event.target.value }))} />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>Mật khẩu mới</Label>
-                                    <Input type="password" value={passwordForm.password} onChange={(event) => setPasswordForm((current) => ({ ...current, password: event.target.value }))} />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>Xác nhận mật khẩu</Label>
-                                    <Input type="password" value={passwordForm.confirmPassword} onChange={(event) => setPasswordForm((current) => ({ ...current, confirmPassword: event.target.value }))} />
-                                </div>
-                            </div>
-
-                            <Button className="mt-6 rounded-none bg-red-600 hover:bg-red-700" onClick={() => void handleChangePassword()} disabled={isSavingPassword}>
-                                {isSavingPassword ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}
-                                Cập nhật mật khẩu
-                            </Button>
-                        </div>
+                        <SecuritySection form={passwordForm} isSavingPassword={isSavingPassword} onFormChange={(updater) => setPasswordForm((current) => updater(current))} onChangePassword={() => void handleChangePassword()} />
                     )}
                 </section>
             </div>

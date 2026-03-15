@@ -1,19 +1,50 @@
 import type { ApiResponse, PageResponse } from "@/types/api";
 
+export interface UserRankResponse {
+    id: number;
+    name: string;
+    minSpent?: string;
+    status?: string;
+}
+
+export interface UserRoleResponse {
+    id: number;
+    name: string;
+    description?: string;
+    status?: string;
+    page?: unknown[];
+}
+
 export interface UserProfile {
     id: number;
     userName?: string;
     fullName?: string;
+    gender?: "MALE" | "FEMALE" | "OTHER" | string;
+    dateOfBirth?: string;
     email?: string;
     phone?: string;
+    avatar?: string | null;
     status?: string;
-    role?: unknown;
+    point?: number;
+    verifiedEmail?: boolean;
+    verifiedPhone?: boolean;
+    totalSpent?: number | string;
+    addressResponses?: UserAddress[];
+    userRankResponse?: UserRankResponse | null;
+    role?: UserRoleResponse | unknown;
     [key: string]: unknown;
 }
 
 export interface UserAddress {
     id: number;
     address?: string;
+    customer_name?: string;
+    phone_number?: string;
+    province_id?: number;
+    district_id?: number;
+    ward_id?: number;
+    address_type?: string;
+    is_default?: boolean | number;
     customerName?: string;
     phoneNumber?: string;
     province?: string;

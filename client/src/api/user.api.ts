@@ -4,6 +4,28 @@ import type { ChangePasswordPayload, UserAddress, UserProfile } from "@/types/us
 
 const WARNING_PREFIX = "[WARNING][UserApi]";
 
+function normalizeAddress(address: UserAddress): UserAddress {
+    const normalizedIsDefault = typeof address.isDefault === "boolean" ? address.isDefault : address.is_default === 1 || address.is_default === true;
+
+    return {
+        ...address,
+        customerName: address.customerName ?? address.customer_name,
+        phoneNumber: address.phoneNumber ?? address.phone_number,
+        address: address.address ?? address.detail,
+        province: address.province ?? address.provinceName,
+        district: address.district ?? address.districtName,
+        ward: address.ward ?? address.wardName,
+        provinceId: address.provinceId ?? address.province_id,
+        districtId: address.districtId ?? address.district_id,
+        wardId: address.wardId ?? address.ward_id,
+        addressType: address.addressType ?? address.address_type,
+        isDefault: normalizedIsDefault,
+        fullName: address.fullName ?? address.customer_name,
+        phone: address.phone ?? address.phone_number,
+        detail: address.detail ?? address.address,
+    };
+}
+
 export const UserApi = {
     getUserByEmail: async (email: string) => {
         try {
@@ -55,8 +77,16 @@ export const UserApi = {
         const size = query?.size ?? 10;
         try {
             const res = await axiosInstance.get("/user/address/list", { params: { ...query, page, size } });
+            const response = res.data as ApiResponse<PageResponse<UserAddress>>;
+            const items = response.data?.data ?? [];
 
-            return res.data as ApiResponse<PageResponse<UserAddress>>;
+            return {
+                ...response,
+                data: {
+                    ...response.data,
+                    data: items.map(normalizeAddress),
+                },
+            } as ApiResponse<PageResponse<UserAddress>>;
         } catch (error) {
             console.error(`${WARNING_PREFIX} /user/address/list failed.`, error);
             throw error;
