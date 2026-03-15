@@ -19,9 +19,10 @@ class UserUpdateRequest extends FormRequest
     {
         return [
             'fullName' => 'nullable|string|max:255',
-            'gender' => 'required|in:MALE,FEMALE,OTHER',
-            'dateOfBirth' => 'required|date',
-            'avatar' => 'required|string',
+            'gender' => 'nullable|in:MALE,FEMALE,OTHER',
+            'dateOfBirth' => 'nullable|date',
+            'phone' => 'nullable|string|max:20',
+            'avatar' => 'nullable|string|max:2048',
         ];
     }
 

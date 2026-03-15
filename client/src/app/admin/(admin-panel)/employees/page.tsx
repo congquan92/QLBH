@@ -1,372 +1,233 @@
 "use client";
 
-import { useAdminAuth } from "@/hooks/useAdminAuth";
+import { AdminCrudApi } from "@/api/admin/admin-crud.api";
+
 import { UserApi } from "@/api/user.api";
 import { RbacApi } from "@/api/admin/rbac.api";
 import { AdminPageShell } from "@/components/feature/admin-page-shell";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Search, Plus, Loader2, Mail, Phone, Shield, UserCheck, UserX } from "lucide-react";
+import { useAdminAuth } from "@/hooks/useAdminAuth";
+import type { Position } from "@/types/admin-crud";
+import { Plus } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import type { UserProfile } from "@/types/user";
 import type { RbacRole } from "@/types/rbac";
+import { CreateUserForm, CreateUserFormData } from "@/app/admin/(admin-panel)/employees/_components/CreateUserForm";
+import { UserTable } from "@/app/admin/(admin-panel)/employees/_components/UserTable";
+import { EditUserDialog } from "@/app/admin/(admin-panel)/employees/_components/EditUserDialog";
 
-type CreateEmployeeForm = {
-    username: string;
-    password: string;
-    fullName: string;
-    email: string;
-    phone: string;
-};
-
-const emptyForm: CreateEmployeeForm = {
+const emptyCreateForm: CreateUserFormData = {
+    fullName: "",
     username: "",
     password: "",
-    fullName: "",
     email: "",
     phone: "",
+    gender: "OTHER",
+    dateOfBirth: "",
+    roleId: "",
+    positionId: "",
+    employmentType: "FULL_TIME",
 };
-
-function getEmployeeRoleLabel(employee: UserProfile) {
-    const roleName = (employee as { roleName?: unknown }).roleName;
-    if (typeof roleName === "string" && roleName.trim()) {
-        return roleName;
-    }
-
-    const role = (employee as { role?: unknown }).role;
-    if (typeof role === "string" && role.trim()) {
-        return role;
-    }
-
-    if (role && typeof role === "object") {
-        const roleObject = role as { name?: unknown; title?: unknown; code?: unknown };
-        if (typeof roleObject.name === "string" && roleObject.name.trim()) return roleObject.name;
-        if (typeof roleObject.title === "string" && roleObject.title.trim()) return roleObject.title;
-        if (typeof roleObject.code === "string" && roleObject.code.trim()) return roleObject.code;
-    }
-
-    const roles = (employee as { roles?: unknown }).roles;
-    if (Array.isArray(roles)) {
-        const names = roles
-            .map((item) => {
-                if (typeof item === "string") return item;
-                if (item && typeof item === "object") {
-                    const normalized = item as { name?: unknown; title?: unknown; code?: unknown };
-                    if (typeof normalized.name === "string") return normalized.name;
-                    if (typeof normalized.title === "string") return normalized.title;
-                    if (typeof normalized.code === "string") return normalized.code;
-                }
-                return "";
-            })
-            .map((name) => name.trim())
-            .filter((name) => name.length > 0);
-
-        if (names.length > 0) {
-            return names.join(", ");
-        }
-    }
-
-    return "-";
-}
 
 export default function EmployeesPage() {
     const { hasPermission } = useAdminAuth();
     const [employees, setEmployees] = useState<UserProfile[]>([]);
     const [roles, setRoles] = useState<RbacRole[]>([]);
+    const [positions, setPositions] = useState<Position[]>([]);
+
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
-    const [showForm, setShowForm] = useState(false);
-    const [form, setForm] = useState<CreateEmployeeForm>(emptyForm);
-    const [searchKeyword, setSearchKeyword] = useState("");
-    const [selectedRoleId, setSelectedRoleId] = useState<string>("");
+    const [showCreateForm, setShowCreateForm] = useState(false);
+    const [createForm, setCreateForm] = useState<CreateUserFormData>(emptyCreateForm);
+
+    const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
+    const [editRoleId, setEditRoleId] = useState("");
+    const [editStatus, setEditStatus] = useState<"ACTIVE" | "INACTIVE">("ACTIVE");
 
     const canViewUsers = hasPermission("VIEW_USERS");
     const canCreateUser = hasPermission("CREATE_USER");
-    const canAssignRole = hasPermission("ASSIGN_ROLE");
-    const canAssignStatus = hasPermission("ASSIGN_STATUS");
+
+    const employeeRoles = roles.filter((role) => String(role.name).toUpperCase() !== "USER");
 
     const fetchEmployees = useCallback(async () => {
         if (!canViewUsers) {
             setEmployees([]);
+            setRoles([]);
+            setPositions([]);
             setIsLoading(false);
             return;
         }
 
         setIsLoading(true);
         try {
-            const [usersRes, rolesRes] = await Promise.all([UserApi.getUsers({ page: 1, size: 100, sort: "id:desc", hasUserRole: false }), canAssignRole ? RbacApi.getRoles({ page: 1, size: 50 }) : Promise.resolve(null)]);
-            setEmployees(usersRes.data.data);
+            const [usersRes, rolesRes, positionsRes] = await Promise.all([
+                UserApi.getUsers({ page: 1, size: 200, sort: "id:desc", hasUserRole: false }),
+                RbacApi.getRoles({ page: 1, size: 100, sort: "id:asc" }),
+                AdminCrudApi.getPositions({ page: 1, size: 100, sort: "id:asc" }),
+            ]);
+
+            setEmployees(usersRes.data.data ?? []);
+
             if (rolesRes) {
-                setRoles(rolesRes);
+                const rawRoles = rolesRes as unknown;
+                const normalizedRoles = Array.isArray(rawRoles)
+                    ? rawRoles
+                    : Array.isArray((rawRoles as { data?: unknown })?.data)
+                      ? ((rawRoles as { data: unknown[] }).data ?? [])
+                      : Array.isArray((rawRoles as { data?: { data?: unknown } })?.data?.data)
+                        ? ((rawRoles as { data: { data: unknown[] } }).data.data ?? [])
+                        : [];
+
+                setRoles(normalizedRoles as RbacRole[]);
             }
+
+            setPositions(positionsRes.data.data ?? []);
         } catch (error) {
-            console.error("Failed to fetch employees", error);
+            const message = error instanceof Error ? error.message : "Không thể tải danh sách nhân viên.";
+            toast.error(message);
         } finally {
             setIsLoading(false);
         }
-    }, [canAssignRole, canViewUsers]);
+    }, [canViewUsers]);
 
     useEffect(() => {
         void fetchEmployees();
     }, [fetchEmployees]);
 
-    function resetForm() {
-        setForm(emptyForm);
-        setShowForm(false);
-    }
+    async function handleCreateEmployee() {
+        if (!createForm.fullName.trim() || !createForm.username.trim() || !createForm.password.trim()) {
+            toast.error("Vui lòng nhập đủ họ tên, username và mật khẩu.");
+            return;
+        }
+        if (!createForm.roleId || !createForm.positionId || !createForm.dateOfBirth || !createForm.email || !createForm.phone) {
+            toast.error("Vui lòng nhập đủ thông tin bắt buộc để tạo nhân viên.");
+            return;
+        }
 
-    async function submitEmployee() {
-        if (!form.username.trim() || !form.password.trim() || !form.fullName.trim()) {
-            toast.error("Vui lòng nhập đủ username, mật khẩu và họ tên.");
+        const selectedRole = employeeRoles.find((role) => role.id === Number(createForm.roleId));
+        if (!selectedRole) {
+            toast.error("Vui lòng chọn vai trò nhân viên hợp lệ.");
             return;
         }
 
         setIsSaving(true);
         try {
             await UserApi.createUser({
-                username: form.username.trim(),
-                password: form.password.trim(),
-                fullName: form.fullName.trim(),
-                email: form.email.trim() || undefined,
-                phone: form.phone.trim() || undefined,
+                fullName: createForm.fullName.trim(),
+                username: createForm.username.trim(),
+                password: createForm.password,
+                email: createForm.email.trim(),
+                phone: createForm.phone.trim(),
+                gender: createForm.gender,
+                dateOfBirth: createForm.dateOfBirth,
+                roleId: Number(createForm.roleId),
+                positionId: Number(createForm.positionId),
+                employmentType: createForm.employmentType,
             });
             toast.success("Tạo nhân viên thành công.");
-            resetForm();
+            setCreateForm(emptyCreateForm);
+            setShowCreateForm(false);
             await fetchEmployees();
         } catch (error) {
-            const msg = error instanceof Error ? error.message : "Thao tác thất bại";
-            toast.error(msg);
+            toast.error(error instanceof Error ? error.message : "Tạo nhân viên thất bại.");
         } finally {
             setIsSaving(false);
         }
     }
 
-    async function handleUpdateRole(userId: number) {
-        if (!selectedRoleId) {
-            toast.error("Vui lòng chọn vai trò.");
+    function openEditDialog(user: UserProfile) {
+        setEditingUser(user);
+        const role = (user as { role?: unknown }).role;
+        const roleId = role && typeof role === "object" ? ((role as { id?: unknown }).id ?? null) : null;
+        setEditRoleId(typeof roleId === "number" ? String(roleId) : "");
+        setEditStatus(String(user.status ?? "ACTIVE") === "INACTIVE" ? "INACTIVE" : "ACTIVE");
+    }
+
+    async function handleEditEmployee() {
+        if (!editingUser) return;
+
+        const role = (editingUser as { role?: unknown }).role;
+        const currentRoleId = role && typeof role === "object" ? ((role as { id?: unknown }).id ?? null) : null;
+        const currentStatus = String(editingUser.status ?? "ACTIVE");
+
+        const needRoleUpdate = Boolean(editRoleId) && Number(editRoleId) !== currentRoleId;
+        const needStatusUpdate = editStatus !== currentStatus;
+
+        if (!needRoleUpdate && !needStatusUpdate) {
+            toast.info("Không có thay đổi để cập nhật.");
             return;
         }
 
         setIsSaving(true);
         try {
-            await UserApi.updateRoleUser(userId, { roleId: Number(selectedRoleId) });
-            toast.success("Cập nhật vai trò thành công.");
-            setSelectedRoleId("");
+            if (needRoleUpdate) await UserApi.updateRoleUser(editingUser.id, { roleId: Number(editRoleId) });
+            if (needStatusUpdate) await UserApi.updateUserStatus(editingUser.id, { status: editStatus });
+
+            toast.success("Đã cập nhật nhân viên.");
+            setEditingUser(null);
             await fetchEmployees();
         } catch (error) {
-            const msg = error instanceof Error ? error.message : "Thao tác thất bại";
-            toast.error(msg);
+            toast.error(error instanceof Error ? error.message : "Cập nhật nhân viên thất bại.");
         } finally {
             setIsSaving(false);
         }
     }
 
     async function handleToggleStatus(userId: number, currentStatus: string) {
-        const newStatus = currentStatus === "ACTIVE" ? "INACTIVE" : "ACTIVE";
+        const nextStatus = currentStatus === "ACTIVE" ? "INACTIVE" : "ACTIVE";
         setIsSaving(true);
         try {
-            await UserApi.updateUserStatus(userId, { status: newStatus });
-            toast.success(`Đã ${newStatus === "ACTIVE" ? "kích hoạt" : "vô hiệu hóa"} tài khoản.`);
+            await UserApi.updateUserStatus(userId, { status: nextStatus });
+            toast.success(nextStatus === "ACTIVE" ? "Đã mở nhân viên." : "Đã khóa nhân viên.");
             await fetchEmployees();
         } catch (error) {
-            const msg = error instanceof Error ? error.message : "Thao tác thất bại";
-            toast.error(msg);
+            toast.error(error instanceof Error ? error.message : "Cập nhật trạng thái thất bại.");
         } finally {
             setIsSaving(false);
         }
     }
 
-    const filteredEmployees = searchKeyword.trim()
-        ? employees.filter(
-              (e) =>
-                  String(e.fullName ?? e.username ?? "")
-                      .toLowerCase()
-                      .includes(searchKeyword.toLowerCase()) ||
-                  String(e.email ?? "")
-                      .toLowerCase()
-                      .includes(searchKeyword.toLowerCase()),
-          )
-        : employees;
-
     return (
-        <AdminPageShell title="Nhân viên" description="Quản lý hồ sơ nhân viên và trạng thái làm việc">
-            {/* Create Employee Form */}
-            {canCreateUser && (
-                <Card className="mb-4">
-                    <CardHeader>
-                        <div className="flex items-center justify-between">
-                            <CardTitle>Tạo nhân viên mới</CardTitle>
-                            <Button variant={showForm ? "outline" : "default"} onClick={() => setShowForm(!showForm)}>
-                                {showForm ? (
-                                    "Đóng"
-                                ) : (
-                                    <>
-                                        <Plus className="mr-2 h-4 w-4" /> Thêm nhân viên
-                                    </>
-                                )}
-                            </Button>
-                        </div>
-                    </CardHeader>
-                    {showForm && (
-                        <CardContent className="space-y-3">
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                                <div className="space-y-2">
-                                    <Label>Username *</Label>
-                                    <Input value={form.username} onChange={(e) => setForm((prev) => ({ ...prev, username: e.target.value }))} placeholder="Nhập username" />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>Mật khẩu *</Label>
-                                    <Input type="password" value={form.password} onChange={(e) => setForm((prev) => ({ ...prev, password: e.target.value }))} placeholder="Nhập mật khẩu" />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>Họ tên *</Label>
-                                    <Input value={form.fullName} onChange={(e) => setForm((prev) => ({ ...prev, fullName: e.target.value }))} placeholder="Nhập họ tên" />
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                <div className="space-y-2">
-                                    <Label>Email</Label>
-                                    <Input value={form.email} onChange={(e) => setForm((prev) => ({ ...prev, email: e.target.value }))} placeholder="email@example.com" />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>Số điện thoại</Label>
-                                    <Input value={form.phone} onChange={(e) => setForm((prev) => ({ ...prev, phone: e.target.value }))} placeholder="0123456789" />
-                                </div>
-                            </div>
-                            <div className="flex gap-2">
-                                <Button onClick={() => void submitEmployee()} disabled={isSaving}>
-                                    {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
-                                    Tạo nhân viên
-                                </Button>
-                                <Button variant="outline" onClick={resetForm}>
-                                    Hủy
-                                </Button>
-                            </div>
-                        </CardContent>
-                    )}
-                </Card>
-            )}
+        <AdminPageShell title="Quản lý nhân viên" description="Giao diện giống quản lý khách hàng, chỉ hiển thị tài khoản nhân viên">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+                <h2 className="text-md font-semibold">Danh sách nhân viên ({employees.length})</h2>
+                {canCreateUser && (
+                    <Button variant={showCreateForm ? "outline" : "default"} onClick={() => setShowCreateForm((prev) => !prev)}>
+                        <Plus className="mr-2 h-4 w-4" />
+                        Thêm nhân viên
+                    </Button>
+                )}
+            </div>
 
-            {/* Employee List */}
-            <Card>
-                <CardHeader>
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <CardTitle>Danh sách nhân viên</CardTitle>
-                            <CardDescription>{filteredEmployees.length} nhân viên</CardDescription>
-                        </div>
-                        <div className="relative">
-                            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                            <Input placeholder="Tìm kiếm nhân viên..." className="pl-8 w-62.5" value={searchKeyword} onChange={(e) => setSearchKeyword(e.target.value)} />
-                        </div>
-                    </div>
-                </CardHeader>
-                <CardContent>
-                    {isLoading ? (
-                        <div className="flex items-center text-sm text-muted-foreground">
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Đang tải danh sách nhân viên...
-                        </div>
-                    ) : (
-                        <div className="relative overflow-x-auto">
-                            <table className="w-full text-sm text-left">
-                                <thead className="text-xs uppercase bg-muted">
-                                    <tr>
-                                        <th className="px-6 py-3">Nhân viên</th>
-                                        <th className="px-6 py-3">Liên hệ</th>
-                                        <th className="px-6 py-3">Vai trò</th>
-                                        <th className="px-6 py-3">Trạng thái</th>
-                                        <th className="px-6 py-3">Thao tác</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {filteredEmployees.map((emp) => {
-                                        const status = String(emp.status ?? "ACTIVE");
-                                        return (
-                                            <tr key={emp.id} className="border-b hover:bg-muted/50">
-                                                <td className="px-6 py-4">
-                                                    <div className="flex items-center gap-3">
-                                                        <Avatar className="h-9 w-9">
-                                                            <AvatarImage src={`/avatars/${emp.id}.png`} alt={String(emp.fullName ?? emp.username ?? "U")} />
-                                                            <AvatarFallback>{String(emp.fullName ?? emp.username ?? "U").charAt(0)}</AvatarFallback>
-                                                        </Avatar>
-                                                        <div>
-                                                            <div className="font-medium">{String(emp.fullName ?? emp.username ?? "Unknown")}</div>
-                                                            <div className="text-xs text-muted-foreground">ID: #{emp.id}</div>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <div className="space-y-1">
-                                                        <div className="flex items-center gap-1 text-xs">
-                                                            <Mail className="h-3 w-3" />
-                                                            {String(emp.email ?? "-")}
-                                                        </div>
-                                                        <div className="flex items-center gap-1 text-xs">
-                                                            <Phone className="h-3 w-3" />
-                                                            {String(emp.phone ?? "-")}
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <div className="flex items-center gap-2">
-                                                        <Shield className="h-4 w-4 text-muted-foreground" />
-                                                        <span className="text-sm">{getEmployeeRoleLabel(emp)}</span>
-                                                    </div>
-                                                    {canAssignRole && (
-                                                        <div className="flex items-center gap-1 mt-1">
-                                                            <select className="h-7 rounded border border-input bg-background px-2 text-xs" value={selectedRoleId} onChange={(e) => setSelectedRoleId(e.target.value)}>
-                                                                <option value="">Chọn vai trò</option>
-                                                                {roles.map((role) => (
-                                                                    <option key={role.id} value={String(role.id)}>
-                                                                        {String(role.name)}
-                                                                    </option>
-                                                                ))}
-                                                            </select>
-                                                            <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => void handleUpdateRole(emp.id)} disabled={isSaving || !selectedRoleId}>
-                                                                Gán
-                                                            </Button>
-                                                        </div>
-                                                    )}
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <span
-                                                        className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                                            status === "ACTIVE" ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300" : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300"
-                                                        }`}
-                                                    >
-                                                        {status}
-                                                    </span>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <div className="flex gap-2">
-                                                        {canAssignStatus && (
-                                                            <Button variant="outline" size="sm" onClick={() => void handleToggleStatus(emp.id, status)} disabled={isSaving} title={status === "ACTIVE" ? "Vô hiệu hóa" : "Kích hoạt"}>
-                                                                {status === "ACTIVE" ? <UserX className="h-4 w-4" /> : <UserCheck className="h-4 w-4" />}
-                                                            </Button>
-                                                        )}
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        );
-                                    })}
-                                    {filteredEmployees.length === 0 && !isLoading && (
-                                        <tr>
-                                            <td className="px-6 py-8 text-muted-foreground" colSpan={5}>
-                                                Không có dữ liệu nhân viên.
-                                            </td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
+            <CreateUserForm
+                open={showCreateForm}
+                form={createForm}
+                roles={employeeRoles}
+                positions={positions}
+                isSaving={isSaving}
+                onOpenChange={setShowCreateForm}
+                onChange={setCreateForm}
+                onSubmit={() => void handleCreateEmployee()}
+                onCancel={() => {
+                    setCreateForm(emptyCreateForm);
+                    setShowCreateForm(false);
+                }}
+            />
+
+            <UserTable users={employees} roles={employeeRoles} isLoading={isLoading} isSaving={isSaving} onEdit={openEditDialog} onToggleStatus={(userId, status) => void handleToggleStatus(userId, status)} />
+
+            <EditUserDialog
+                editingUser={editingUser}
+                roles={employeeRoles}
+                isSaving={isSaving}
+                editRoleId={editRoleId}
+                editStatus={editStatus}
+                onChangeRole={setEditRoleId}
+                onChangeStatus={setEditStatus}
+                onSave={() => void handleEditEmployee()}
+                onClose={() => setEditingUser(null)}
+            />
         </AdminPageShell>
     );
 }

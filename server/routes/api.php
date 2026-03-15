@@ -71,6 +71,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/user/me', [UserController::class, 'getMyInfo']);
     Route::get('/user/{userId}', [UserController::class, 'getDetailUser'])->middleware('can:VIEW_USER_DETAIL');
     Route::post('/user/add', [UserController::class, 'createUser'])->middleware('can:CREATE_USER');
+    Route::put('/user/{userId}/update', [UserController::class, 'updateUserById'])->middleware('can:VIEW_USERS');
     Route::put('/user/{userId}/update/role', [UserController::class, 'updateRoleUser'])->middleware('can:ASSIGN_ROLE');
     Route::put('user/{userId}/status', [UserController::class, 'updateStatus'])->middleware('can:ASSIGN_STATUS');
 

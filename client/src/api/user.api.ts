@@ -113,6 +113,16 @@ export const UserApi = {
         }
     },
 
+    updateUserById: async (userId: number, payload: Record<string, unknown>) => {
+        try {
+            const res = await axiosInstance.put(`/user/${userId}/update`, payload);
+            return res.data;
+        } catch (error) {
+            console.warn(`${WARNING_PREFIX} /user/{userId}/update failed.`, error);
+            throw error;
+        }
+    },
+
     changePassword: async (payload: ChangePasswordPayload) => {
         try {
             const res = await axiosInstance.put("/user/change-password", payload);

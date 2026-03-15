@@ -87,6 +87,11 @@ class UserController extends Controller
         $this->userService->update($request);
     }
 
+    public function updateUserById(UserUpdateRequest $request, $userId)
+    {
+        $this->userService->updateById((int) $userId, $request);
+    }
+
     public function verifyAccount($userId, Request $request)
     {
         $otp = $request->input('otp');
