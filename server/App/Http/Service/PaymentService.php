@@ -24,6 +24,23 @@ class PaymentService
         $this->fireBaseService = $fireBaseService;
     }
 
+    private function extractOrderIdFromTxnRef(?string $txnRef): ?int
+    {
+        if (!$txnRef) {
+            return null;
+        }
+
+        $normalized = str_starts_with($txnRef, 'ORD') ? substr($txnRef, 3) : $txnRef;
+        $orderPart = explode('_', $normalized)[0] ?? null;
+
+        if (!is_numeric($orderPart)) {
+            return null;
+        }
+
+        $orderId = (int) $orderPart;
+        return $orderId > 0 ? $orderId : null;
+    }
+
     /**
      * Tạo URL thanh toán VNPay (Tương đương hàm add trong Java)
      */
@@ -106,9 +123,22 @@ public function createPaymentUrl(Request $request, $orderId)
     public function vnpayCallback(Request $request)
     {
         $vnp_ResponseCode = $request->vnp_ResponseCode;
+        $vnp_TransactionStatus = $request->vnp_TransactionStatus;
         $vnp_TxnRef = $request->vnp_TxnRef;
         $vnp_SecureHash = $request->vnp_SecureHash;
         $vnp_HashSecret = config('vnpay.vnp_HashSecret');
+        $orderId = $this->extractOrderIdFromTxnRef($vnp_TxnRef);
+
+        if (!$orderId) {
+            Log::error("❌ Invalid VNPay TxnRef: " . (string) $vnp_TxnRef);
+            return false;
+        }
+
+        $order = Order::find($orderId);
+        if (!$order) {
+            Log::error("❌ Order not found for VNPay callback, orderId=" . $orderId);
+            return false;
+        }
 
         $inputData = $request->all();
         unset($inputData['vnp_SecureHash']);
@@ -132,22 +162,32 @@ public function createPaymentUrl(Request $request, $orderId)
             return false;
         }
 
-        // Kiểm tra Redis
+        $isGatewaySuccess = $vnp_ResponseCode === "00" && $vnp_TransactionStatus === "00";
+
+        // Kiểm tra Redis. Cho phép callback lặp nếu đơn đã PAID.
         $cachedOrderId = Redis::get($vnp_TxnRef);
-        if (!$cachedOrderId) {
+        if ($cachedOrderId && (int) $cachedOrderId !== $orderId) {
+            Log::error("❌ TxnRef mismatch orderId, txnRef=" . $vnp_TxnRef . ", cached=" . $cachedOrderId . ", actual=" . $orderId);
+            return false;
+        }
+
+        if (!$cachedOrderId && !$isGatewaySuccess) {
+            return false;
+        }
+
+        if (!$cachedOrderId && $order->payment_status !== PaymentStatus::PAID) {
             Log::error("❌ Payment link is expired or invalid: " . $vnp_TxnRef);
             return false;
         }
 
-        if ($vnp_ResponseCode === "00") {
+        if ($isGatewaySuccess) {
             // Logic xử lý thành công
-            $orderId = explode('_', str_replace('ORD', '', $vnp_TxnRef))[0];
+            if ($order->payment_status !== PaymentStatus::PAID) {
+                $order = $this->orderService->completePayment($orderId);
+                $this->fireBaseService->updateOrderStatus($order);
+            }
 
-            $this->orderService->completePayment($orderId);
             Redis::del($vnp_TxnRef);
-
-            $order = Order::find($orderId);
-            $this->fireBaseService->updateOrderStatus($order);
 
             Log::info("✅ Thanh toán thành công đơn hàng: " . $orderId);
             return true;

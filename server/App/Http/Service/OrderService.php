@@ -222,7 +222,7 @@ class OrderService
             }
 
             if ($order->payment_status === PaymentStatus::PAID) {
-                throw new BusinessException(ErrorCode::BAD_REQUEST, "Đơn hàng đã được thanh toán trước đó");
+                return $order;
             }
 
             foreach ($order->orderItem as $item) {
