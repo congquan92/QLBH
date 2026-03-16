@@ -2,14 +2,17 @@
 
 import { OrderApi } from "@/api/order.api";
 import { UserApi } from "@/api/user.api";
-import { AccountSidebar, AccountSection } from "@/app/(client)/tai-khoan/_components/account-sidebar";
+import { AccountSection } from "@/app/(client)/tai-khoan/_components/account-sidebar";
 import { AddressesSection } from "@/app/(client)/tai-khoan/_components/addresses-section";
 import { OrdersSection } from "@/app/(client)/tai-khoan/_components/orders-section";
-import { ProfileSection } from "@/app/(client)/tai-khoan/_components/profile-section";
+import { ProfileSection } from "./_components/profile-section";
 import { SecuritySection } from "@/app/(client)/tai-khoan/_components/security-section";
 import { UserRouteGate } from "@/components/feature/RouteUserGate";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { UserAuthStore } from "@/hooks/useClientAuth";
+import Image from "next/image";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { OrderSummary } from "@/types/order";
 import { ApiResponse, PageResponse } from "@/types/api";
@@ -60,7 +63,20 @@ const EMPTY_ADDRESS_FORM: AddressFormState = {
 function toIsoDate(value: unknown) {
     if (!value) return "2000-01-01";
     const text = String(value);
-    return text.includes("T") ? text.slice(0, 10) : text;
+    const matchedDate = text.match(/\d{4}-\d{2}-\d{2}/);
+    if (matchedDate) {
+        return matchedDate[0];
+    }
+
+    const parsed = new Date(text);
+    if (!Number.isNaN(parsed.getTime())) {
+        const year = parsed.getFullYear();
+        const month = String(parsed.getMonth() + 1).padStart(2, "0");
+        const day = String(parsed.getDate()).padStart(2, "0");
+        return `${year}-${month}-${day}`;
+    }
+
+    return "2000-01-01";
 }
 
 function buildAvatar(fullName?: string, avatar?: string) {
@@ -77,7 +93,14 @@ function normalizeAddressList(profile: UserProfile | null, addresses: UserAddres
     return profile?.addressResponses ?? [];
 }
 
+function isAccountSection(value: string): value is AccountSection {
+    return value === "profile" || value === "orders" || value === "addresses" || value === "security";
+}
+
 function AccountPageContent() {
+    const router = useRouter();
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
     const session = UserAuthStore.useStore((state) => state.session);
     const [activeSection, setActiveSection] = useState<AccountSection>("profile");
     const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -133,6 +156,13 @@ function AccountPageContent() {
         return () => window.clearTimeout(timeoutId);
     }, [loadAccountData]);
 
+    useEffect(() => {
+        const tab = searchParams.get("tab");
+        if (tab && isAccountSection(tab)) {
+            setActiveSection(tab);
+        }
+    }, [searchParams]);
+
     const accountSections = useMemo(
         () => [
             { id: "profile" as const, label: "Thông tin cá nhân", icon: UserRound },
@@ -147,7 +177,6 @@ function AccountPageContent() {
         setIsSavingProfile(true);
         const response = await UserApi.updateProfile(profileForm);
         setIsSavingProfile(false);
-
         if (!response || response.status >= 400) {
             toast.error(response?.message || "Không thể cập nhật thông tin cá nhân.");
             return;
@@ -155,7 +184,7 @@ function AccountPageContent() {
 
         await UserAuthStore.actions.refreshProfile();
         await loadAccountData();
-        toast.success("Đã cập nhật thông tin cá nhân.");
+        toast.success(response.message || "Cập nhật thông tin cá nhân thành công.");
     };
 
     const handleAddAddress = async () => {
@@ -247,13 +276,20 @@ function AccountPageContent() {
         return <div className="mx-auto max-w-6xl px-4 py-16 text-center text-gray-500">Đang tải dữ liệu tài khoản...</div>;
     }
 
+    const displayName = profile?.fullName || session?.fullName || session?.email || "Khách hàng ARES CLUB";
+    const headerAvatar = buildAvatar(displayName, typeof profile?.avatar === "string" ? profile.avatar : undefined);
+
     return (
         <div className="mx-auto max-w-7xl px-4 py-10">
             <div className="mb-8 flex flex-wrap items-end justify-between gap-4 border-b border-gray-200 pb-6">
-                <div>
-                    <p className="text-sm font-semibold uppercase tracking-[0.2em] text-red-600">Tài khoản khách hàng</p>
-                    <h1 className="mt-2 text-3xl font-bold text-gray-900">{profile?.fullName || session?.fullName || session?.email || "Khách hàng ARES CLUB"}</h1>
-                    <p className="mt-2 text-sm text-gray-600">Quản lý hồ sơ, địa chỉ giao nhận và các đơn hàng đã tạo từ storefront.</p>
+                <div className="flex items-center gap-4">
+                    <Image src={headerAvatar} alt={`Avatar ${displayName}`} width={56} height={56} className="h-14 w-14 rounded-full border border-gray-200 object-cover" />
+
+                    <div>
+                        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-red-600">Tài khoản khách hàng</p>
+                        <h1 className="mt-2 text-3xl font-bold text-gray-900">{displayName}</h1>
+                        {/* <p className="mt-2 text-sm text-gray-600">Quản lý hồ sơ, địa chỉ giao nhận và các đơn hàng đã tạo từ storefront.</p> */}
+                    </div>
                 </div>
                 <Button variant="outline" className="rounded-none" onClick={() => void handleLogout()}>
                     <LogOut className="mr-2 h-4 w-4" />
@@ -261,44 +297,74 @@ function AccountPageContent() {
                 </Button>
             </div>
 
-            <div className="grid gap-8 lg:grid-cols-[260px_1fr]">
-                <AccountSidebar sections={accountSections} activeSection={activeSection} onSelect={setActiveSection} />
+            <Tabs
+                value={activeSection}
+                onValueChange={(value) => {
+                    if (isAccountSection(value)) {
+                        setActiveSection(value);
+                        const nextQuery = new URLSearchParams(searchParams.toString());
+                        if (value === "profile") {
+                            nextQuery.delete("tab");
+                        } else {
+                            nextQuery.set("tab", value);
+                        }
+                        const nextSearch = nextQuery.toString();
+                        const nextUrl = nextSearch ? `${pathname}?${nextSearch}` : pathname;
+                        router.replace(nextUrl, { scroll: false });
+                    }
+                }}
+                orientation="vertical"
+                className="flex-col gap-8 lg:flex-row"
+            >
+                <TabsList className="h-auto w-full shrink-0 flex-col items-stretch border border-gray-200 bg-[#fafafa] p-4 lg:w-65" variant="line">
+                    {accountSections.map((section) => {
+                        const Icon = section.icon;
+                        return (
+                            <TabsTrigger
+                                key={section.id}
+                                value={section.id}
+                                className="h-auto justify-start rounded-none border border-gray-200 bg-white px-4 py-3 text-left text-sm font-medium text-gray-700 hover:border-gray-900 hover:text-gray-900 data-[state=active]:border-red-600 data-[state=active]:bg-red-600 data-[state=active]:text-white group-data-[variant=line]/tabs-list:data-[state=active]:border-red-600 group-data-[variant=line]/tabs-list:data-[state=active]:bg-red-600 group-data-[variant=line]/tabs-list:data-[state=active]:text-white after:hidden"
+                            >
+                                <Icon className="h-4 w-4" />
+                                {section.label}
+                            </TabsTrigger>
+                        );
+                    })}
+                </TabsList>
 
-                <section className="space-y-8">
-                    {activeSection === "profile" && (
-                        <ProfileSection
-                            profile={profile}
-                            sessionName={session?.fullName}
-                            sessionEmail={session?.email}
-                            sessionPhone={session?.phone}
-                            form={profileForm}
-                            onFormChange={(updater) => setProfileForm((current) => updater(current))}
-                            isSaving={isSavingProfile}
-                            onSave={() => void handleProfileSave()}
-                        />
-                    )}
+                <TabsContent value="profile" className="w-full space-y-8">
+                    <ProfileSection
+                        profile={profile}
+                        sessionName={session?.fullName}
+                        sessionEmail={session?.email}
+                        sessionPhone={session?.phone}
+                        form={profileForm}
+                        onFormChange={(updater) => setProfileForm((current) => updater(current))}
+                        isSaving={isSavingProfile}
+                        onSave={() => void handleProfileSave()}
+                    />
+                </TabsContent>
 
-                    {activeSection === "orders" && (
-                        <OrdersSection orders={orders} orderDetails={orderDetails} expandedOrderId={expandedOrderId} loadingOrderId={loadingOrderId} onToggleOrderDetail={(orderId) => void handleToggleOrderDetail(orderId)} />
-                    )}
+                <TabsContent value="orders" className="w-full space-y-8">
+                    <OrdersSection orders={orders} orderDetails={orderDetails} expandedOrderId={expandedOrderId} loadingOrderId={loadingOrderId} onToggleOrderDetail={(orderId) => void handleToggleOrderDetail(orderId)} />
+                </TabsContent>
 
-                    {activeSection === "addresses" && (
-                        <AddressesSection
-                            form={addressForm}
-                            addresses={addresses}
-                            isSavingAddress={isSavingAddress}
-                            onFormChange={(updater) => setAddressForm((current) => updater(current))}
-                            onAddAddress={() => void handleAddAddress()}
-                            onSetDefault={(addressId) => void handleSetDefault(addressId)}
-                            onDeleteAddress={(addressId) => void handleDeleteAddress(addressId)}
-                        />
-                    )}
+                <TabsContent value="addresses" className="w-full space-y-8">
+                    <AddressesSection
+                        form={addressForm}
+                        addresses={addresses}
+                        isSavingAddress={isSavingAddress}
+                        onFormChange={(updater) => setAddressForm((current) => updater(current))}
+                        onAddAddress={() => void handleAddAddress()}
+                        onSetDefault={(addressId) => void handleSetDefault(addressId)}
+                        onDeleteAddress={(addressId) => void handleDeleteAddress(addressId)}
+                    />
+                </TabsContent>
 
-                    {activeSection === "security" && (
-                        <SecuritySection form={passwordForm} isSavingPassword={isSavingPassword} onFormChange={(updater) => setPasswordForm((current) => updater(current))} onChangePassword={() => void handleChangePassword()} />
-                    )}
-                </section>
-            </div>
+                <TabsContent value="security" className="w-full space-y-8">
+                    <SecuritySection form={passwordForm} isSavingPassword={isSavingPassword} onFormChange={(updater) => setPasswordForm((current) => updater(current))} onChangePassword={() => void handleChangePassword()} />
+                </TabsContent>
+            </Tabs>
         </div>
     );
 }

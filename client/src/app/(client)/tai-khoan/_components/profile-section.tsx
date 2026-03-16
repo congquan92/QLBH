@@ -5,7 +5,9 @@ import { Label } from "@/components/ui/label";
 import { Helper } from "@/lib/helper";
 import { UserProfile } from "@/types/user";
 import { Loader2, Save } from "lucide-react";
+
 import { formatDate } from "./account-utils";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 type ProfileFormState = {
     fullName: string;
@@ -81,15 +83,22 @@ export function ProfileSection({ profile, sessionName, sessionEmail, sessionPhon
 
             <section className="border border-gray-200 bg-white p-6">
                 <h3 className="text-xl font-semibold text-gray-900">Cập nhật hồ sơ</h3>
-                <div className="mt-6 grid gap-4 md:grid-cols-2">
+                <div className="flex items-center justify-center gap-2 flex-col mt-3">
+                    <Label>Ảnh đại diện</Label>
+                    <div className="flex min-h-20 items-center justify-center">
+                        <Avatar className="size-30 border-2 border-primary/20 p-0.5 transition-all hover:border-primary">
+                            <AvatarImage src={form.avatar} alt={form.fullName} className="rounded-full object-cover" />
+                            <AvatarFallback className="bg-muted-foreground/10">{form.fullName?.substring(0, 2).toUpperCase()}</AvatarFallback>
+                        </Avatar>
+                    </div>
+                    {/* <Input value={form.avatar} onChange={(event) => onFormChange((current) => ({ ...current, avatar: event.target.value }))} /> */}
+                </div>
+                <div className="mt-3 grid gap-4 md:grid-cols-2">
                     <div className="space-y-2">
                         <Label>Họ tên</Label>
                         <Input value={form.fullName} onChange={(event) => onFormChange((current) => ({ ...current, fullName: event.target.value }))} />
                     </div>
-                    <div className="space-y-2">
-                        <Label>Ảnh đại diện</Label>
-                        <Input value={form.avatar} onChange={(event) => onFormChange((current) => ({ ...current, avatar: event.target.value }))} />
-                    </div>
+
                     <div className="space-y-2">
                         <Label>Giới tính</Label>
                         <select
