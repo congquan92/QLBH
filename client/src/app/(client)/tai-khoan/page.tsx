@@ -2,15 +2,17 @@
 
 import { OrderApi } from "@/api/order.api";
 import { UserApi } from "@/api/user.api";
-import { AccountSidebar, AccountSection } from "@/app/(client)/tai-khoan/_components/account-sidebar";
+import { AccountSection } from "@/app/(client)/tai-khoan/_components/account-sidebar";
 import { AddressesSection } from "@/app/(client)/tai-khoan/_components/addresses-section";
 import { OrdersSection } from "@/app/(client)/tai-khoan/_components/orders-section";
 import { ProfileSection } from "./_components/profile-section";
 import { SecuritySection } from "@/app/(client)/tai-khoan/_components/security-section";
 import { UserRouteGate } from "@/components/feature/RouteUserGate";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { UserAuthStore } from "@/hooks/useClientAuth";
 import Image from "next/image";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { OrderSummary } from "@/types/order";
 import { ApiResponse, PageResponse } from "@/types/api";
@@ -91,7 +93,14 @@ function normalizeAddressList(profile: UserProfile | null, addresses: UserAddres
     return profile?.addressResponses ?? [];
 }
 
+function isAccountSection(value: string): value is AccountSection {
+    return value === "profile" || value === "orders" || value === "addresses" || value === "security";
+}
+
 function AccountPageContent() {
+    const router = useRouter();
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
     const session = UserAuthStore.useStore((state) => state.session);
     const [activeSection, setActiveSection] = useState<AccountSection>("profile");
     const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -146,6 +155,13 @@ function AccountPageContent() {
 
         return () => window.clearTimeout(timeoutId);
     }, [loadAccountData]);
+
+    useEffect(() => {
+        const tab = searchParams.get("tab");
+        if (tab && isAccountSection(tab)) {
+            setActiveSection(tab);
+        }
+    }, [searchParams]);
 
     const accountSections = useMemo(
         () => [
@@ -281,44 +297,74 @@ function AccountPageContent() {
                 </Button>
             </div>
 
-            <div className="grid gap-8 lg:grid-cols-[260px_1fr]">
-                <AccountSidebar sections={accountSections} activeSection={activeSection} onSelect={setActiveSection} />
+            <Tabs
+                value={activeSection}
+                onValueChange={(value) => {
+                    if (isAccountSection(value)) {
+                        setActiveSection(value);
+                        const nextQuery = new URLSearchParams(searchParams.toString());
+                        if (value === "profile") {
+                            nextQuery.delete("tab");
+                        } else {
+                            nextQuery.set("tab", value);
+                        }
+                        const nextSearch = nextQuery.toString();
+                        const nextUrl = nextSearch ? `${pathname}?${nextSearch}` : pathname;
+                        router.replace(nextUrl, { scroll: false });
+                    }
+                }}
+                orientation="vertical"
+                className="flex-col gap-8 lg:flex-row"
+            >
+                <TabsList className="h-auto w-full shrink-0 flex-col items-stretch border border-gray-200 bg-[#fafafa] p-4 lg:w-65" variant="line">
+                    {accountSections.map((section) => {
+                        const Icon = section.icon;
+                        return (
+                            <TabsTrigger
+                                key={section.id}
+                                value={section.id}
+                                className="h-auto justify-start rounded-none border border-gray-200 bg-white px-4 py-3 text-left text-sm font-medium text-gray-700 hover:border-gray-900 hover:text-gray-900 data-[state=active]:border-red-600 data-[state=active]:bg-red-600 data-[state=active]:text-white group-data-[variant=line]/tabs-list:data-[state=active]:border-red-600 group-data-[variant=line]/tabs-list:data-[state=active]:bg-red-600 group-data-[variant=line]/tabs-list:data-[state=active]:text-white after:hidden"
+                            >
+                                <Icon className="h-4 w-4" />
+                                {section.label}
+                            </TabsTrigger>
+                        );
+                    })}
+                </TabsList>
 
-                <section className="space-y-8">
-                    {activeSection === "profile" && (
-                        <ProfileSection
-                            profile={profile}
-                            sessionName={session?.fullName}
-                            sessionEmail={session?.email}
-                            sessionPhone={session?.phone}
-                            form={profileForm}
-                            onFormChange={(updater) => setProfileForm((current) => updater(current))}
-                            isSaving={isSavingProfile}
-                            onSave={() => void handleProfileSave()}
-                        />
-                    )}
+                <TabsContent value="profile" className="w-full space-y-8">
+                    <ProfileSection
+                        profile={profile}
+                        sessionName={session?.fullName}
+                        sessionEmail={session?.email}
+                        sessionPhone={session?.phone}
+                        form={profileForm}
+                        onFormChange={(updater) => setProfileForm((current) => updater(current))}
+                        isSaving={isSavingProfile}
+                        onSave={() => void handleProfileSave()}
+                    />
+                </TabsContent>
 
-                    {activeSection === "orders" && (
-                        <OrdersSection orders={orders} orderDetails={orderDetails} expandedOrderId={expandedOrderId} loadingOrderId={loadingOrderId} onToggleOrderDetail={(orderId) => void handleToggleOrderDetail(orderId)} />
-                    )}
+                <TabsContent value="orders" className="w-full space-y-8">
+                    <OrdersSection orders={orders} orderDetails={orderDetails} expandedOrderId={expandedOrderId} loadingOrderId={loadingOrderId} onToggleOrderDetail={(orderId) => void handleToggleOrderDetail(orderId)} />
+                </TabsContent>
 
-                    {activeSection === "addresses" && (
-                        <AddressesSection
-                            form={addressForm}
-                            addresses={addresses}
-                            isSavingAddress={isSavingAddress}
-                            onFormChange={(updater) => setAddressForm((current) => updater(current))}
-                            onAddAddress={() => void handleAddAddress()}
-                            onSetDefault={(addressId) => void handleSetDefault(addressId)}
-                            onDeleteAddress={(addressId) => void handleDeleteAddress(addressId)}
-                        />
-                    )}
+                <TabsContent value="addresses" className="w-full space-y-8">
+                    <AddressesSection
+                        form={addressForm}
+                        addresses={addresses}
+                        isSavingAddress={isSavingAddress}
+                        onFormChange={(updater) => setAddressForm((current) => updater(current))}
+                        onAddAddress={() => void handleAddAddress()}
+                        onSetDefault={(addressId) => void handleSetDefault(addressId)}
+                        onDeleteAddress={(addressId) => void handleDeleteAddress(addressId)}
+                    />
+                </TabsContent>
 
-                    {activeSection === "security" && (
-                        <SecuritySection form={passwordForm} isSavingPassword={isSavingPassword} onFormChange={(updater) => setPasswordForm((current) => updater(current))} onChangePassword={() => void handleChangePassword()} />
-                    )}
-                </section>
-            </div>
+                <TabsContent value="security" className="w-full space-y-8">
+                    <SecuritySection form={passwordForm} isSavingPassword={isSavingPassword} onFormChange={(updater) => setPasswordForm((current) => updater(current))} onChangePassword={() => void handleChangePassword()} />
+                </TabsContent>
+            </Tabs>
         </div>
     );
 }

@@ -180,7 +180,7 @@ export default function PaymentResultPage() {
                 )}
 
                 <div className="mt-8 flex flex-wrap justify-center gap-3">
-                    <Link href="/tai-khoan" className="bg-gray-900 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-black">
+                    <Link href="/tai-khoan?tab=orders" className="bg-gray-900 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-black">
                         Xem lịch sử mua hàng
                     </Link>
                     <Link href="/gio-hang" className="border border-gray-300 px-5 py-3 text-sm font-semibold text-gray-700 transition-colors hover:border-gray-900 hover:text-gray-900">
