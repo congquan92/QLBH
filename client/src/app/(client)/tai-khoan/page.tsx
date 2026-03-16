@@ -5,11 +5,12 @@ import { UserApi } from "@/api/user.api";
 import { AccountSidebar, AccountSection } from "@/app/(client)/tai-khoan/_components/account-sidebar";
 import { AddressesSection } from "@/app/(client)/tai-khoan/_components/addresses-section";
 import { OrdersSection } from "@/app/(client)/tai-khoan/_components/orders-section";
-import { ProfileSection } from "@/app/(client)/tai-khoan/_components/profile-section";
+import { ProfileSection } from "./_components/profile-section";
 import { SecuritySection } from "@/app/(client)/tai-khoan/_components/security-section";
 import { UserRouteGate } from "@/components/feature/RouteUserGate";
 import { Button } from "@/components/ui/button";
 import { UserAuthStore } from "@/hooks/useClientAuth";
+import Image from "next/image";
 
 import { OrderSummary } from "@/types/order";
 import { ApiResponse, PageResponse } from "@/types/api";
@@ -60,7 +61,20 @@ const EMPTY_ADDRESS_FORM: AddressFormState = {
 function toIsoDate(value: unknown) {
     if (!value) return "2000-01-01";
     const text = String(value);
-    return text.includes("T") ? text.slice(0, 10) : text;
+    const matchedDate = text.match(/\d{4}-\d{2}-\d{2}/);
+    if (matchedDate) {
+        return matchedDate[0];
+    }
+
+    const parsed = new Date(text);
+    if (!Number.isNaN(parsed.getTime())) {
+        const year = parsed.getFullYear();
+        const month = String(parsed.getMonth() + 1).padStart(2, "0");
+        const day = String(parsed.getDate()).padStart(2, "0");
+        return `${year}-${month}-${day}`;
+    }
+
+    return "2000-01-01";
 }
 
 function buildAvatar(fullName?: string, avatar?: string) {
@@ -147,7 +161,6 @@ function AccountPageContent() {
         setIsSavingProfile(true);
         const response = await UserApi.updateProfile(profileForm);
         setIsSavingProfile(false);
-
         if (!response || response.status >= 400) {
             toast.error(response?.message || "Không thể cập nhật thông tin cá nhân.");
             return;
@@ -155,7 +168,7 @@ function AccountPageContent() {
 
         await UserAuthStore.actions.refreshProfile();
         await loadAccountData();
-        toast.success("Đã cập nhật thông tin cá nhân.");
+        toast.success(response.message || "Cập nhật thông tin cá nhân thành công.");
     };
 
     const handleAddAddress = async () => {
@@ -247,13 +260,20 @@ function AccountPageContent() {
         return <div className="mx-auto max-w-6xl px-4 py-16 text-center text-gray-500">Đang tải dữ liệu tài khoản...</div>;
     }
 
+    const displayName = profile?.fullName || session?.fullName || session?.email || "Khách hàng ARES CLUB";
+    const headerAvatar = buildAvatar(displayName, typeof profile?.avatar === "string" ? profile.avatar : undefined);
+
     return (
         <div className="mx-auto max-w-7xl px-4 py-10">
             <div className="mb-8 flex flex-wrap items-end justify-between gap-4 border-b border-gray-200 pb-6">
-                <div>
-                    <p className="text-sm font-semibold uppercase tracking-[0.2em] text-red-600">Tài khoản khách hàng</p>
-                    <h1 className="mt-2 text-3xl font-bold text-gray-900">{profile?.fullName || session?.fullName || session?.email || "Khách hàng ARES CLUB"}</h1>
-                    <p className="mt-2 text-sm text-gray-600">Quản lý hồ sơ, địa chỉ giao nhận và các đơn hàng đã tạo từ storefront.</p>
+                <div className="flex items-center gap-4">
+                    <Image src={headerAvatar} alt={`Avatar ${displayName}`} width={56} height={56} className="h-14 w-14 rounded-full border border-gray-200 object-cover" />
+
+                    <div>
+                        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-red-600">Tài khoản khách hàng</p>
+                        <h1 className="mt-2 text-3xl font-bold text-gray-900">{displayName}</h1>
+                        {/* <p className="mt-2 text-sm text-gray-600">Quản lý hồ sơ, địa chỉ giao nhận và các đơn hàng đã tạo từ storefront.</p> */}
+                    </div>
                 </div>
                 <Button variant="outline" className="rounded-none" onClick={() => void handleLogout()}>
                     <LogOut className="mr-2 h-4 w-4" />

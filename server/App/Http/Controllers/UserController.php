@@ -85,11 +85,13 @@ class UserController extends Controller
     public function updateUser(UserUpdateRequest $request)
     {
         $this->userService->update($request);
+        return $this->success(null, 'Cập nhật thông tin cá nhân thành công');
     }
 
     public function updateUserById(UserUpdateRequest $request, $userId)
     {
         $this->userService->updateById((int) $userId, $request);
+        return $this->success(null, 'Cập nhật thông tin người dùng thành công');
     }
 
     public function verifyAccount($userId, Request $request)

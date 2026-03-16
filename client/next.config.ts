@@ -16,7 +16,10 @@ const nextConfig: NextConfig = {
                 protocol: "https",
                 hostname: "cdn.hstatic.net",
             },
-           
+            {
+                protocol: "https",
+                hostname: "ui-avatars.com",
+            },
         ],
     },
 };
