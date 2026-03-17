@@ -19,6 +19,8 @@ class ProductBaseResponse
         public int $soldQuantity,
         public float $avgRating,    
         public Status $status,
+        public int $categoryId,
+        public int $supplierId,
         public Carbon $createdAt,
         public Carbon $updateAt
     ) {}
@@ -36,6 +38,8 @@ class ProductBaseResponse
             'soldQuantity' => $this->soldQuantity,
             'avgRating' => (float) $this->avgRating,
             'status' => $this->status,
+            'categoryId' => $this->categoryId,
+            'supplierId' => $this->supplierId,
             'createdAt' => $this->createdAt->toISOString(),
             'updateAt' => $this->updateAt->toISOString(),
         ];
