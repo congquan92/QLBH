@@ -22,7 +22,28 @@ class FirebaseService
      */
     private function getAccessToken()
     {
-        $key = json_decode(file_get_contents($this->serviceAccountPath), true);
+        if (!is_file($this->serviceAccountPath)) {
+            Log::warning("Firebase service account file not found", [
+                'path' => $this->serviceAccountPath,
+            ]);
+            return null;
+        }
+
+        $raw = file_get_contents($this->serviceAccountPath);
+        if ($raw === false) {
+            Log::warning("Firebase service account file cannot be read", [
+                'path' => $this->serviceAccountPath,
+            ]);
+            return null;
+        }
+
+        $key = json_decode($raw, true);
+        if (!is_array($key) || empty($key['client_email']) || empty($key['private_key'])) {
+            Log::warning("Firebase service account file is invalid", [
+                'path' => $this->serviceAccountPath,
+            ]);
+            return null;
+        }
 
         $now = time();
         $payload = [
@@ -46,6 +67,11 @@ class FirebaseService
     public function test()
     {
         $token = $this->getAccessToken();
+        if (!$token) {
+            Log::warning("Firebase test skipped because access token is unavailable");
+            return;
+        }
+
         $url = "{$this->databaseUrl}/1/hello.json?access_token={$token}";
         $data = [
             "test" => "abc",
@@ -89,6 +115,14 @@ class FirebaseService
     public function sendNotification($target, $data)
 {
     $token = $this->getAccessToken();
+    if (!$token) {
+        Log::warning("Firebase notification skipped because access token is unavailable", [
+            'target' => $target,
+            'type' => $data['type'] ?? null,
+            'order_id' => $data['order_id'] ?? null,
+        ]);
+        return null;
+    }
     
     // target có thể là 'role_admin', 'role_warehouse' hoặc 'user_123'
     $url = "{$this->databaseUrl}/notifications/{$target}.json?access_token={$token}";

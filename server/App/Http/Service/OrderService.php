@@ -81,7 +81,18 @@ class OrderService
         return PageResponse::fromLaravelPaginator($paginator);
     }
 
-    public function findAllByAdmin(?string $keyword, ?string $sort, int $page, int $size, ?string $startDate, ?string $endDate, ?string $orderStatus): PageResponse
+    public function findAllByAdmin(
+        ?string $keyword,
+        ?string $sort,
+        int $page,
+        int $size,
+        ?string $startDate,
+        ?string $endDate,
+        ?string $orderStatus,
+        ?string $deliveryDistrict,
+        ?string $deliveryProvince,
+        ?string $deliveryWard
+    ): PageResponse
     {
         $query = Order::query();
 
@@ -117,6 +128,18 @@ class OrderService
             });
         }
 
+        if (!empty($deliveryDistrict)) {
+            $query->where('delivery_district_name', 'like', "%{$deliveryDistrict}%");
+        }
+
+        if (!empty($deliveryProvince)) {
+            $query->where('delivery_province_name', 'like', "%{$deliveryProvince}%");
+        }
+
+        if (!empty($deliveryWard)) {
+            $query->where('delivery_ward_name', 'like', "%{$deliveryWard}%");
+        }
+
         $paginator = $query->paginate($size, ['*'], 'page', $page);
 
         $dtoItems = $paginator->getCollection()->map(function ($order) {
@@ -135,6 +158,9 @@ class OrderService
                 throw new BusinessException(ErrorCode::BAD_REQUEST, 'Không thể chuyển trạng thái cho đơn chưa thanh toán !');
             }
             $nextStatus = DeliveryStatus::tryFrom($status);
+            if (!$nextStatus) {
+                throw new BusinessException(ErrorCode::BAD_REQUEST, 'Trạng thái đơn hàng không hợp lệ');
+            }
             $currentState = OrderStateFactory::getState($order->order_status);
             $currentState->changeState($order, $nextStatus, $this->firebaseService);
             $order->save();
