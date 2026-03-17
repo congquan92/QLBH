@@ -8,7 +8,7 @@ import { Boxes, Building2 } from "lucide-react";
 
 export default function InventoryPage() {
     return (
-        <AdminPageShell title="Kho hàng" description="Quản lý nhập hàng và nhà cung cấp" requiredPermissions={["VIEW_IMPORT_PRODUCT", "VIEW_SUPPLIERS"]}>
+        <AdminPageShell title="Kho hàng" description="Quản lý nhập hàng và nhà cung cấp">
             <div className="grid gap-4 md:grid-cols-2">
                 <Card>
                     <CardHeader>

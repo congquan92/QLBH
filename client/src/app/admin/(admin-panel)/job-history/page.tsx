@@ -1,6 +1,5 @@
 "use client";
 
-import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { JobHistoryApi } from "@/api/admin/job-history.api";
 import { UserApi } from "@/api/user.api";
 import { AdminCrudApi } from "@/api/admin/admin-crud.api";
@@ -31,7 +30,6 @@ const emptyForm: PromotionForm = {
 };
 
 export default function JobHistoryPage() {
-    const { hasPermission } = useAdminAuth();
     const [users, setUsers] = useState<UserProfile[]>([]);
     const [positions, setPositions] = useState<Position[]>([]);
     const [form, setForm] = useState<PromotionForm>(emptyForm);
@@ -39,13 +37,10 @@ export default function JobHistoryPage() {
     const [isLoading, setIsLoading] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const canPromote = hasPermission("PROMOTE_EMPLOYEE");
-    const canViewUsers = hasPermission("VIEW_USERS");
-
     const fetchData = useCallback(async () => {
         setIsLoading(true);
         try {
-            const [usersRes, positionsRes] = await Promise.all([canViewUsers ? UserApi.getUsers({ page: 1, size: 100, hasUserRole: false }) : Promise.resolve({ data: { data: [] } }), AdminCrudApi.getPositions({ sort: "name:asc" })]);
+            const [usersRes, positionsRes] = await Promise.all([UserApi.getUsers({ page: 1, size: 100, hasUserRole: false }), AdminCrudApi.getPositions({ sort: "name:asc" })]);
             setUsers(usersRes.data.data || []);
             setPositions(positionsRes.data.data || []);
         } catch (error) {
@@ -53,7 +48,7 @@ export default function JobHistoryPage() {
         } finally {
             setIsLoading(false);
         }
-    }, [canViewUsers]);
+    }, []);
 
     useEffect(() => {
         void fetchData();
@@ -85,11 +80,6 @@ export default function JobHistoryPage() {
             return;
         }
 
-        if (!canPromote) {
-            toast.error("Bạn không có quyền thăng chức");
-            return;
-        }
-
         setIsSubmitting(true);
         try {
             await JobHistoryApi.promote(Number(form.userId), {
@@ -112,17 +102,6 @@ export default function JobHistoryPage() {
         setCareer(null);
     }
 
-    if (!canViewUsers) {
-        return (
-            <div className="space-y-4">
-                <h1 className="text-3xl font-bold tracking-tight">Lịch sử công việc</h1>
-                <Card>
-                    <CardContent className="flex items-center justify-center py-12 text-muted-foreground">Bạn không có quyền VIEW_USERS để xem lịch sử công việc</CardContent>
-                </Card>
-            </div>
-        );
-    }
-
     return (
         <div className="space-y-4">
             <div className="flex items-center justify-between">
@@ -137,9 +116,9 @@ export default function JobHistoryPage() {
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                         <TrendingUp className="h-5 w-5" />
-                        {canPromote ? "Thăng chức nhân viên" : "Xem lịch sử công việc"}
+                        Thăng chức nhân viên
                     </CardTitle>
-                    <CardDescription>{canPromote ? "Cập nhật vị trí mới cho nhân viên" : "Tra cứu quá trình thăng tiến"}</CardDescription>
+                    <CardDescription>Cập nhật vị trí mới cho nhân viên</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <form onSubmit={handlePromote} className="space-y-4">
@@ -159,33 +138,29 @@ export default function JobHistoryPage() {
                                     </SelectContent>
                                 </Select>
                             </div>
-                            {canPromote && (
-                                <>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="new_position_id">Vị trí mới</Label>
-                                        <Select value={form.new_position_id} onValueChange={(val) => setForm({ ...form, new_position_id: val })}>
-                                            <SelectTrigger id="new_position_id">
-                                                <SelectValue placeholder="Chọn vị trí" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {positions.map((pos) => (
-                                                    <SelectItem key={pos.id} value={String(pos.id)}>
-                                                        {pos.name}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="promotion_date">Ngày thăng chức</Label>
-                                        <Input id="promotion_date" type="date" value={form.promotion_date} onChange={(e) => setForm({ ...form, promotion_date: e.target.value })} required />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="reason">Lý do (tuỳ chọn)</Label>
-                                        <Input id="reason" value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })} placeholder="Nhập lý do thăng chức..." />
-                                    </div>
-                                </>
-                            )}
+                            <div className="space-y-2">
+                                <Label htmlFor="new_position_id">Vị trí mới</Label>
+                                <Select value={form.new_position_id} onValueChange={(val) => setForm({ ...form, new_position_id: val })}>
+                                    <SelectTrigger id="new_position_id">
+                                        <SelectValue placeholder="Chọn vị trí" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {positions.map((pos) => (
+                                            <SelectItem key={pos.id} value={String(pos.id)}>
+                                                {pos.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="promotion_date">Ngày thăng chức</Label>
+                                <Input id="promotion_date" type="date" value={form.promotion_date} onChange={(e) => setForm({ ...form, promotion_date: e.target.value })} required />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="reason">Lý do (tuỳ chọn)</Label>
+                                <Input id="reason" value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })} placeholder="Nhập lý do thăng chức..." />
+                            </div>
                         </div>
                         <div className="flex gap-2">
                             <Button type="button" variant="outline" onClick={handleViewCareer} disabled={isLoading || !form.userId}>
@@ -201,26 +176,22 @@ export default function JobHistoryPage() {
                                     </>
                                 )}
                             </Button>
-                            {canPromote && (
-                                <>
-                                    <Button type="submit" disabled={isSubmitting}>
-                                        {isSubmitting ? (
-                                            <>
-                                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                                Đang xử lý...
-                                            </>
-                                        ) : (
-                                            <>
-                                                <UserCheck className="mr-2 h-4 w-4" />
-                                                Thăng chức
-                                            </>
-                                        )}
-                                    </Button>
-                                    <Button type="button" variant="outline" onClick={resetForm}>
-                                        Hủy
-                                    </Button>
-                                </>
-                            )}
+                            <Button type="submit" disabled={isSubmitting}>
+                                {isSubmitting ? (
+                                    <>
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        Đang xử lý...
+                                    </>
+                                ) : (
+                                    <>
+                                        <UserCheck className="mr-2 h-4 w-4" />
+                                        Thăng chức
+                                    </>
+                                )}
+                            </Button>
+                            <Button type="button" variant="outline" onClick={resetForm}>
+                                Hủy
+                            </Button>
                         </div>
                     </form>
                 </CardContent>

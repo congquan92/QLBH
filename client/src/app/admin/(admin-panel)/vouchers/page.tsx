@@ -124,7 +124,7 @@ export default function VouchersPage() {
     }
 
     return (
-        <AdminPageShell title="Voucher" description="CRUD chiến dịch khuyến mãi và mã giảm giá" requiredPermissions={["VIEW_ALL_VOUCHER"]}>
+        <AdminPageShell title="Voucher" description="CRUD chiến dịch khuyến mãi và mã giảm giá">
             <div className="grid gap-4 lg:grid-cols-3">
                 <Card className="lg:col-span-1">
                     <CardHeader>

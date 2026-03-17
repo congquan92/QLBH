@@ -13,8 +13,6 @@ interface AdminAuthValue {
     isAuthenticated: boolean;
     login: (username: string, password: string) => Promise<void>;
     logout: () => Promise<void>;
-    hasPermission: (permission: string) => boolean;
-    hasAnyPermission: (permissionList: string[]) => boolean;
     canAccessPath: (path: string) => boolean;
     refreshProfile: () => Promise<void>;
 }
@@ -214,8 +212,6 @@ export function useAdminAuth() {
         void useAdminAuthStore.getState().ensureHydrated();
     }, []);
 
-    const hasPermission = useCallback((permission: string) => AdminAuthUtil.hasPermission(session, permission), [session]);
-    const hasAnyPermission = useCallback((permissionList: string[]) => AdminAuthUtil.hasAnyPermission(session, permissionList), [session]);
     const canAccessPath = useCallback((path: string) => AdminAuthUtil.canAccessUrl(session, path), [session]);
 
     return useMemo(
@@ -226,11 +222,9 @@ export function useAdminAuth() {
                 isAuthenticated: Boolean(session),
                 login: useAdminAuthStore.getState().login,
                 logout: useAdminAuthStore.getState().logout,
-                hasPermission,
-                hasAnyPermission,
                 canAccessPath,
                 refreshProfile: useAdminAuthStore.getState().refreshProfile,
             }) satisfies AdminAuthValue,
-        [canAccessPath, hasAnyPermission, hasPermission, isLoading, session],
+        [canAccessPath, isLoading, session],
     );
 }

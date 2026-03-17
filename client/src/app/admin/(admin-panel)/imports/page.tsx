@@ -150,7 +150,7 @@ export default function ImportsPage() {
     }
 
     return (
-        <AdminPageShell title="Nhập hàng" description="CRUD phiếu nhập theo endpoint `/import-products/*`" requiredPermissions={["VIEW_IMPORT_PRODUCT"]}>
+        <AdminPageShell title="Nhập hàng" description="CRUD phiếu nhập theo endpoint `/import-products/*`">
             <div className="grid gap-4 lg:grid-cols-3">
                 <Card className="lg:col-span-1">
                     <CardHeader>

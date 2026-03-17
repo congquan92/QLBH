@@ -267,7 +267,7 @@ export default function RolesPage() {
     }
 
     return (
-        <AdminPageShell title="Vai trò & Quyền" description="Quản lý vai trò và phạm vi quyền của từng nhóm người dùng" requiredPermissions={["VIEW_ROLES"]}>
+        <AdminPageShell title="Vai trò & Quyền" description="Quản lý vai trò và phạm vi quyền của từng nhóm người dùng">
             <div className="mb-4 flex items-center justify-between">
                 <p className="text-sm text-muted-foreground">
                     {roles.length} vai trò &middot; {pageCatalog.length} trang

@@ -129,7 +129,7 @@ export default function SuppliersPage() {
     }
 
     return (
-        <AdminPageShell title="Nhà cung cấp" description="CRUD nhà cung cấp theo endpoint `/suppliers`" requiredPermissions={["VIEW_SUPPLIERS"]}>
+        <AdminPageShell title="Nhà cung cấp" description="CRUD nhà cung cấp theo endpoint `/suppliers`">
             <div className="grid gap-4 lg:grid-cols-3">
                 <Card className="lg:col-span-1">
                     <CardHeader>

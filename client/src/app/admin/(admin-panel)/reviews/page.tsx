@@ -30,7 +30,7 @@ export default function ReviewsPage() {
     }, []);
 
     return (
-        <AdminPageShell title="Đánh giá" description="Giám sát phản hồi khách hàng và xử lý nội dung vi phạm" requiredPermissions={["VIEW_REVIEWS_ADMIN"]}>
+        <AdminPageShell title="Đánh giá" description="Giám sát phản hồi khách hàng và xử lý nội dung vi phạm">
             <Card>
                 <CardHeader>
                     <CardTitle>Danh sách đánh giá</CardTitle>
