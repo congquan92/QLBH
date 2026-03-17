@@ -1,13 +1,14 @@
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { CategoryOption, ProductFormValues, ProductImageItem, SupplierOption } from "./product-types";
-import { ImagePlus, Loader2, Save, Trash2, X } from "lucide-react";
+import { ImagePlus, Loader2, Save, Trash2 } from "lucide-react";
 
 type ProductFormPanelProps = {
     open: boolean;
+    onOpenChange: (open: boolean) => void;
     isSaving: boolean;
     isLoadingDetail: boolean;
     form: ProductFormValues;
@@ -49,6 +50,7 @@ function ImagePreviewCard({ item, onRemove }: { item: ProductImageItem; onRemove
 
 export function ProductFormPanel({
     open,
+    onOpenChange,
     isSaving,
     isLoadingDetail,
     form,
@@ -64,24 +66,15 @@ export function ProductFormPanel({
     onCancel,
     onSubmit,
 }: ProductFormPanelProps) {
-    if (!open) return null;
-
     const isUploadingMedia = Boolean(coverImage?.isUploading) || galleryImages.some((item) => item.isUploading);
 
     return (
-        <Card className="border-dashed">
-            <CardHeader className="space-y-1">
-                <div className="flex items-start justify-between gap-3">
-                    <div>
-                        <CardTitle>{form.id ? "Cập nhật sản phẩm" : "Thêm sản phẩm mới"}</CardTitle>
-                        <CardDescription>Điền đúng phân loại, nhà cung cấp và ảnh trước khi lưu lên hệ thống.</CardDescription>
-                    </div>
-                    <Button type="button" variant="ghost" size="icon" onClick={onCancel}>
-                        <X className="h-4 w-4" />
-                    </Button>
-                </div>
-            </CardHeader>
-            <CardContent>
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="h-[92vh] w-7xl sm:max-w-7xl overflow-y-auto p-8">
+                <DialogHeader>
+                    <DialogTitle>{form.id ? "Cập nhật sản phẩm" : "Thêm sản phẩm mới"}</DialogTitle>
+                    <DialogDescription>Điền đúng phân loại, nhà cung cấp và ảnh trước khi lưu lên hệ thống.</DialogDescription>
+                </DialogHeader>
                 {isLoadingDetail ? (
                     <div className="flex min-h-56 items-center justify-center text-sm text-muted-foreground">
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -100,7 +93,7 @@ export function ProductFormPanel({
                                     <SelectTrigger id="product-supplier">
                                         <SelectValue placeholder="Chọn nhà cung cấp" />
                                     </SelectTrigger>
-                                    <SelectContent>
+                                    <SelectContent position="popper" className="max-h-50 overflow-y-auto">
                                         {supplierOptions.map((supplier) => (
                                             <SelectItem key={supplier.id} value={String(supplier.id)}>
                                                 {supplier.name}
@@ -117,13 +110,13 @@ export function ProductFormPanel({
                                 <Label htmlFor="product-sale-price">Giá bán</Label>
                                 <Input id="product-sale-price" type="number" min="0" value={form.salePrice} onChange={(event) => onChange("salePrice", event.target.value)} placeholder="Nhập giá bán" />
                             </div>
-                            <div className="space-y-2 md:col-span-2">
+                            <div className="space-y-2">
                                 <Label htmlFor="product-category">Phân loại</Label>
                                 <Select value={form.categoryId} onValueChange={(value) => onChange("categoryId", value)}>
-                                    <SelectTrigger id="product-category">
+                                    <SelectTrigger id="product-category" className="w-1/2">
                                         <SelectValue placeholder="Chọn phân loại" />
                                     </SelectTrigger>
-                                    <SelectContent>
+                                    <SelectContent position="popper" className="max-h-70 overflow-y-auto">
                                         {categoryOptions.map((category) => (
                                             <SelectItem key={category.id} value={String(category.id)}>
                                                 {category.label}
@@ -195,7 +188,7 @@ export function ProductFormPanel({
                         </div>
                     </div>
                 )}
-            </CardContent>
-        </Card>
+            </DialogContent>
+        </Dialog>
     );
 }

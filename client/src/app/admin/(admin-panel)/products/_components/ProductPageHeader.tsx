@@ -8,11 +8,10 @@ type ProductPageHeaderProps = {
     activeProducts: number;
     hiddenProducts: number;
     categoriesCount: number;
-    canCreateProduct: boolean;
     onCreate: () => void;
 };
 
-export function ProductPageHeader({ totalProducts, activeProducts, hiddenProducts, categoriesCount, canCreateProduct, onCreate }: ProductPageHeaderProps) {
+export function ProductPageHeader({ totalProducts, activeProducts, hiddenProducts, categoriesCount, onCreate }: ProductPageHeaderProps) {
     return (
         <div className="space-y-4">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -26,12 +25,10 @@ export function ProductPageHeader({ totalProducts, activeProducts, hiddenProduct
                     </div>
                 </div>
 
-                {canCreateProduct && (
-                    <Button onClick={onCreate} className="h-11 px-5">
-                        <Plus className="mr-2 h-4 w-4" />
-                        Thêm sản phẩm
-                    </Button>
-                )}
+                <Button onClick={onCreate} className="h-11 px-5">
+                    <Plus className="mr-2 h-4 w-4" />
+                    Thêm sản phẩm
+                </Button>
             </div>
 
             <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-4">

@@ -5,16 +5,16 @@ import { FileUploadApi } from "@/api/admin/file-upload.api";
 import { CategoryApi } from "@/api/category.api";
 import { ProductApi } from "@/api/product.api";
 import { AdminPageShell } from "@/components/feature/admin-page-shell";
-import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { Helper } from "@/lib/helper";
 import type { Supplier } from "@/types/admin-crud";
 import type { Category, CategoryChild } from "@/types/navbar";
 import type { Product, ProductDetail } from "@/types/product";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { ProductFormPanel } from "./_components/product-form-panel";
-import { ProductPageHeader } from "./_components/product-page-header";
-import { ProductTable } from "./_components/product-table";
+import { DeleteProductDialog } from "./_components/DeleteProductDialog";
+import { ProductFormPanel } from "./_components/ProductFormPanel";
+import { ProductPageHeader } from "./_components/ProductPageHeader";
+import { ProductTable } from "./_components/ProductTable";
 import type { CategoryOption, ProductFormValues, ProductImageItem, SupplierOption } from "./_components/product-types";
 
 const emptyForm: ProductFormValues = {
@@ -41,17 +41,17 @@ function createImageItem(url: string, fileName?: string): ProductImageItem {
 function flattenCategories(categories: Category[]): CategoryOption[] {
     const result: CategoryOption[] = [];
 
-    function walk(nodes: Array<Category | CategoryChild>, depth = 0) {
+    function walk(nodes: Array<Category | CategoryChild>) {
         for (const node of nodes) {
             result.push({
                 id: node.id,
                 name: node.name,
-                label: `${depth > 0 ? `${"— ".repeat(depth)} ` : ""}${node.name}`,
+                label: node.name,
                 status: String(node.status ?? "ACTIVE"),
             });
 
             if (node.childCategory?.length) {
-                walk(node.childCategory, depth + 1);
+                walk(node.childCategory);
             }
         }
     }
@@ -85,7 +85,6 @@ function createFormFromDetail(detail: ProductDetail): ProductFormValues {
 }
 
 export default function ProductsPage() {
-    const { hasPermission } = useAdminAuth();
     const [products, setProducts] = useState<Product[]>([]);
     const [categories, setCategories] = useState<CategoryOption[]>([]);
     const [suppliers, setSuppliers] = useState<SupplierOption[]>([]);
@@ -97,12 +96,8 @@ export default function ProductsPage() {
     const [coverImage, setCoverImage] = useState<ProductImageItem | null>(null);
     const [galleryImages, setGalleryImages] = useState<ProductImageItem[]>([]);
     const [searchKeyword, setSearchKeyword] = useState("");
-
-    const canViewProducts = hasPermission("VIEW_PRODUCTS_ADMIN");
-    const canCreateProduct = hasPermission("CREATE_PRODUCT");
-    const canUpdateProduct = hasPermission("UPDATE_PRODUCT");
-    const canDeleteProduct = hasPermission("DELETE_PRODUCT");
-    const canRestoreProduct = hasPermission("RESTORE_PRODUCT");
+    const [categoryFilter, setCategoryFilter] = useState("all");
+    const [deleteTarget, setDeleteTarget] = useState<Product | null>(null);
 
     useEffect(() => {
         return () => {
@@ -122,15 +117,11 @@ export default function ProductsPage() {
         async function bootstrap() {
             setIsLoading(true);
             try {
-                const [categoryRes, supplierRes, productRes] = await Promise.all([
-                    CategoryApi.getAdminCategories({ page: 1, size: 300 }),
-                    AdminCrudApi.getSuppliers({ page: 1, size: 200, sort: "id:desc" }),
-                    canViewProducts ? ProductApi.getAdminProducts(1, 200) : Promise.resolve(null),
-                ]);
+                const [categoryRes, supplierRes, productRes] = await Promise.all([CategoryApi.getAdminCategories({ page: 1, size: 300 }), AdminCrudApi.getSuppliers({ page: 1, size: 200, sort: "id:desc" }), ProductApi.getAdminProducts(1, 200)]);
 
                 setCategories(flattenCategories(categoryRes.data));
                 setSuppliers(normalizeSuppliers(supplierRes.data.data));
-                setProducts(productRes?.data.data ?? []);
+                setProducts(productRes.data.data ?? []);
             } catch (error) {
                 toast.error(Helper.errorMessage(error));
                 setProducts([]);
@@ -140,7 +131,7 @@ export default function ProductsPage() {
         }
 
         void bootstrap();
-    }, [canViewProducts]);
+    }, []);
 
     function updateFormField<K extends keyof ProductFormValues>(field: K, value: ProductFormValues[K]) {
         setForm((current) => ({ ...current, [field]: value }));
@@ -188,11 +179,6 @@ export default function ProductsPage() {
     }
 
     async function refreshProducts() {
-        if (!canViewProducts) {
-            setProducts([]);
-            return;
-        }
-
         const response = await ProductApi.getAdminProducts(1, 200);
         setProducts(response.data.data);
     }
@@ -379,19 +365,23 @@ export default function ProductsPage() {
     }
 
     async function handleDelete(product: Product) {
-        const isSold = Number(product.soldQuantity) > 0;
-        const confirmed = window.confirm(isSold ? "Sản phẩm này đã được bán. Hệ thống sẽ chuyển sang trạng thái ẩn khỏi web. Tiếp tục?" : "Sản phẩm chưa được bán. Bạn có chắc chắn muốn xoá vĩnh viễn sản phẩm này?");
+        setDeleteTarget(product);
+    }
 
-        if (!confirmed) return;
+    async function confirmDelete() {
+        if (!deleteTarget) return;
+
+        const isSold = Number(deleteTarget.soldQuantity) > 0;
 
         setIsSaving(true);
         try {
-            await ProductApi.deleteProduct(product.id);
+            await ProductApi.deleteProduct(deleteTarget.id);
             toast.success(isSold ? "Sản phẩm đã được ẩn khỏi web." : "Đã xoá sản phẩm khỏi hệ thống.");
-            if (form.id === product.id) {
+            if (form.id === deleteTarget.id) {
                 resetForm();
             }
             await refreshProducts();
+            setDeleteTarget(null);
         } catch (error) {
             toast.error(Helper.errorMessage(error));
         } finally {
@@ -424,6 +414,8 @@ export default function ProductsPage() {
           )
         : products;
 
+    const categoryFilteredProducts = categoryFilter === "all" ? filteredProducts : filteredProducts.filter((product) => String(product.categoryId) === categoryFilter);
+
     const activeProducts = products.filter((product) => product.status === "ACTIVE").length;
     const hiddenProducts = products.filter((product) => product.status === "INACTIVE").length;
 
@@ -435,7 +427,6 @@ export default function ProductsPage() {
                     activeProducts={activeProducts}
                     hiddenProducts={hiddenProducts}
                     categoriesCount={categories.filter((category) => category.status === "ACTIVE").length}
-                    canCreateProduct={canCreateProduct}
                     onCreate={() => {
                         resetForm();
                         setShowForm(true);
@@ -444,6 +435,14 @@ export default function ProductsPage() {
 
                 <ProductFormPanel
                     open={showForm}
+                    onOpenChange={(open) => {
+                        if (!open) {
+                            resetForm();
+                            return;
+                        }
+
+                        setShowForm(true);
+                    }}
                     isSaving={isSaving}
                     isLoadingDetail={isLoadingDetail}
                     form={form}
@@ -461,20 +460,21 @@ export default function ProductsPage() {
                 />
 
                 <ProductTable
-                    products={filteredProducts}
+                    products={categoryFilteredProducts}
                     isLoading={isLoading}
                     isSaving={isSaving}
-                    canViewProducts={canViewProducts}
-                    canUpdateProduct={canUpdateProduct}
-                    canDeleteProduct={canDeleteProduct}
-                    canRestoreProduct={canRestoreProduct}
                     searchKeyword={searchKeyword}
+                    categoryFilterValue={categoryFilter}
+                    categoryFilterOptions={categories.filter((category) => category.status === "ACTIVE")}
                     onSearchChange={setSearchKeyword}
+                    onCategoryFilterChange={setCategoryFilter}
                     getCategoryLabel={(categoryId) => categories.find((category) => category.id === categoryId)?.name ?? `Danh mục #${categoryId}`}
                     onEdit={(product) => void startEdit(product)}
                     onDelete={(product) => void handleDelete(product)}
                     onRestore={(productId) => void handleRestore(productId)}
                 />
+
+                <DeleteProductDialog product={deleteTarget} isSaving={isSaving} onClose={() => setDeleteTarget(null)} onConfirm={() => void confirmDelete()} />
             </div>
         </AdminPageShell>
     );

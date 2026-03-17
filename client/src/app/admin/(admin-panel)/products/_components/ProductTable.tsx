@@ -2,20 +2,21 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Helper } from "@/lib/helper";
 import type { Product } from "@/types/product";
 import { Loader2, Pencil, RotateCcw, Search, Trash2 } from "lucide-react";
+import type { CategoryOption } from "./product-types";
 
 type ProductTableProps = {
     products: Product[];
     isLoading: boolean;
     isSaving: boolean;
-    canViewProducts: boolean;
-    canUpdateProduct: boolean;
-    canDeleteProduct: boolean;
-    canRestoreProduct: boolean;
     searchKeyword: string;
+    categoryFilterValue: string;
+    categoryFilterOptions: CategoryOption[];
     onSearchChange: (value: string) => void;
+    onCategoryFilterChange: (value: string) => void;
     getCategoryLabel: (categoryId: number) => string;
     onEdit: (product: Product) => void;
     onDelete: (product: Product) => void;
@@ -34,18 +35,34 @@ function StatusBadge({ status }: { status: string }) {
     return <Badge variant="secondary">Ngừng sử dụng</Badge>;
 }
 
-export function ProductTable({ products, isLoading, isSaving, canViewProducts, canUpdateProduct, canDeleteProduct, canRestoreProduct, searchKeyword, onSearchChange, getCategoryLabel, onEdit, onDelete, onRestore }: ProductTableProps) {
+export function ProductTable({ products, isLoading, isSaving, searchKeyword, categoryFilterValue, categoryFilterOptions, onSearchChange, onCategoryFilterChange, getCategoryLabel, onEdit, onDelete, onRestore }: ProductTableProps) {
     return (
         <Card>
             <CardHeader className="gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <div>
                     <CardTitle>Danh sách sản phẩm</CardTitle>
-                    <CardDescription>{canViewProducts ? `${products.length} sản phẩm phù hợp bộ lọc hiện tại` : "Bạn chưa có quyền xem danh sách sản phẩm."}</CardDescription>
+                    <CardDescription>{`${products.length} sản phẩm phù hợp bộ lọc hiện tại`}</CardDescription>
                 </div>
 
-                <div className="relative w-full lg:max-w-sm">
-                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input value={searchKeyword} onChange={(event) => onSearchChange(event.target.value)} placeholder="Tìm theo tên hoặc mô tả..." className="pl-9" />
+                <div className="flex w-full flex-col gap-3 lg:w-auto lg:flex-row">
+                    <div className="relative w-full">
+                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <Input value={searchKeyword} onChange={(event) => onSearchChange(event.target.value)} placeholder="Tìm theo tên hoặc mô tả..." className="pl-9" />
+                    </div>
+
+                    <Select value={categoryFilterValue} onValueChange={onCategoryFilterChange}>
+                        <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Lọc theo phân loại" />
+                        </SelectTrigger>
+                        <SelectContent position="popper">
+                            <SelectItem value="all">Tất cả phân loại</SelectItem>
+                            {categoryFilterOptions.map((category) => (
+                                <SelectItem key={category.id} value={String(category.id)}>
+                                    {category.name}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
                 </div>
             </CardHeader>
             <CardContent>
@@ -54,8 +71,6 @@ export function ProductTable({ products, isLoading, isSaving, canViewProducts, c
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         Đang tải danh sách sản phẩm...
                     </div>
-                ) : !canViewProducts ? (
-                    <div className="rounded-lg border border-dashed px-4 py-8 text-sm text-muted-foreground">Bạn chưa được cấp quyền VIEW_PRODUCTS_ADMIN.</div>
                 ) : products.length === 0 ? (
                     <div className="rounded-lg border border-dashed px-4 py-8 text-sm text-muted-foreground">Không có sản phẩm nào khớp điều kiện tìm kiếm.</div>
                 ) : (
@@ -109,17 +124,15 @@ export function ProductTable({ products, isLoading, isSaving, canViewProducts, c
                                         </td>
                                         <td className="px-4 py-4">
                                             <div className="flex justify-end gap-2">
-                                                {canUpdateProduct && (
-                                                    <Button variant="outline" size="sm" onClick={() => onEdit(product)}>
-                                                        <Pencil className="h-4 w-4" />
-                                                    </Button>
-                                                )}
-                                                {canDeleteProduct && product.status === "ACTIVE" && (
+                                                <Button variant="outline" size="sm" onClick={() => onEdit(product)}>
+                                                    <Pencil className="h-4 w-4" />
+                                                </Button>
+                                                {product.status === "ACTIVE" && (
                                                     <Button variant="outline" size="sm" onClick={() => onDelete(product)} disabled={isSaving}>
                                                         <Trash2 className="h-4 w-4" />
                                                     </Button>
                                                 )}
-                                                {canRestoreProduct && product.status === "INACTIVE" && (
+                                                {product.status === "INACTIVE" && (
                                                     <Button variant="outline" size="sm" onClick={() => onRestore(product.id)} disabled={isSaving} title="Khôi phục hiển thị">
                                                         <RotateCcw className="h-4 w-4" />
                                                     </Button>
