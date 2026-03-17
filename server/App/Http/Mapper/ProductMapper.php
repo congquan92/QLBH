@@ -25,6 +25,8 @@ class ProductMapper
             soldQuantity: (int) $product->sold_quantity,
             avgRating: (float) $product->avg_rating,
             status: $product->status,
+            categoryId: $product->category_id,
+            supplierId: $product->supplier_id,
             createdAt: $product->created_at,
             updateAt: $product->updated_at
         );
@@ -41,7 +43,8 @@ class ProductMapper
             salePrice: $product->sale_price,
             status: $product->status,
             categoryId: $product->category_id,
-            video: $product->video,
+            supplierId: $product->supplier_id,
+            video: $product->url_video,
             coverImage: $product->url_image_cover,
             categoryParents: self::mapCategoryParents($product->category),
             imageProduct: $product->imageProducts->pluck('url')->toArray(),

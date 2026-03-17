@@ -22,7 +22,7 @@ export const CategoryApi = {
         const size = query?.size ?? 10;
         try {
             const res = await axiosInstance.get("/category/list", { params: { ...query, page, size } });
-            return res.data as ApiResponse<Category>;
+            return res.data as ApiResponse<Category[]>;
         } catch (error) {
             console.error(`${WARNING_PREFIX} /category/list failed.`, error);
             throw error;

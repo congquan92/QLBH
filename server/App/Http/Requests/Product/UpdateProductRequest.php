@@ -32,6 +32,8 @@ class UpdateProductRequest extends FormRequest
 
             // ===== Media =====
             'coverImage' => 'nullable|string',
+            'imageProduct' => 'nullable|array',
+            'imageProduct.*' => 'required|string',
             'video' => 'nullable|string',
 
             'removeVideo' => 'nullable|boolean',
