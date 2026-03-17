@@ -222,7 +222,7 @@ export default function ListProduct({ products, data, categoryId, initialKeyword
                         <div className="mt-4 flex flex-wrap gap-2">
                             <button type="submit" className="inline-flex h-10 items-center bg-red-600 px-4 text-sm font-semibold text-white transition hover:bg-red-700" disabled={isFetching}>
                                 {isFetching ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}
-                                Tìm kiếm (AJAX)
+                                Tìm kiếm
                             </button>
                             <button
                                 type="button"

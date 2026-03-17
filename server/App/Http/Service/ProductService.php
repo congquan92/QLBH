@@ -209,32 +209,60 @@ class ProductService
 
     public function update(UpdateProductRequest $req)
     {
-        // 1. Lấy dữ liệu đã validate (nó chỉ chứa các trường bạn đã định nghĩa)
         $data = $req->validated();
 
-        // 2. Tìm sản phẩm
-        $product = Product::where('id', $data['id'])->firstOrFail();
+        $product = Product::with('imageProducts')->where('id', $data['id'])->firstOrFail();
+        $previousCoverImage = $product->url_image_cover;
+        $previousGalleryImages = $product->imageProducts->pluck('url')->toArray();
 
-        // 3. Xử lý logic logic đặc thù (nếu có)
-        // Cập nhật trạng thái nếu request có truyền status
-        if (isset($data['status'])) {
-            $product->status = $data['status'];
+        DB::transaction(function () use ($product, $data) {
+            if (isset($data['status'])) {
+                $product->status = $data['status'];
+            }
+
+            $product->update([
+                'name' => $data['name'] ?? $product->name,
+                'description' => $data['description'] ?? $product->description,
+                'list_price' => $data['listPrice'] ?? $product->list_price,
+                'sale_price' => $data['salePrice'] ?? $product->sale_price,
+                'category_id' => $data['categoryId'] ?? $product->category_id,
+                'supplier_id' => $data['supplierId'] ?? $product->supplier_id,
+                'url_video' => ($data['removeVideo'] ?? false) ? null : ($data['video'] ?? $product->url_video),
+                'url_image_cover' => ($data['removeCoverImage'] ?? false) ? null : ($data['coverImage'] ?? $product->url_image_cover),
+                'status' => $product->status,
+            ]);
+
+            if (array_key_exists('imageProduct', $data)) {
+                $product->imageProducts()->delete();
+
+                foreach ($data['imageProduct'] ?? [] as $url) {
+                    ImageProduct::create([
+                        'product_id' => $product->id,
+                        'url' => $url,
+                        'status' => Status::ACTIVE->value,
+                    ]);
+                }
+            }
+        });
+
+        $product->refresh();
+        $product->load('imageProducts');
+
+        $currentGalleryImages = array_key_exists('imageProduct', $data) ? ($data['imageProduct'] ?? []) : $previousGalleryImages;
+        $currentMediaUrls = array_values(array_filter(array_unique(array_merge([$product->url_image_cover], $currentGalleryImages))));
+        $removedMediaUrls = array_values(array_diff(array_filter(array_unique(array_merge([$previousCoverImage], $previousGalleryImages))), $currentMediaUrls));
+
+        if (!empty($removedMediaUrls)) {
+            try {
+                app(CloudinaryService::class)->deleteByUrls($removedMediaUrls);
+            } catch (\Throwable $exception) {
+                Log::warning('Failed to cleanup removed product media', [
+                    'product_id' => $product->id,
+                    'urls' => $removedMediaUrls,
+                    'message' => $exception->getMessage(),
+                ]);
+            }
         }
-
-        // 4. Xử lý Media (dùng toán tử ba ngôi cho gọn)
-        $product->url_video = $data['removeVideo'] ? null : ($data['video'] ?? $product->url_video);
-        $product->url_image_cover = $data['removeCoverImage'] ? null : ($data['coverImage'] ?? $product->url_image_cover);
-
-        // 5. Cập nhật các trường thông tin cơ bản
-        // Lưu ý: nên dùng tên trường trong DB (snake_case) hoặc ánh xạ mảng data trước khi update
-        $product->update([
-            'name' => $data['name'] ?? $product->name,
-            'description' => $data['description'] ?? $product->description,
-            'list_price' => $data['listPrice'] ?? $product->list_price,
-            'sale_price' => $data['salePrice'] ?? $product->sale_price,
-            'category_id' => $data['categoryId'] ?? $product->category_id,
-            'supplier_id' => $data['supplierId'] ?? $product->supplier_id,
-        ]);
 
         return $product;
     }
@@ -363,10 +391,36 @@ class ProductService
     }
     public function deleteProduct(int $productId): void
     {
-        $product = Product::where('id', $productId)
+        $product = Product::with(['imageProducts', 'productAttributes.attributeValues'])
+            ->where('id', $productId)
             ->firstOrFail();
-        $product->status = Status::DISABLED;
-        $product->save();
+
+        if ((int) $product->sold_quantity > 0 || $product->orderItems()->exists()) {
+            $product->status = Status::INACTIVE;
+            $product->save();
+            return;
+        }
+
+        $mediaUrls = $this->collectProductMediaUrls($product);
+
+        DB::transaction(function () use ($product) {
+            $product->productVariants()->delete();
+            $product->productAttributes()->delete();
+            $product->imageProducts()->delete();
+            $product->delete();
+        });
+
+        if (!empty($mediaUrls)) {
+            try {
+                app(CloudinaryService::class)->deleteByUrls($mediaUrls);
+            } catch (\Throwable $exception) {
+                Log::warning('Failed to cleanup deleted product media', [
+                    'product_id' => $productId,
+                    'urls' => $mediaUrls,
+                    'message' => $exception->getMessage(),
+                ]);
+            }
+        }
     }
 
     public function getProductById(int $productId): ProductResponse
@@ -374,6 +428,18 @@ class ProductService
         $product = Product::where('id', $productId)
             ->firstOrFail();
         return ProductMapper::toDetailResponse($product);
+    }
+
+    private function collectProductMediaUrls(Product $product): array
+    {
+        $galleryUrls = $product->imageProducts->pluck('url')->toArray();
+        $attributeImageUrls = $product->productAttributes
+            ->flatMap(fn(ProductAttribute $attribute) => $attribute->attributeValues->pluck('url_image'))
+            ->filter()
+            ->values()
+            ->toArray();
+
+        return array_values(array_filter(array_unique(array_merge([$product->url_image_cover], $galleryUrls, $attributeImageUrls))));
     }
 
     public function addVariants(int $productId, array $requests): void

@@ -1,74 +1,302 @@
 "use client";
 
-import { useAdminAuth } from "@/hooks/useAdminAuth";
+import { AdminCrudApi } from "@/api/admin/admin-crud.api";
+import { FileUploadApi } from "@/api/admin/file-upload.api";
+import { CategoryApi } from "@/api/category.api";
 import { ProductApi } from "@/api/product.api";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Plus, Search, Loader2, Pencil, Trash2, RotateCcw } from "lucide-react";
+import { AdminPageShell } from "@/components/feature/admin-page-shell";
 import { Helper } from "@/lib/helper";
-import { useCallback, useEffect, useState } from "react";
+import type { Supplier } from "@/types/admin-crud";
+import type { Category, CategoryChild } from "@/types/navbar";
+import type { Product, ProductDetail } from "@/types/product";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import type { Product } from "@/types/product";
+import { DeleteProductDialog } from "./_components/DeleteProductDialog";
+import { ProductFormPanel } from "./_components/ProductFormPanel";
+import { ProductPageHeader } from "./_components/ProductPageHeader";
+import { ProductTable } from "./_components/ProductTable";
+import type { CategoryOption, ProductFormValues, ProductImageItem, SupplierOption } from "./_components/product-types";
 
-type ProductForm = {
-    id?: number;
-    name: string;
-    description: string;
-    salePrice: string;
-    category_id: string;
-};
-
-const emptyForm: ProductForm = {
+const emptyForm: ProductFormValues = {
     name: "",
     description: "",
+    listPrice: "",
     salePrice: "",
-    category_id: "",
+    categoryId: "",
+    supplierId: "",
+    coverImage: "",
+    imageProduct: [],
 };
 
-export default function ProductsPage() {
-    const { hasPermission } = useAdminAuth();
-    const [products, setProducts] = useState<Product[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
-    const [isSaving, setIsSaving] = useState(false);
-    const [showForm, setShowForm] = useState(false);
-    const [form, setForm] = useState<ProductForm>(emptyForm);
-    const [searchKeyword, setSearchKeyword] = useState("");
+function createImageItem(url: string, fileName?: string): ProductImageItem {
+    return {
+        key: typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`,
+        url,
+        previewUrl: url,
+        fileName: fileName ?? url.split("/").pop() ?? "image",
+        isUploading: false,
+    };
+}
 
-    const canViewProducts = hasPermission("VIEW_PRODUCTS_ADMIN");
+function flattenCategories(categories: Category[]): CategoryOption[] {
+    const result: CategoryOption[] = [];
 
-    const fetchProducts = useCallback(async () => {
-        if (!canViewProducts) {
-            setProducts([]);
-            setIsLoading(false);
-            return;
+    function walk(nodes: Array<Category | CategoryChild>) {
+        for (const node of nodes) {
+            result.push({
+                id: node.id,
+                name: node.name,
+                label: node.name,
+                status: String(node.status ?? "ACTIVE"),
+            });
+
+            if (node.childCategory?.length) {
+                walk(node.childCategory);
+            }
         }
-
-        setIsLoading(true);
-        const productRes = await ProductApi.getAdminProducts(1, 100);
-        setProducts(productRes.data.data);
-        setIsLoading(false);
-    }, [canViewProducts]);
-
-    useEffect(() => {
-        void fetchProducts();
-    }, [fetchProducts]);
-
-    function resetForm() {
-        setForm(emptyForm);
-        setShowForm(false);
     }
 
-    function startEdit(item: Product) {
-        setForm({
-            id: item.id,
-            name: String(item.name ?? ""),
-            description: String(item.description ?? ""),
-            salePrice: String(item.salePrice ?? ""),
-            category_id: String((item as { category_id?: number }).category_id ?? ""),
+    walk(categories);
+    return result;
+}
+
+function normalizeSuppliers(items: Supplier[]): SupplierOption[] {
+    return items
+        .filter((supplier) => String(supplier.status ?? "ACTIVE") !== "DISABLED")
+        .map((supplier) => ({
+            id: supplier.id,
+            name: String(supplier.name ?? `Supplier #${supplier.id}`),
+            status: String(supplier.status ?? "ACTIVE"),
+        }));
+}
+
+function createFormFromDetail(detail: ProductDetail): ProductFormValues {
+    return {
+        id: detail.id,
+        name: String(detail.name ?? ""),
+        description: String(detail.description ?? ""),
+        listPrice: String(detail.listPrice ?? ""),
+        salePrice: String(detail.salePrice ?? ""),
+        categoryId: String(detail.categoryId ?? ""),
+        supplierId: String(detail.supplierId ?? ""),
+        coverImage: String(detail.coverImage ?? ""),
+        imageProduct: Array.isArray(detail.imageProduct) ? detail.imageProduct.filter(Boolean) : [],
+    };
+}
+
+export default function ProductsPage() {
+    const [products, setProducts] = useState<Product[]>([]);
+    const [categories, setCategories] = useState<CategoryOption[]>([]);
+    const [suppliers, setSuppliers] = useState<SupplierOption[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isSaving, setIsSaving] = useState(false);
+    const [isLoadingDetail, setIsLoadingDetail] = useState(false);
+    const [showForm, setShowForm] = useState(false);
+    const [form, setForm] = useState<ProductFormValues>(emptyForm);
+    const [coverImage, setCoverImage] = useState<ProductImageItem | null>(null);
+    const [galleryImages, setGalleryImages] = useState<ProductImageItem[]>([]);
+    const [searchKeyword, setSearchKeyword] = useState("");
+    const [categoryFilter, setCategoryFilter] = useState("all");
+    const [deleteTarget, setDeleteTarget] = useState<Product | null>(null);
+
+    useEffect(() => {
+        return () => {
+            if (coverImage?.previewUrl.startsWith("blob:")) {
+                URL.revokeObjectURL(coverImage.previewUrl);
+            }
+
+            galleryImages.forEach((item) => {
+                if (item.previewUrl.startsWith("blob:")) {
+                    URL.revokeObjectURL(item.previewUrl);
+                }
+            });
+        };
+    }, [coverImage, galleryImages]);
+
+    useEffect(() => {
+        async function bootstrap() {
+            setIsLoading(true);
+            try {
+                const [categoryRes, supplierRes, productRes] = await Promise.all([CategoryApi.getAdminCategories({ page: 1, size: 300 }), AdminCrudApi.getSuppliers({ page: 1, size: 200, sort: "id:desc" }), ProductApi.getAdminProducts(1, 200)]);
+
+                setCategories(flattenCategories(categoryRes.data));
+                setSuppliers(normalizeSuppliers(supplierRes.data.data));
+                setProducts(productRes.data.data ?? []);
+            } catch (error) {
+                toast.error(Helper.errorMessage(error));
+                setProducts([]);
+            } finally {
+                setIsLoading(false);
+            }
+        }
+
+        void bootstrap();
+    }, []);
+
+    function updateFormField<K extends keyof ProductFormValues>(field: K, value: ProductFormValues[K]) {
+        setForm((current) => ({ ...current, [field]: value }));
+    }
+
+    function clearCoverImage() {
+        if (coverImage?.previewUrl.startsWith("blob:")) {
+            URL.revokeObjectURL(coverImage.previewUrl);
+        }
+
+        setCoverImage(null);
+        setForm((current) => ({ ...current, coverImage: "" }));
+    }
+
+    function removeGalleryImage(key: string) {
+        setGalleryImages((current) => {
+            const target = current.find((item) => item.key === key);
+            if (target?.previewUrl.startsWith("blob:")) {
+                URL.revokeObjectURL(target.previewUrl);
+            }
+
+            const next = current.filter((item) => item.key !== key);
+            setForm((formState) => ({ ...formState, imageProduct: next.filter((item) => item.url).map((item) => item.url) }));
+            return next;
         });
+    }
+
+    function clearGalleryImages() {
+        setGalleryImages((current) => {
+            current.forEach((item) => {
+                if (item.previewUrl.startsWith("blob:")) {
+                    URL.revokeObjectURL(item.previewUrl);
+                }
+            });
+            return [];
+        });
+    }
+
+    function resetForm() {
+        clearCoverImage();
+        clearGalleryImages();
+        setForm(emptyForm);
+        setShowForm(false);
+        setIsLoadingDetail(false);
+    }
+
+    async function refreshProducts() {
+        const response = await ProductApi.getAdminProducts(1, 200);
+        setProducts(response.data.data);
+    }
+
+    async function uploadCoverImage(file: File | null) {
+        if (!file) return;
+
+        const previewUrl = URL.createObjectURL(file);
+        const nextItem: ProductImageItem = {
+            key: typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`,
+            url: "",
+            previewUrl,
+            fileName: file.name,
+            isUploading: true,
+        };
+
+        if (coverImage?.previewUrl.startsWith("blob:")) {
+            URL.revokeObjectURL(coverImage.previewUrl);
+        }
+
+        setCoverImage(nextItem);
+
+        try {
+            const response = await FileUploadApi.upload(file);
+            const uploadedUrl = String(response.url ?? "");
+
+            setCoverImage((current) => {
+                if (!current || current.key !== nextItem.key) return current;
+                if (current.previewUrl.startsWith("blob:")) {
+                    URL.revokeObjectURL(current.previewUrl);
+                }
+
+                return {
+                    ...current,
+                    url: uploadedUrl,
+                    previewUrl: uploadedUrl,
+                    isUploading: false,
+                };
+            });
+            setForm((current) => ({
+                ...current,
+                coverImage: uploadedUrl,
+                imageProduct: current.imageProduct.length > 0 ? current.imageProduct : [uploadedUrl],
+            }));
+            setGalleryImages((current) => (current.length > 0 ? current : [createImageItem(uploadedUrl, file.name)]));
+        } catch (error) {
+            clearCoverImage();
+            toast.error(Helper.errorMessage(error));
+        }
+    }
+
+    async function uploadGalleryImages(files: FileList | null) {
+        if (!files?.length) return;
+
+        const pickedFiles = Array.from(files).map((file) => ({
+            file,
+            item: {
+                key: typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`,
+                url: "",
+                previewUrl: URL.createObjectURL(file),
+                fileName: file.name,
+                isUploading: true,
+            } satisfies ProductImageItem,
+        }));
+
+        setGalleryImages((current) => [...current, ...pickedFiles.map(({ item }) => item)]);
+
+        await Promise.all(
+            pickedFiles.map(async ({ file, item }) => {
+                try {
+                    const response = await FileUploadApi.upload(file);
+                    const uploadedUrl = String(response.url ?? "");
+
+                    setGalleryImages((current) => {
+                        const next = current.map((image) => {
+                            if (image.key !== item.key) return image;
+                            if (image.previewUrl.startsWith("blob:")) {
+                                URL.revokeObjectURL(image.previewUrl);
+                            }
+
+                            return {
+                                ...image,
+                                url: uploadedUrl,
+                                previewUrl: uploadedUrl,
+                                isUploading: false,
+                            };
+                        });
+                        setForm((formState) => ({ ...formState, imageProduct: next.filter((image) => image.url).map((image) => image.url) }));
+                        return next;
+                    });
+                } catch (error) {
+                    removeGalleryImage(item.key);
+                    toast.error(Helper.errorMessage(error));
+                }
+            }),
+        );
+    }
+
+    async function startEdit(product: Product) {
         setShowForm(true);
+        setIsLoadingDetail(true);
+
+        try {
+            const detailResponse = await ProductApi.getAdminProductDetail(product.id);
+            const detail = detailResponse.data;
+
+            clearCoverImage();
+            clearGalleryImages();
+
+            setForm(createFormFromDetail(detail));
+            setCoverImage(detail.coverImage ? createImageItem(detail.coverImage, "cover-image") : null);
+            setGalleryImages((detail.imageProduct.length > 0 ? detail.imageProduct : detail.coverImage ? [detail.coverImage] : []).map((url, index) => createImageItem(url, `image-${index + 1}`)));
+        } catch (error) {
+            toast.error(Helper.errorMessage(error));
+            setShowForm(false);
+        } finally {
+            setIsLoadingDetail(false);
+        }
     }
 
     async function submitProduct() {
@@ -77,65 +305,98 @@ export default function ProductsPage() {
             return;
         }
 
+        if (!form.categoryId) {
+            toast.error("Vui lòng chọn phân loại.");
+            return;
+        }
+
+        if (!form.supplierId) {
+            toast.error("Vui lòng chọn nhà cung cấp.");
+            return;
+        }
+
+        if (!form.coverImage) {
+            toast.error("Vui lòng upload ảnh bìa.");
+            return;
+        }
+
+        const uploadedGalleryImages = galleryImages.filter((item) => item.url).map((item) => item.url);
+        const listPrice = Number(form.listPrice);
+        const salePrice = Number(form.salePrice);
+
+        if (Number.isNaN(listPrice) || listPrice <= 0) {
+            toast.error("Giá niêm yết phải lớn hơn 0.");
+            return;
+        }
+
+        if (Number.isNaN(salePrice) || salePrice <= 0) {
+            toast.error("Giá bán phải lớn hơn 0.");
+            return;
+        }
+
         const payload: Record<string, unknown> = {
             name: form.name.trim(),
             description: form.description.trim(),
-            salePrice: Number(form.salePrice),
+            listPrice,
+            salePrice,
+            categoryId: Number(form.categoryId),
+            supplierId: Number(form.supplierId),
+            coverImage: form.coverImage,
+            imageProduct: uploadedGalleryImages.length > 0 ? uploadedGalleryImages : [form.coverImage],
         };
-        if (form.category_id) {
-            payload.category_id = Number(form.category_id);
-        }
-        if (form.id) {
-            payload.id = form.id;
-        }
 
         setIsSaving(true);
         try {
             if (form.id) {
-                await ProductApi.updateProduct(payload);
+                await ProductApi.updateProduct({ id: form.id, ...payload });
                 toast.success("Cập nhật sản phẩm thành công.");
             } else {
                 await ProductApi.addProduct(payload);
                 toast.success("Tạo sản phẩm thành công.");
             }
+
             resetForm();
-            await fetchProducts();
+            await refreshProducts();
         } catch (error) {
-            const msg = error instanceof Error ? error.message : "Thao tác thất bại";
-            toast.error(msg);
+            toast.error(Helper.errorMessage(error));
         } finally {
             setIsSaving(false);
         }
     }
 
-    async function removeProduct(id: number) {
-        if (!confirm("Bạn có chắc chắn muốn xóa sản phẩm này?")) return;
+    async function handleDelete(product: Product) {
+        setDeleteTarget(product);
+    }
+
+    async function confirmDelete() {
+        if (!deleteTarget) return;
+
+        const isSold = Number(deleteTarget.soldQuantity) > 0;
 
         setIsSaving(true);
         try {
-            await ProductApi.deleteProduct(id);
-            toast.success("Đã xóa sản phẩm.");
-            if (form.id === id) {
+            await ProductApi.deleteProduct(deleteTarget.id);
+            toast.success(isSold ? "Sản phẩm đã được ẩn khỏi web." : "Đã xoá sản phẩm khỏi hệ thống.");
+            if (form.id === deleteTarget.id) {
                 resetForm();
             }
-            await fetchProducts();
+            await refreshProducts();
+            setDeleteTarget(null);
         } catch (error) {
-            const msg = error instanceof Error ? error.message : "Thao tác thất bại";
-            toast.error(msg);
+            toast.error(Helper.errorMessage(error));
         } finally {
             setIsSaving(false);
         }
     }
 
-    async function handleRestore(id: number) {
+    async function handleRestore(productId: number) {
         setIsSaving(true);
         try {
-            await ProductApi.restoreProduct(id);
-            toast.success("Đã khôi phục sản phẩm.");
-            await fetchProducts();
+            await ProductApi.restoreProduct(productId);
+            toast.success("Sản phẩm đã hiển thị trở lại trên web.");
+            await refreshProducts();
         } catch (error) {
-            const msg = error instanceof Error ? error.message : "Thao tác thất bại";
-            toast.error(msg);
+            toast.error(Helper.errorMessage(error));
         } finally {
             setIsSaving(false);
         }
@@ -143,163 +404,78 @@ export default function ProductsPage() {
 
     const filteredProducts = searchKeyword.trim()
         ? products.filter(
-              (p) =>
-                  String(p.name ?? "")
+              (product) =>
+                  String(product.name ?? "")
                       .toLowerCase()
                       .includes(searchKeyword.toLowerCase()) ||
-                  String(p.description ?? "")
+                  String(product.description ?? "")
                       .toLowerCase()
                       .includes(searchKeyword.toLowerCase()),
           )
         : products;
 
+    const categoryFilteredProducts = categoryFilter === "all" ? filteredProducts : filteredProducts.filter((product) => String(product.categoryId) === categoryFilter);
+
+    const activeProducts = products.filter((product) => product.status === "ACTIVE").length;
+    const hiddenProducts = products.filter((product) => product.status === "INACTIVE").length;
+
     return (
-        <div className="space-y-4">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Sản phẩm</h1>
-                    <p className="text-muted-foreground">Quản lý danh sách sản phẩm của cửa hàng</p>
-                </div>
-                <Button
-                    onClick={() => {
+        <AdminPageShell title="Sản phẩm" description="Quản lý sản phẩm theo đúng hợp đồng dữ liệu của server.">
+            <div className="space-y-4">
+                <ProductPageHeader
+                    totalProducts={products.length}
+                    activeProducts={activeProducts}
+                    hiddenProducts={hiddenProducts}
+                    categoriesCount={categories.filter((category) => category.status === "ACTIVE").length}
+                    onCreate={() => {
                         resetForm();
                         setShowForm(true);
                     }}
-                >
-                    <Plus className="mr-2 h-4 w-4" />
-                    Thêm sản phẩm
-                </Button>
+                />
+
+                <ProductFormPanel
+                    open={showForm}
+                    onOpenChange={(open) => {
+                        if (!open) {
+                            resetForm();
+                            return;
+                        }
+
+                        setShowForm(true);
+                    }}
+                    isSaving={isSaving}
+                    isLoadingDetail={isLoadingDetail}
+                    form={form}
+                    categoryOptions={categories.filter((category) => category.status === "ACTIVE" || String(category.id) === form.categoryId)}
+                    supplierOptions={suppliers.filter((supplier) => supplier.status === "ACTIVE" || String(supplier.id) === form.supplierId)}
+                    coverImage={coverImage}
+                    galleryImages={galleryImages}
+                    onChange={updateFormField}
+                    onSelectCover={(file) => void uploadCoverImage(file)}
+                    onSelectGallery={(files) => void uploadGalleryImages(files)}
+                    onRemoveCover={clearCoverImage}
+                    onRemoveGalleryImage={removeGalleryImage}
+                    onCancel={resetForm}
+                    onSubmit={() => void submitProduct()}
+                />
+
+                <ProductTable
+                    products={categoryFilteredProducts}
+                    isLoading={isLoading}
+                    isSaving={isSaving}
+                    searchKeyword={searchKeyword}
+                    categoryFilterValue={categoryFilter}
+                    categoryFilterOptions={categories.filter((category) => category.status === "ACTIVE")}
+                    onSearchChange={setSearchKeyword}
+                    onCategoryFilterChange={setCategoryFilter}
+                    getCategoryLabel={(categoryId) => categories.find((category) => category.id === categoryId)?.name ?? `Danh mục #${categoryId}`}
+                    onEdit={(product) => void startEdit(product)}
+                    onDelete={(product) => void handleDelete(product)}
+                    onRestore={(productId) => void handleRestore(productId)}
+                />
+
+                <DeleteProductDialog product={deleteTarget} isSaving={isSaving} onClose={() => setDeleteTarget(null)} onConfirm={() => void confirmDelete()} />
             </div>
-
-            {isLoading && (
-                <div className="flex items-center text-sm text-muted-foreground">
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Đang tải danh sách sản phẩm...
-                </div>
-            )}
-
-            {/* Product Form */}
-            {showForm && (
-                <Card>
-                    <CardHeader>
-                        <CardTitle>{form.id ? "Cập nhật sản phẩm" : "Thêm sản phẩm mới"}</CardTitle>
-                        <CardDescription>Nhập thông tin sản phẩm</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            <div className="space-y-2">
-                                <Label>Tên sản phẩm</Label>
-                                <Input value={form.name} onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))} placeholder="Nhập tên sản phẩm" />
-                            </div>
-                            <div className="space-y-2">
-                                <Label>Giá bán</Label>
-                                <Input type="number" value={form.salePrice} onChange={(e) => setForm((prev) => ({ ...prev, salePrice: e.target.value }))} placeholder="Nhập giá" />
-                            </div>
-                        </div>
-                        <div className="space-y-2">
-                            <Label>Mô tả</Label>
-                            <Input value={form.description} onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))} placeholder="Nhập mô tả sản phẩm" />
-                        </div>
-                        <div className="space-y-2">
-                            <Label>Danh mục (ID)</Label>
-                            <Input value={form.category_id} onChange={(e) => setForm((prev) => ({ ...prev, category_id: e.target.value }))} placeholder="Nhập category ID" />
-                        </div>
-                        <div className="flex gap-2">
-                            <Button onClick={() => void submitProduct()} disabled={isSaving}>
-                                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
-                                {form.id ? "Lưu" : "Tạo"}
-                            </Button>
-                            <Button variant="outline" onClick={resetForm}>
-                                Hủy
-                            </Button>
-                        </div>
-                    </CardContent>
-                </Card>
-            )}
-
-            <Card>
-                <CardHeader>
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <CardTitle>Danh sách sản phẩm</CardTitle>
-                            <CardDescription>{canViewProducts ? `${filteredProducts.length} sản phẩm` : "Bạn chưa có quyền VIEW_PRODUCTS_ADMIN"}</CardDescription>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <div className="relative">
-                                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                                <Input placeholder="Tìm kiếm sản phẩm..." className="pl-8 w-62.5" value={searchKeyword} onChange={(e) => setSearchKeyword(e.target.value)} />
-                            </div>
-                        </div>
-                    </div>
-                </CardHeader>
-                <CardContent>
-                    <div className="relative overflow-x-auto">
-                        <table className="w-full text-sm text-left">
-                            <thead className="text-xs uppercase bg-muted">
-                                <tr>
-                                    <th className="px-6 py-3">Mã SP</th>
-                                    <th className="px-6 py-3">Tên sản phẩm</th>
-                                    <th className="px-6 py-3">Mô tả</th>
-                                    <th className="px-6 py-3">Giá</th>
-                                    <th className="px-6 py-3">Đã bán</th>
-                                    <th className="px-6 py-3">Trạng thái</th>
-                                    <th className="px-6 py-3">Thao tác</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {canViewProducts &&
-                                    filteredProducts.map((product) => (
-                                        <tr key={product.id} className="border-b hover:bg-muted/50">
-                                            <td className="px-6 py-4 font-medium">#{product.id}</td>
-                                            <td className="px-6 py-4">{product.name}</td>
-                                            <td className="px-6 py-4 max-w-65 truncate">{product.description}</td>
-                                            <td className="px-6 py-4">{Helper.formatPrice(product.salePrice)}</td>
-                                            <td className="px-6 py-4">{product.soldQuantity}</td>
-                                            <td className="px-6 py-4">
-                                                <span
-                                                    className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                                        product.status === "ACTIVE" ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300" : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300"
-                                                    }`}
-                                                >
-                                                    {product.status}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <div className="flex gap-2">
-                                                    <Button variant="outline" size="sm" onClick={() => startEdit(product)}>
-                                                        <Pencil className="h-4 w-4" />
-                                                    </Button>
-                                                    <Button variant="outline" size="sm" onClick={() => void removeProduct(product.id)} disabled={isSaving}>
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </Button>
-                                                    {product.status !== "ACTIVE" && (
-                                                        <Button variant="outline" size="sm" onClick={() => void handleRestore(product.id)} disabled={isSaving} title="Khôi phục">
-                                                            <RotateCcw className="h-4 w-4" />
-                                                        </Button>
-                                                    )}
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                {!canViewProducts && (
-                                    <tr>
-                                        <td className="px-6 py-8 text-muted-foreground" colSpan={7}>
-                                            Bạn chưa được cấp quyền xem danh sách sản phẩm.
-                                        </td>
-                                    </tr>
-                                )}
-                                {canViewProducts && filteredProducts.length === 0 && !isLoading && (
-                                    <tr>
-                                        <td className="px-6 py-8 text-muted-foreground" colSpan={7}>
-                                            Chưa có dữ liệu sản phẩm.
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-                </CardContent>
-            </Card>
-        </div>
+        </AdminPageShell>
     );
 }

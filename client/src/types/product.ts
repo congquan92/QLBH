@@ -11,6 +11,8 @@ export interface Product {
     soldQuantity: number;
     avgRating: number;
     status: string;
+    categoryId: number;
+    supplierId: number;
     createdAt: string;
     updateAt: string;
 }
@@ -64,6 +66,7 @@ export interface ProductDetail {
     salePrice: string;
     status: string;
     categoryId: number;
+    supplierId: number;
     video: string | null;
     coverImage: string;
     categoryParents: CategoryParent[];
