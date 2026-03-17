@@ -15,7 +15,9 @@ import "yet-another-react-lightbox/styles.css";
 import Zoom from "yet-another-react-lightbox/plugins/zoom";
 import { Product } from "@/types/product";
 import { toast } from "sonner";
-import { useRouter } from "next/navigation";
+import { UserAuthStore } from "@/hooks/useClientAuth";
+import { UserAuthUtil } from "@/lib/user-auth";
+import { usePathname, useRouter } from "next/navigation";
 
 export default function ListProductDetail({ products, relatedProducts }: { products: ProductDetail; relatedProducts: Product[] }) {
     const productImages = products.imageProduct.length > 0 ? products.imageProduct : [products.coverImage];
@@ -24,7 +26,12 @@ export default function ListProductDetail({ products, relatedProducts }: { produ
     const [quantity, setQuantity] = useState(1);
     const [selectedAttributes, setSelectedAttributes] = useState<Record<string, string>>({});
     const [isSubmittingCart, setIsSubmittingCart] = useState(false);
+    // check auth
+    const session = UserAuthStore.useStore((state) => state.session);
+    const isAuthLoading = UserAuthStore.useStore((state) => state.isLoading);
+    const isAuthenticated = UserAuthUtil.isSessionValid(session);
     const router = useRouter();
+    const pathname = usePathname();
 
     // Lightbox slides
     const slides = productImages.map((img) => ({ src: img }));
@@ -81,6 +88,12 @@ export default function ListProductDetail({ products, relatedProducts }: { produ
     const totalStock = selectedVariant?.quantity ?? products.productVariant.reduce((sum, variant) => sum + variant.quantity, 0);
 
     const handleAddToCart = async (shouldRedirect = false) => {
+        if (isAuthLoading || !isAuthenticated) {
+            toast.error("Vui lòng đăng nhập để mua hoặc thêm sản phẩm vào giỏ hàng.");
+            router.push(`/dang-nhap?redirect=${encodeURIComponent(pathname || "/")}`);
+            return;
+        }
+
         if (!selectedVariant) {
             toast.error("Không tìm thấy biến thể phù hợp cho sản phẩm này.");
             return;
