@@ -98,7 +98,7 @@ export default function UserRanksPage() {
     }
 
     return (
-        <AdminPageShell title="Xếp hạng khách hàng" description="Quản lý các hạng thành viên và mức chi tiêu tương ứng" requiredPermissions={["VIEW_USER_RANKS"]}>
+        <AdminPageShell title="Xếp hạng khách hàng" description="Quản lý các hạng thành viên và mức chi tiêu tương ứng">
             <div className="grid gap-6 lg:grid-cols-3">
                 {/* Form */}
                 <Card className="lg:col-span-1">

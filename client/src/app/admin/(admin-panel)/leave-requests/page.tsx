@@ -1,6 +1,5 @@
 "use client";
 
-import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { LeaveApi } from "@/api/admin/leave.api";
 import { AdminCrudApi } from "@/api/admin/admin-crud.api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,7 +27,6 @@ const emptyForm: LeaveForm = {
 };
 
 export default function LeaveRequestsPage() {
-    const { hasPermission } = useAdminAuth();
     const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
     const [shifts, setShifts] = useState<Shift[]>([]);
     const [form, setForm] = useState<LeaveForm>(emptyForm);
@@ -36,16 +34,10 @@ export default function LeaveRequestsPage() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [updatingId, setUpdatingId] = useState<number | null>(null);
 
-    const canViewAll = hasPermission("VIEW_LEAVE_LIST");
-    const canApprove = hasPermission("APPROVE_LEAVE");
-
     const fetchData = useCallback(async () => {
         setIsLoading(true);
         try {
-            const [leavesRes, shiftsRes] = await Promise.all([
-                canViewAll ? LeaveApi.getAll({ page: 1, size: 100, sort: "leave_date:desc" }) : LeaveApi.getMyLeaves({ page: 1, size: 100, sort: "leave_date:desc" }),
-                AdminCrudApi.getShifts({ sort: "name:asc" }),
-            ]);
+            const [leavesRes, shiftsRes] = await Promise.all([LeaveApi.getAll({ page: 1, size: 100, sort: "leave_date:desc" }), AdminCrudApi.getShifts({ sort: "name:asc" })]);
             setLeaves(leavesRes.data.data || []);
             setShifts(shiftsRes.data.data || []);
         } catch (error) {
@@ -53,7 +45,7 @@ export default function LeaveRequestsPage() {
         } finally {
             setIsLoading(false);
         }
-    }, [canViewAll]);
+    }, []);
 
     useEffect(() => {
         void fetchData();
@@ -88,11 +80,6 @@ export default function LeaveRequestsPage() {
     }
 
     async function handleApprove(id: number) {
-        if (!canApprove) {
-            toast.error("Bạn không có quyền duyệt đơn");
-            return;
-        }
-
         setUpdatingId(id);
         try {
             await LeaveApi.updateStatus(id, "APPROVED");
@@ -106,11 +93,6 @@ export default function LeaveRequestsPage() {
     }
 
     async function handleReject(id: number) {
-        if (!canApprove) {
-            toast.error("Bạn không có quyền từ chối đơn");
-            return;
-        }
-
         setUpdatingId(id);
         try {
             await LeaveApi.updateStatus(id, "REJECTED");
@@ -169,7 +151,7 @@ export default function LeaveRequestsPage() {
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight">Đơn nghỉ phép</h1>
-                    <p className="text-muted-foreground">{canViewAll ? "Quản lý tất cả đơn nghỉ phép" : "Xem đơn nghỉ phép của bạn"}</p>
+                    <p className="text-muted-foreground">Quản lý tất cả đơn nghỉ phép</p>
                 </div>
             </div>
 
@@ -235,7 +217,7 @@ export default function LeaveRequestsPage() {
             <Card>
                 <CardHeader>
                     <CardTitle>Danh sách đơn nghỉ phép</CardTitle>
-                    <CardDescription>{canViewAll ? "Tất cả đơn nghỉ phép trong hệ thống" : "Danh sách đơn nghỉ phép của bạn"}</CardDescription>
+                    <CardDescription>Tất cả đơn nghỉ phép trong hệ thống</CardDescription>
                 </CardHeader>
                 <CardContent>
                     {isLoading ? (
@@ -249,7 +231,7 @@ export default function LeaveRequestsPage() {
                                 <thead className="text-xs uppercase bg-muted">
                                     <tr>
                                         <th className="px-6 py-3">ID</th>
-                                        {canViewAll && <th className="px-6 py-3">Nhân viên</th>}
+                                        <th className="px-6 py-3">Nhân viên</th>
                                         <th className="px-6 py-3">Ngày nghỉ</th>
                                         <th className="px-6 py-3">Ca làm việc</th>
                                         <th className="px-6 py-3">Lý do</th>
@@ -264,7 +246,7 @@ export default function LeaveRequestsPage() {
                                             return (
                                                 <tr key={leave.id} className="border-b hover:bg-muted/50">
                                                     <td className="px-6 py-4 font-medium">#{leave.id}</td>
-                                                    {canViewAll && <td className="px-6 py-4">{String(leave.employee_name || "N/A")}</td>}
+                                                    <td className="px-6 py-4">{String(leave.employee_name || "N/A")}</td>
                                                     <td className="px-6 py-4">{new Date(leave.leave_date).toLocaleDateString("vi-VN")}</td>
                                                     <td className="px-6 py-4">{String(leave.shift_name || `Shift ${leave.shift_id}`)}</td>
                                                     <td className="px-6 py-4">{leave.reason || "-"}</td>
@@ -273,7 +255,7 @@ export default function LeaveRequestsPage() {
                                                     </td>
                                                     <td className="px-6 py-4">
                                                         <div className="flex gap-2">
-                                                            {canApprove && leave.status === "PENDING" && (
+                                                            {leave.status === "PENDING" && (
                                                                 <>
                                                                     <Button variant="outline" size="sm" onClick={() => handleApprove(leave.id)} disabled={isUpdating}>
                                                                         {isUpdating ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4 text-green-600" />}
@@ -296,7 +278,7 @@ export default function LeaveRequestsPage() {
                                         })
                                     ) : (
                                         <tr>
-                                            <td className="px-6 py-8 text-center text-muted-foreground" colSpan={canViewAll ? 7 : 6}>
+                                            <td className="px-6 py-8 text-center text-muted-foreground" colSpan={7}>
                                                 Chưa có đơn nghỉ phép nào
                                             </td>
                                         </tr>

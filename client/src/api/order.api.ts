@@ -5,6 +5,19 @@ import type { PageResponse } from "@/types/api";
 
 const WARNING_PREFIX = "[WARNING][OrderApi]";
 
+type OrderListQuery = {
+    keyword?: string;
+    sort?: string;
+    page?: number;
+    size?: number;
+    startDate?: string;
+    endDate?: string;
+    deliveryStatus?: string;
+    deliveryDistrict?: string;
+    deliveryProvince?: string;
+    deliveryWard?: string;
+};
+
 export const OrderApi = {
     create: async (payload: CreateOrderPayload): Promise<ApiResponse<unknown>> => {
         try {
@@ -26,7 +39,7 @@ export const OrderApi = {
         }
     },
 
-    getMyOrders: async (query?: { keyword?: string; sort?: string; page?: number; size?: number; startDate?: string; endDate?: string; deliveryStatus?: string }): Promise<ApiResponse<PageResponse<OrderSummary>>> => {
+    getMyOrders: async (query?: OrderListQuery): Promise<ApiResponse<PageResponse<OrderSummary>>> => {
         const page = query?.page ?? 1;
         const size = query?.size ?? 10;
         try {
@@ -38,7 +51,7 @@ export const OrderApi = {
         }
     },
 
-    getAdminOrders: async (query?: { keyword?: string; sort?: string; page?: number; size?: number; startDate?: string; endDate?: string; deliveryStatus?: string }): Promise<ApiResponse<PageResponse<OrderSummary>>> => {
+    getAdminOrders: async (query?: OrderListQuery): Promise<ApiResponse<PageResponse<OrderSummary>>> => {
         const page = query?.page ?? 1;
         const size = query?.size ?? 10;
         try {
@@ -73,7 +86,11 @@ export const OrderApi = {
     changeStatus: async (id: number, status: string) => {
         try {
             const res = await axiosInstance.post(`/order/changestatus/${id}`, { status });
-            return res.data;
+            return {
+                status: res.status,
+                message: (res.data as { message?: string } | undefined)?.message ?? "Order status updated",
+                data: (res.data as { data?: unknown } | undefined)?.data ?? null,
+            };
         } catch (error) {
             console.warn(`${WARNING_PREFIX} /order/changestatus/{id} failed.`, error);
             throw error;
@@ -83,7 +100,11 @@ export const OrderApi = {
     complete: async (id: number) => {
         try {
             const res = await axiosInstance.put(`/order/complete/${id}`);
-            return res.data;
+            return {
+                status: res.status,
+                message: (res.data as { message?: string } | undefined)?.message ?? "Order completed",
+                data: (res.data as { data?: unknown } | undefined)?.data ?? null,
+            };
         } catch (error) {
             console.warn(`${WARNING_PREFIX} /order/complete/{id} failed.`, error);
             throw error;
@@ -93,7 +114,11 @@ export const OrderApi = {
     cancel: async (id: number) => {
         try {
             const res = await axiosInstance.delete(`/order/cancel/${id}`);
-            return res.data;
+            return {
+                status: res.status,
+                message: (res.data as { message?: string } | undefined)?.message ?? "Order cancelled",
+                data: (res.data as { data?: unknown } | undefined)?.data ?? null,
+            };
         } catch (error) {
             console.warn(`${WARNING_PREFIX} /order/cancel/{id} failed.`, error);
             throw error;

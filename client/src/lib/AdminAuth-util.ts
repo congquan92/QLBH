@@ -13,7 +13,6 @@ export interface AdminSession {
     userId?: number;
     email?: string;
     roles?: string[];
-    permissions: string[];
     allowedUrls: string[];
 }
 
@@ -57,7 +56,6 @@ function normalizeAdminPath(raw?: string) {
 }
 
 function getRoleAccess(role?: LoginRole) {
-    const permissions = new Set<string>();
     const allowedUrls = new Set<string>();
 
     for (const page of role?.page ?? []) {
@@ -66,18 +64,10 @@ function getRoleAccess(role?: LoginRole) {
             if (normalizedUrl) {
                 allowedUrls.add(normalizedUrl);
             }
-
-            for (const permission of item.permissions ?? []) {
-                const name = normalizeRoleName(permission?.name);
-                if (name) {
-                    permissions.add(name);
-                }
-            }
         }
     }
 
     return {
-        permissions: Array.from(permissions),
         allowedUrls: Array.from(allowedUrls),
     };
 }
@@ -91,7 +81,6 @@ export function buildAdminSession(loginResponse: LoginResponse): AdminSession {
         role: loginResponse.role,
         roleName: normalizeRoleName(loginResponse.role?.name),
         expiredAt: loginResponse.expiredAt,
-        permissions: access.permissions,
         allowedUrls: access.allowedUrls,
     };
 }
@@ -111,7 +100,6 @@ function readStoredSession(): AdminSession | null {
 
         const role = parsed.role as LoginRole;
         const access = getRoleAccess(role);
-        const storedPermissions = Array.isArray(parsed.permissions) ? parsed.permissions.map((permission) => normalizeRoleName(String(permission ?? ""))).filter(Boolean) : [];
         const storedAllowedUrls = Array.isArray(parsed.allowedUrls) ? parsed.allowedUrls.map((url) => normalizeAdminPath(String(url ?? ""))).filter(Boolean) : [];
 
         return {
@@ -123,7 +111,6 @@ function readStoredSession(): AdminSession | null {
             userId: typeof parsed.userId === "number" ? parsed.userId : undefined,
             email: typeof parsed.email === "string" ? parsed.email : undefined,
             roles: Array.isArray(parsed.roles) ? parsed.roles.map((item) => String(item ?? "")).filter(Boolean) : undefined,
-            permissions: Array.from(new Set([...access.permissions, ...storedPermissions])),
             allowedUrls: Array.from(new Set([...access.allowedUrls, ...storedAllowedUrls])),
         };
     } catch {
@@ -147,7 +134,7 @@ function hasAdminAccess(session: AdminSession | null) {
         return false;
     }
 
-    if (session.permissions.length > 0 || session.allowedUrls.length > 0) {
+    if (session.allowedUrls.length > 0) {
         return true;
     }
 
@@ -202,23 +189,12 @@ export const AdminAuthUtil = {
         writeStoredSession({
             ...current,
             ...partial,
-            permissions: partial.permissions ?? current.permissions,
             allowedUrls: partial.allowedUrls ?? current.allowedUrls,
         });
     },
 
     isSessionValid(session: AdminSession | null) {
         return hasAdminAccess(session);
-    },
-
-    hasPermission(session: AdminSession | null, permission: string) {
-        if (!session) return false;
-        return session.permissions.includes(normalizeRoleName(permission));
-    },
-
-    hasAnyPermission(session: AdminSession | null, permissionList: string[]) {
-        if (!session) return false;
-        return permissionList.some((permission) => session.permissions.includes(normalizeRoleName(permission)));
     },
 
     canAccessUrl(session: AdminSession | null, url: string) {

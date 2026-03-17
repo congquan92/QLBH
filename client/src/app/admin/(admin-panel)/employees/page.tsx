@@ -6,7 +6,6 @@ import { UserApi } from "@/api/user.api";
 import { RbacApi } from "@/api/admin/rbac.api";
 import { AdminPageShell } from "@/components/feature/admin-page-shell";
 import { Button } from "@/components/ui/button";
-import { useAdminAuth } from "@/hooks/useAdminAuth";
 import type { Position } from "@/types/admin-crud";
 import { Plus } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
@@ -31,7 +30,6 @@ const emptyCreateForm: CreateUserFormData = {
 };
 
 export default function EmployeesPage() {
-    const { hasPermission } = useAdminAuth();
     const [employees, setEmployees] = useState<UserProfile[]>([]);
     const [roles, setRoles] = useState<RbacRole[]>([]);
     const [positions, setPositions] = useState<Position[]>([]);
@@ -45,20 +43,9 @@ export default function EmployeesPage() {
     const [editRoleId, setEditRoleId] = useState("");
     const [editStatus, setEditStatus] = useState<"ACTIVE" | "INACTIVE">("ACTIVE");
 
-    const canViewUsers = hasPermission("VIEW_USERS");
-    const canCreateUser = hasPermission("CREATE_USER");
-
     const employeeRoles = roles.filter((role) => String(role.name).toUpperCase() !== "USER");
 
     const fetchEmployees = useCallback(async () => {
-        if (!canViewUsers) {
-            setEmployees([]);
-            setRoles([]);
-            setPositions([]);
-            setIsLoading(false);
-            return;
-        }
-
         setIsLoading(true);
         try {
             const [usersRes, rolesRes, positionsRes] = await Promise.all([
@@ -89,7 +76,7 @@ export default function EmployeesPage() {
         } finally {
             setIsLoading(false);
         }
-    }, [canViewUsers]);
+    }, []);
 
     useEffect(() => {
         void fetchEmployees();
@@ -192,12 +179,10 @@ export default function EmployeesPage() {
         <AdminPageShell title="Quản lý nhân viên" description="Giao diện giống quản lý khách hàng, chỉ hiển thị tài khoản nhân viên">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
                 <h2 className="text-md font-semibold">Danh sách nhân viên ({employees.length})</h2>
-                {canCreateUser && (
-                    <Button variant={showCreateForm ? "outline" : "default"} onClick={() => setShowCreateForm((prev) => !prev)}>
-                        <Plus className="mr-2 h-4 w-4" />
-                        Thêm nhân viên
-                    </Button>
-                )}
+                <Button variant={showCreateForm ? "outline" : "default"} onClick={() => setShowCreateForm((prev) => !prev)}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Thêm nhân viên
+                </Button>
             </div>
 
             <CreateUserForm

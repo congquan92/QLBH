@@ -47,6 +47,9 @@ class OrderController extends Controller
         $startDate = $request->query('startDate');
         $endDate = $request->query('endDate');
         $deliveryStatus = $request->query('deliveryStatus');
+        $deliveryDistrict = $request->query('deliveryDistrict');
+        $deliveryProvince = $request->query('deliveryProvince');
+        $deliveryWard = $request->query('deliveryWard');
 
         $result = $this->orderService->findAllByAdmin(
             $keyword,
@@ -55,7 +58,10 @@ class OrderController extends Controller
             $size,
             $startDate,
             $endDate,
-            $deliveryStatus
+            $deliveryStatus,
+            $deliveryDistrict,
+            $deliveryProvince,
+            $deliveryWard
         );
         return $this->success($result, 'Order all list fetched successfully');
     }
@@ -68,12 +74,14 @@ class OrderController extends Controller
 
     public function updateStatus($id, Request $request)
     {
-        $status = $request->query('status');
+        $status = $request->input('status');
         $this->orderService->changeStatus($id, $status);
+        return $this->success([], 'Order status updated successfully');
     }
 
     public function completeOrder($id){
         $this->orderService->completeOrder($id);
+        return $this->success([], 'Order completed successfully');
     }
 
     public function getOrderById($id){
@@ -88,5 +96,6 @@ class OrderController extends Controller
 
     public function cancelOrder($id){
         $this->orderService->cancelOrder($id);
+        return $this->success([], 'Order cancelled successfully');
     }
 }

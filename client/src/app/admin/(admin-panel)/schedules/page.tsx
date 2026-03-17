@@ -1,6 +1,5 @@
 "use client";
 
-import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { ScheduleApi } from "@/api/admin/schedule.api";
 import { AdminCrudApi } from "@/api/admin/admin-crud.api";
 import { UserApi } from "@/api/user.api";
@@ -30,7 +29,6 @@ const emptyAssignForm: AssignForm = {
 };
 
 export default function SchedulePage() {
-    const { hasPermission } = useAdminAuth();
     const [viewMode, setViewMode] = useState<ViewMode>("my-schedule");
     const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0]);
     const [weeklyData, setWeeklyData] = useState<WeeklyReport | null>(null);
@@ -42,23 +40,19 @@ export default function SchedulePage() {
     const [shifts, setShifts] = useState<Shift[]>([]);
     const [employees, setEmployees] = useState<UserProfile[]>([]);
 
-    const canViewReport = hasPermission("VIEW_SCHEDULE_REPORT");
-    const canViewDaily = hasPermission("VIEW_DAILY_SCHEDULE");
-    const canManageSchedule = hasPermission("ASSIGN_SHIFT") || hasPermission("DELETE_SHIFT_ASSIGNMENT") || hasPermission("SET_DEFAULT_SCHEDULE");
-
     const fetchData = useCallback(async () => {
         setIsLoading(true);
         try {
-            if (viewMode === "weekly-report" && canViewReport) {
+            if (viewMode === "weekly-report") {
                 const res = await ScheduleApi.getWeeklyReport(selectedDate);
                 setWeeklyData(res.data);
-            } else if (viewMode === "daily-staff" && canViewDaily) {
+            } else if (viewMode === "daily-staff") {
                 const res = await ScheduleApi.getDailyStaff(selectedDate);
                 setDailyData(res.data);
             } else if (viewMode === "my-schedule") {
                 const res = await ScheduleApi.getMySchedule(selectedDate);
                 setMySchedule(res.data);
-            } else if (viewMode === "assign" && canManageSchedule) {
+            } else if (viewMode === "assign") {
                 const [shiftsRes, usersRes] = await Promise.all([AdminCrudApi.getShifts({ page: 1, size: 100 }), UserApi.getUsers({ page: 1, size: 100, hasUserRole: false })]);
                 setShifts(shiftsRes.data.data);
                 setEmployees(usersRes.data.data);
@@ -68,7 +62,7 @@ export default function SchedulePage() {
         } finally {
             setIsLoading(false);
         }
-    }, [canManageSchedule, canViewDaily, canViewReport, selectedDate, viewMode]);
+    }, [selectedDate, viewMode]);
 
     useEffect(() => {
         void fetchData();
@@ -138,24 +132,18 @@ export default function SchedulePage() {
                             <Clock className="mr-2 h-4 w-4" />
                             Lịch của tôi
                         </Button>
-                        {canViewDaily && (
-                            <Button variant={viewMode === "daily-staff" ? "default" : "outline"} onClick={() => setViewMode("daily-staff")}>
-                                <Users className="mr-2 h-4 w-4" />
-                                Lịch theo ngày
-                            </Button>
-                        )}
-                        {canViewReport && (
-                            <Button variant={viewMode === "weekly-report" ? "default" : "outline"} onClick={() => setViewMode("weekly-report")}>
-                                <Calendar className="mr-2 h-4 w-4" />
-                                Báo cáo tuần
-                            </Button>
-                        )}
-                        {canManageSchedule && (
-                            <Button variant={viewMode === "assign" ? "default" : "outline"} onClick={() => setViewMode("assign")}>
-                                <Plus className="mr-2 h-4 w-4" />
-                                Phân ca
-                            </Button>
-                        )}
+                        <Button variant={viewMode === "daily-staff" ? "default" : "outline"} onClick={() => setViewMode("daily-staff")}>
+                            <Users className="mr-2 h-4 w-4" />
+                            Lịch theo ngày
+                        </Button>
+                        <Button variant={viewMode === "weekly-report" ? "default" : "outline"} onClick={() => setViewMode("weekly-report")}>
+                            <Calendar className="mr-2 h-4 w-4" />
+                            Báo cáo tuần
+                        </Button>
+                        <Button variant={viewMode === "assign" ? "default" : "outline"} onClick={() => setViewMode("assign")}>
+                            <Plus className="mr-2 h-4 w-4" />
+                            Phân ca
+                        </Button>
                     </div>
                 </CardContent>
             </Card>
@@ -191,7 +179,7 @@ export default function SchedulePage() {
             ) : (
                 <>
                     {/* Assignment Form */}
-                    {viewMode === "assign" && canManageSchedule && (
+                    {viewMode === "assign" && (
                         <Card>
                             <CardHeader>
                                 <CardTitle>Phân ca làm việc</CardTitle>
@@ -266,7 +254,7 @@ export default function SchedulePage() {
                     )}
 
                     {/* Daily Staff */}
-                    {viewMode === "daily-staff" && dailyData && canViewDaily && (
+                    {viewMode === "daily-staff" && dailyData && (
                         <Card>
                             <CardHeader>
                                 <CardTitle>Lịch làm việc ngày {new Date(selectedDate).toLocaleDateString("vi-VN")}</CardTitle>
@@ -289,7 +277,7 @@ export default function SchedulePage() {
                                                                 <div className="text-xs text-muted-foreground">{emp.position}</div>
                                                             </div>
                                                         </div>
-                                                        {canManageSchedule && (emp as { assignment_id?: number }).assignment_id && (
+                                                        {(emp as { assignment_id?: number }).assignment_id && (
                                                             <Button variant="ghost" size="sm" onClick={() => void handleDeleteAssignment((emp as { assignment_id: number }).assignment_id)} disabled={isSaving}>
                                                                 <Trash2 className="h-3 w-3" />
                                                             </Button>
@@ -306,7 +294,7 @@ export default function SchedulePage() {
                     )}
 
                     {/* Weekly Report */}
-                    {viewMode === "weekly-report" && weeklyData && canViewReport && (
+                    {viewMode === "weekly-report" && weeklyData && (
                         <Card>
                             <CardHeader>
                                 <CardTitle>

@@ -1,6 +1,5 @@
 "use client";
 
-import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { SalaryApi } from "@/api/admin/salary.api";
 import { UserApi } from "@/api/user.api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { DollarSign, Loader2, Calculator, TrendingUp, Clock, AlertCircle } from "lucide-react";
+import { DollarSign, Loader2, Calculator, TrendingUp, Clock } from "lucide-react";
 import { Helper } from "@/lib/helper";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -16,7 +15,6 @@ import type { SalaryCalculation } from "@/types/salary";
 import type { UserProfile } from "@/types/user";
 
 export default function SalaryCalculationPage() {
-    const { hasPermission } = useAdminAuth();
     const [users, setUsers] = useState<UserProfile[]>([]);
     const [selectedUserId, setSelectedUserId] = useState<string>("");
     const [month, setMonth] = useState(String(new Date().getMonth() + 1));
@@ -25,11 +23,7 @@ export default function SalaryCalculationPage() {
     const [isLoading, setIsLoading] = useState(false);
     const [isLoadingUsers, setIsLoadingUsers] = useState(false);
 
-    const canCalculate = hasPermission("CALCULATE_SALARY");
-
     const fetchUsers = useCallback(async () => {
-        if (!canCalculate) return;
-
         setIsLoadingUsers(true);
         try {
             const res = await UserApi.getUsers({ page: 1, size: 100, hasUserRole: false });
@@ -39,13 +33,11 @@ export default function SalaryCalculationPage() {
         } finally {
             setIsLoadingUsers(false);
         }
-    }, [canCalculate]);
+    }, []);
 
     useEffect(() => {
-        if (canCalculate) {
-            void fetchUsers();
-        }
-    }, [canCalculate, fetchUsers]);
+        void fetchUsers();
+    }, [fetchUsers]);
 
     async function handleCalculate() {
         if (!selectedUserId) {
@@ -69,22 +61,6 @@ export default function SalaryCalculationPage() {
         } finally {
             setIsLoading(false);
         }
-    }
-
-    if (!canCalculate) {
-        return (
-            <div className="space-y-4">
-                <h1 className="text-3xl font-bold tracking-tight">Tính lương</h1>
-                <Card>
-                    <CardContent className="flex items-center justify-center py-12">
-                        <div className="text-center text-muted-foreground">
-                            <AlertCircle className="mx-auto h-12 w-12 mb-4" />
-                            <p>Bạn không có quyền CALCULATE_SALARY</p>
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
-        );
     }
 
     return (

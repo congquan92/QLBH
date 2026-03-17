@@ -52,7 +52,6 @@ import { toast } from "sonner";
 type SidebarApiItem = {
     title: string;
     url: string;
-    permissions: string[];
     icon: LucideIcon;
 };
 
@@ -110,38 +109,28 @@ function normalizeAdminUrl(raw?: string) {
     return `/admin/${value}`;
 }
 
-function canRenderApiItem(item: SidebarApiItem, canAccessPath: (path: string) => boolean, hasAnyPermission: (permissionList: string[]) => boolean) {
+function canRenderApiItem(item: SidebarApiItem, canAccessPath: (path: string) => boolean) {
     if (!item.url) return false;
     if (!canAccessPath(item.url)) return false;
-    if (item.permissions.length === 0) return true;
-    return hasAnyPermission(item.permissions);
+    return true;
 }
 
 export function AppSidebar() {
     const pathname = usePathname();
-    const { session, canAccessPath, hasAnyPermission, logout } = useAdminAuth();
+    const { session, canAccessPath, logout } = useAdminAuth();
     const defaultAdminPath = AdminAuthUtil.resolveDefaultAdminPath(session);
 
     const sections: SidebarApiSection[] = (session?.role?.page ?? [])
         .map((page) => {
             const items: SidebarApiItem[] = (page.items ?? [])
                 .map((item) => {
-                    const permissions = (item.permissions ?? [])
-                        .map((permission) =>
-                            String(permission?.name ?? "")
-                                .trim()
-                                .toUpperCase(),
-                        )
-                        .filter((permission) => permission.length > 0);
-
                     return {
                         title: String(item.name ?? item.url ?? "Untitled"),
                         url: normalizeAdminUrl(item.url),
-                        permissions,
                         icon: resolveMenuIcon(item.icon, item.name, item.url),
                     };
                 })
-                .filter((item) => canRenderApiItem(item, canAccessPath, hasAnyPermission));
+                .filter((item) => canRenderApiItem(item, canAccessPath));
 
             return {
                 title: String(page.title ?? "Menu"),
@@ -157,11 +146,10 @@ export function AppSidebar() {
         .map((url) => ({
             title: url.split("/").filter(Boolean).pop()?.replace(/-/g, " ") ?? url,
             url,
-            permissions: [],
             icon: resolveMenuIcon(undefined, undefined, url),
         }))
         .filter((item, index, arr) => arr.findIndex((candidate) => candidate.url === item.url) === index)
-        .filter((item) => canRenderApiItem(item, canAccessPath, hasAnyPermission));
+        .filter((item) => canRenderApiItem(item, canAccessPath));
 
     const visibleSections = sections.length > 0 ? sections : fallbackItems.length > 0 ? [{ title: "Menu", icon: Folder, items: fallbackItems }] : [];
 
