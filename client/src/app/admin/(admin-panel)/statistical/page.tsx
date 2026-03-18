@@ -8,10 +8,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import type { ActiveUserStats, CategoryStats, MonthlyRevenue, OrderStats, TopProduct } from "@/types/statistics";
+import type { ActiveUserStats, CategoryStats, MonthlyRevenue, OrderStats, TopCustomerStats, TopProduct } from "@/types/statistics";
 import { Activity, Boxes, ChartColumnIncreasing, CircleDollarSign, PackageSearch, RefreshCw, ShoppingBag, Users } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Helper } from "@/lib/helper";
+import { TopCustomersCard } from "./_components/top-customers-card";
 
 type PeriodValue = "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" | "10" | "11" | "12";
 
@@ -64,6 +65,7 @@ function MetricCard({ title, value, caption, icon, tone = "blue" }: MetricCardPr
 
 export default function StatisticalPage() {
     const [period, setPeriod] = useState<PeriodValue>("1");
+    const [customerSort, setCustomerSort] = useState<"desc" | "asc">("desc");
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -72,6 +74,7 @@ export default function StatisticalPage() {
     const [revenue12Months, setRevenue12Months] = useState<MonthlyRevenue[]>([]);
     const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
     const [categories, setCategories] = useState<CategoryStats[]>([]);
+    const [topCustomers, setTopCustomers] = useState<TopCustomerStats[]>([]);
 
     const loadDashboard = useCallback(async () => {
         setLoading(true);
@@ -79,12 +82,13 @@ export default function StatisticalPage() {
 
         try {
             const periodNumber = Number(period);
-            const [usersRes, ordersRes, revenueRes, productsRes, categoriesRes] = await Promise.all([
+            const [usersRes, ordersRes, revenueRes, productsRes, categoriesRes, customersRes] = await Promise.all([
                 StatisticsApi.getActiveUsers(periodNumber),
                 StatisticsApi.getOrders(periodNumber),
                 StatisticsApi.getRevenue12Months(),
                 StatisticsApi.getTopProducts(periodNumber, 5),
                 StatisticsApi.getCategories(periodNumber),
+                StatisticsApi.getTopCustomers(periodNumber, 5),
             ]);
 
             setActiveUsers(usersRes.data ?? null);
@@ -92,6 +96,7 @@ export default function StatisticalPage() {
             setRevenue12Months(Array.isArray(revenueRes.data) ? revenueRes.data : []);
             setTopProducts(Array.isArray(productsRes.data) ? productsRes.data : []);
             setCategories(Array.isArray(categoriesRes.data) ? categoriesRes.data : []);
+            setTopCustomers(Array.isArray(customersRes.data) ? customersRes.data : []);
         } catch (err) {
             const message = err instanceof Error ? err.message : "Không thể tải dữ liệu thống kê.";
             setError(message);
@@ -375,6 +380,8 @@ export default function StatisticalPage() {
                     )}
                 </CardContent>
             </Card>
+
+            <TopCustomersCard customers={topCustomers} loading={loading} periodLabel={periodMeta.label} sort={customerSort} onSortChange={setCustomerSort} />
         </AdminPageShell>
     );
 }

@@ -244,6 +244,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/revenue-12months', [StatisticalController::class, 'getRevenue12Months']);
         Route::get('/top-products', [StatisticalController::class, 'getTopProducts']);
         Route::get('/categories', [StatisticalController::class, 'getCategories']);
+        Route::get('/top-customers', [StatisticalController::class, 'getTopCustomers']);
     });
 
     Route::prefix('voucher')->group(function () {

@@ -15,7 +15,7 @@ import { DeleteProductDialog } from "./_components/DeleteProductDialog";
 import { ProductFormPanel } from "./_components/ProductFormPanel";
 import { ProductPageHeader } from "./_components/ProductPageHeader";
 import { ProductTable } from "./_components/ProductTable";
-import type { CategoryOption, ProductFormValues, ProductImageItem, SupplierOption } from "./_components/product-types";
+import type { CategoryOption, ProductAttributeInput, ProductFormValues, ProductImageItem, ProductVariantInput, SupplierOption } from "./_components/product-types";
 
 const emptyForm: ProductFormValues = {
     name: "",
@@ -24,17 +24,39 @@ const emptyForm: ProductFormValues = {
     salePrice: "",
     categoryId: "",
     supplierId: "",
+    video: "",
+    weight: "",
+    length: "",
+    width: "",
+    height: "",
     coverImage: "",
     imageProduct: [],
+    attributes: [],
+    productVariant: [],
 };
+
+function createKey() {
+    return typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
+}
 
 function createImageItem(url: string, fileName?: string): ProductImageItem {
     return {
-        key: typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`,
+        key: createKey(),
         url,
         previewUrl: url,
         fileName: fileName ?? url.split("/").pop() ?? "image",
         isUploading: false,
+    };
+}
+
+function createLocalImageItem(file: File): ProductImageItem {
+    return {
+        key: createKey(),
+        url: "",
+        previewUrl: URL.createObjectURL(file),
+        fileName: file.name,
+        isUploading: false,
+        file,
     };
 }
 
@@ -79,9 +101,145 @@ function createFormFromDetail(detail: ProductDetail): ProductFormValues {
         salePrice: String(detail.salePrice ?? ""),
         categoryId: String(detail.categoryId ?? ""),
         supplierId: String(detail.supplierId ?? ""),
+        video: String(detail.video ?? ""),
+        weight: "",
+        length: "",
+        width: "",
+        height: "",
         coverImage: String(detail.coverImage ?? ""),
         imageProduct: Array.isArray(detail.imageProduct) ? detail.imageProduct.filter(Boolean) : [],
+        attributes: (detail.attributes ?? []).map((attribute) => ({
+            key: createKey(),
+            name: String(attribute.name ?? ""),
+            values: (attribute.attributeValue ?? []).map((item) => ({
+                key: createKey(),
+                value: String(item.value ?? ""),
+                image: String(item.image ?? item.urlImage ?? item.url_image ?? ""),
+            })),
+        })),
+        productVariant: (detail.productVariant ?? []).map((variant) => ({
+            key: createKey(),
+            sku: String(variant.sku ?? ""),
+            price: String(variant.price ?? ""),
+            weight: String(variant.weight ?? ""),
+            length: String(variant.length ?? ""),
+            width: String(variant.width ?? ""),
+            height: String(variant.height ?? ""),
+            variantAttributes: (variant.variantAttributes ?? []).map((item) => ({
+                key: createKey(),
+                attribute: String(item.attribute ?? ""),
+                value: String(item.value ?? ""),
+            })),
+        })),
     };
+}
+
+function buildAttributesPayload(form: ProductFormValues) {
+    const map = new Map<string, Map<string, string>>();
+
+    for (const attribute of form.attributes) {
+        const name = attribute.name.trim();
+        if (!name) continue;
+
+        if (!map.has(name)) {
+            map.set(name, new Map());
+        }
+
+        for (const value of attribute.values) {
+            const cleaned = value.value.trim();
+            const image = value.image.trim();
+            if (cleaned) {
+                map.get(name)?.set(cleaned, image);
+            }
+        }
+    }
+
+    for (const variant of form.productVariant) {
+        for (const item of variant.variantAttributes) {
+            const name = item.attribute.trim();
+            const value = item.value.trim();
+            if (!name || !value) continue;
+
+            if (!map.has(name)) {
+                map.set(name, new Map());
+            }
+            if (!map.get(name)?.has(value)) {
+                map.get(name)?.set(value, "");
+            }
+        }
+    }
+
+    return Array.from(map.entries()).map(([name, valuesMap]) => ({
+        name,
+        attributeValue: Array.from(valuesMap.entries()).map(([value, image]) => ({
+            value,
+            ...(image ? { image } : {}),
+        })),
+    }));
+}
+
+function buildVariantCombinations(attributes: ProductAttributeInput[]) {
+    const source = attributes
+        .map((attribute) => ({
+            name: attribute.name.trim(),
+            values: attribute.values.map((item) => item.value.trim()).filter(Boolean),
+        }))
+        .filter((attribute) => attribute.name && attribute.values.length > 0);
+
+    if (source.length === 0) {
+        return [] as Array<Array<{ attribute: string; value: string }>>;
+    }
+
+    const combinations: Array<Array<{ attribute: string; value: string }>> = [];
+
+    function backtrack(index: number, current: Array<{ attribute: string; value: string }>) {
+        if (index === source.length) {
+            combinations.push([...current]);
+            return;
+        }
+
+        const attribute = source[index];
+        for (const value of attribute.values) {
+            current.push({ attribute: attribute.name, value });
+            backtrack(index + 1, current);
+            current.pop();
+        }
+    }
+
+    backtrack(0, []);
+    return combinations;
+}
+
+function buildVariantsPayload(form: ProductFormValues) {
+    return form.productVariant
+        .map((variant) => ({
+            sku: variant.sku.trim() || undefined,
+            price: Number(variant.price),
+            weight: Number(variant.weight),
+            length: Number(variant.length),
+            width: Number(variant.width),
+            height: Number(variant.height),
+            variantAttributes: variant.variantAttributes
+                .map((item) => ({
+                    attribute: item.attribute.trim(),
+                    value: item.value.trim(),
+                }))
+                .filter((item) => item.attribute && item.value),
+        }))
+        .filter(
+            (variant) =>
+                !Number.isNaN(variant.price) &&
+                variant.price > 0 &&
+                !Number.isNaN(variant.weight) &&
+                variant.weight > 0 &&
+                !Number.isNaN(variant.length) &&
+                variant.length > 0 &&
+                !Number.isNaN(variant.width) &&
+                variant.width > 0 &&
+                !Number.isNaN(variant.height) &&
+                variant.height > 0 &&
+                variant.variantAttributes.length > 0,
+        );
 }
 
 export default function ProductsPage() {
@@ -183,17 +341,10 @@ export default function ProductsPage() {
         setProducts(response.data.data);
     }
 
-    async function uploadCoverImage(file: File | null) {
+    function selectCoverImage(file: File | null) {
         if (!file) return;
 
-        const previewUrl = URL.createObjectURL(file);
-        const nextItem: ProductImageItem = {
-            key: typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`,
-            url: "",
-            previewUrl,
-            fileName: file.name,
-            isUploading: true,
-        };
+        const nextItem = createLocalImageItem(file);
 
         if (coverImage?.previewUrl.startsWith("blob:")) {
             URL.revokeObjectURL(coverImage.previewUrl);
@@ -201,80 +352,118 @@ export default function ProductsPage() {
 
         setCoverImage(nextItem);
 
-        try {
-            const response = await FileUploadApi.upload(file);
-            const uploadedUrl = String(response.url ?? "");
+        setForm((current) => ({
+            ...current,
+            coverImage: "",
+        }));
+    }
+
+    function selectGalleryImages(files: FileList | null) {
+        if (!files?.length) return;
+
+        const pickedFiles = Array.from(files).map((file) => createLocalImageItem(file));
+        setGalleryImages((current) => [...current, ...pickedFiles]);
+    }
+
+    function updateAttributes(next: ProductAttributeInput[]) {
+        setForm((current) => ({ ...current, attributes: next }));
+    }
+
+    function updateVariants(next: ProductVariantInput[]) {
+        setForm((current) => ({ ...current, productVariant: next }));
+    }
+
+    function generateVariantsFromAttributes() {
+        const combinations = buildVariantCombinations(form.attributes);
+
+        if (combinations.length === 0) {
+            toast.error("Cần ít nhất 1 thuộc tính có giá trị để tạo biến thể.");
+            return;
+        }
+
+        const fallbackPrice = Number(form.salePrice) > 0 ? String(Number(form.salePrice)) : "";
+
+        const nextVariants: ProductVariantInput[] = combinations.map((combo) => ({
+            key: createKey(),
+            sku: "",
+            price: fallbackPrice,
+            weight: form.weight,
+            length: form.length,
+            width: form.width,
+            height: form.height,
+            variantAttributes: combo.map((item) => ({
+                key: createKey(),
+                attribute: item.attribute,
+                value: item.value,
+            })),
+        }));
+
+        setForm((current) => ({ ...current, productVariant: nextVariants }));
+        toast.success(`Đã tạo ${nextVariants.length} biến thể từ thuộc tính.`);
+    }
+
+    async function uploadPendingMedia() {
+        let resolvedCoverUrl = form.coverImage;
+
+        if (coverImage?.file) {
+            setCoverImage((current) => (current ? { ...current, isUploading: true } : current));
+            const response = await FileUploadApi.upload(coverImage.file);
+            resolvedCoverUrl = String(response.url ?? "");
 
             setCoverImage((current) => {
-                if (!current || current.key !== nextItem.key) return current;
+                if (!current) return current;
+
                 if (current.previewUrl.startsWith("blob:")) {
                     URL.revokeObjectURL(current.previewUrl);
                 }
 
                 return {
                     ...current,
+                    url: resolvedCoverUrl,
+                    previewUrl: resolvedCoverUrl,
+                    isUploading: false,
+                    file: undefined,
+                };
+            });
+        }
+
+        const nextGallery: ProductImageItem[] = [];
+        for (const image of galleryImages) {
+            if (image.file) {
+                setGalleryImages((current) => current.map((item) => (item.key === image.key ? { ...item, isUploading: true } : item)));
+
+                const response = await FileUploadApi.upload(image.file);
+                const uploadedUrl = String(response.url ?? "");
+
+                if (image.previewUrl.startsWith("blob:")) {
+                    URL.revokeObjectURL(image.previewUrl);
+                }
+
+                nextGallery.push({
+                    ...image,
                     url: uploadedUrl,
                     previewUrl: uploadedUrl,
                     isUploading: false,
-                };
-            });
-            setForm((current) => ({
-                ...current,
-                coverImage: uploadedUrl,
-                imageProduct: current.imageProduct.length > 0 ? current.imageProduct : [uploadedUrl],
-            }));
-            setGalleryImages((current) => (current.length > 0 ? current : [createImageItem(uploadedUrl, file.name)]));
-        } catch (error) {
-            clearCoverImage();
-            toast.error(Helper.errorMessage(error));
+                    file: undefined,
+                });
+            } else if (image.url) {
+                nextGallery.push({ ...image, isUploading: false });
+            }
         }
-    }
 
-    async function uploadGalleryImages(files: FileList | null) {
-        if (!files?.length) return;
+        setGalleryImages(nextGallery);
 
-        const pickedFiles = Array.from(files).map((file) => ({
-            file,
-            item: {
-                key: typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`,
-                url: "",
-                previewUrl: URL.createObjectURL(file),
-                fileName: file.name,
-                isUploading: true,
-            } satisfies ProductImageItem,
+        const galleryUrls = nextGallery.filter((item) => item.url).map((item) => item.url);
+        setForm((current) => ({
+            ...current,
+            coverImage: resolvedCoverUrl,
+            imageProduct: galleryUrls,
         }));
 
-        setGalleryImages((current) => [...current, ...pickedFiles.map(({ item }) => item)]);
-
-        await Promise.all(
-            pickedFiles.map(async ({ file, item }) => {
-                try {
-                    const response = await FileUploadApi.upload(file);
-                    const uploadedUrl = String(response.url ?? "");
-
-                    setGalleryImages((current) => {
-                        const next = current.map((image) => {
-                            if (image.key !== item.key) return image;
-                            if (image.previewUrl.startsWith("blob:")) {
-                                URL.revokeObjectURL(image.previewUrl);
-                            }
-
-                            return {
-                                ...image,
-                                url: uploadedUrl,
-                                previewUrl: uploadedUrl,
-                                isUploading: false,
-                            };
-                        });
-                        setForm((formState) => ({ ...formState, imageProduct: next.filter((image) => image.url).map((image) => image.url) }));
-                        return next;
-                    });
-                } catch (error) {
-                    removeGalleryImage(item.key);
-                    toast.error(Helper.errorMessage(error));
-                }
-            }),
-        );
+        return {
+            coverImage: resolvedCoverUrl,
+            imageProduct: galleryUrls,
+        };
     }
 
     async function startEdit(product: Product) {
@@ -315,14 +504,17 @@ export default function ProductsPage() {
             return;
         }
 
-        if (!form.coverImage) {
+        if (!coverImage && !form.coverImage) {
             toast.error("Vui lòng upload ảnh bìa.");
             return;
         }
-
-        const uploadedGalleryImages = galleryImages.filter((item) => item.url).map((item) => item.url);
         const listPrice = Number(form.listPrice);
         const salePrice = Number(form.salePrice);
+        const hasVariants = form.productVariant.length > 0;
+        const weight = Number(form.weight);
+        const length = Number(form.length);
+        const width = Number(form.width);
+        const height = Number(form.height);
 
         if (Number.isNaN(listPrice) || listPrice <= 0) {
             toast.error("Giá niêm yết phải lớn hơn 0.");
@@ -334,19 +526,55 @@ export default function ProductsPage() {
             return;
         }
 
-        const payload: Record<string, unknown> = {
-            name: form.name.trim(),
-            description: form.description.trim(),
-            listPrice,
-            salePrice,
-            categoryId: Number(form.categoryId),
-            supplierId: Number(form.supplierId),
-            coverImage: form.coverImage,
-            imageProduct: uploadedGalleryImages.length > 0 ? uploadedGalleryImages : [form.coverImage],
-        };
+        if (!hasVariants && (Number.isNaN(weight) || weight <= 0 || Number.isNaN(length) || length <= 0 || Number.isNaN(width) || width <= 0 || Number.isNaN(height) || height <= 0)) {
+            toast.error("Vui lòng nhập đầy đủ kích thước/cân nặng mặc định hoặc thêm biến thể.");
+            return;
+        }
+
+        const variantsPayload = buildVariantsPayload(form);
+        if (hasVariants && variantsPayload.length !== form.productVariant.length) {
+            toast.error("Biến thể chưa hợp lệ. Mỗi biến thể cần giá, kích thước, cân nặng và ít nhất 1 thuộc tính.");
+            return;
+        }
+
+        const attributesPayload = buildAttributesPayload(form);
 
         setIsSaving(true);
         try {
+            const uploadedMedia = await uploadPendingMedia();
+
+            if (!uploadedMedia.coverImage) {
+                toast.error("Upload ảnh bìa thất bại. Vui lòng kiểm tra lại.");
+                return;
+            }
+
+            const payload: Record<string, unknown> = {
+                name: form.name.trim(),
+                description: form.description.trim(),
+                listPrice,
+                salePrice,
+                categoryId: Number(form.categoryId),
+                supplierId: Number(form.supplierId),
+                ...(form.video.trim() ? { video: form.video.trim() } : {}),
+                coverImage: uploadedMedia.coverImage,
+                imageProduct: uploadedMedia.imageProduct.length > 0 ? uploadedMedia.imageProduct : [uploadedMedia.coverImage],
+            };
+
+            if (!form.id) {
+                payload.weight = weight;
+                payload.length = length;
+                payload.width = width;
+                payload.height = height;
+
+                if (attributesPayload.length > 0) {
+                    payload.attributes = attributesPayload;
+                }
+
+                if (variantsPayload.length > 0) {
+                    payload.productVariant = variantsPayload;
+                }
+            }
+
             if (form.id) {
                 await ProductApi.updateProduct({ id: form.id, ...payload });
                 toast.success("Cập nhật sản phẩm thành công.");
@@ -451,10 +679,13 @@ export default function ProductsPage() {
                     coverImage={coverImage}
                     galleryImages={galleryImages}
                     onChange={updateFormField}
-                    onSelectCover={(file) => void uploadCoverImage(file)}
-                    onSelectGallery={(files) => void uploadGalleryImages(files)}
+                    onSelectCover={selectCoverImage}
+                    onSelectGallery={selectGalleryImages}
                     onRemoveCover={clearCoverImage}
                     onRemoveGalleryImage={removeGalleryImage}
+                    onAttributesChange={updateAttributes}
+                    onVariantsChange={updateVariants}
+                    onGenerateVariants={generateVariantsFromAttributes}
                     onCancel={resetForm}
                     onSubmit={() => void submitProduct()}
                 />

@@ -1,5 +1,5 @@
 import { adminAxiosInstance as axiosInstance } from "@/lib/axios";
-import type { ActiveUserStats, CategoryStats, MonthlyRevenue, OrderStats, TopProduct } from "@/types/statistics";
+import type { ActiveUserStats, CategoryStats, MonthlyRevenue, OrderStats, TopCustomerStats, TopProduct } from "@/types/statistics";
 
 export const StatisticsApi = {
     getActiveUsers: async (period: number = 1): Promise<{ data: ActiveUserStats | null }> => {
@@ -56,6 +56,16 @@ export const StatisticsApi = {
             return { data: Array.isArray(raw?.data) ? raw.data : [] };
         } catch (error) {
             console.warn("[StatisticsApi] /statistical/categories failed", error);
+            throw error;
+        }
+    },
+
+    getTopCustomers: async (period: number = 1, top: number = 5): Promise<{ data: TopCustomerStats[] }> => {
+        try {
+            const res = await axiosInstance.get("/statistical/top-customers", { params: { period, top } });
+            return { data: Array.isArray(res.data) ? res.data : [] };
+        } catch (error) {
+            console.warn("[StatisticsApi] /statistical/top-customers failed", error);
             throw error;
         }
     },
