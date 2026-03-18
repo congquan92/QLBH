@@ -93,6 +93,38 @@ function normalizeSuppliers(items: Supplier[]): SupplierOption[] {
 }
 
 function createFormFromDetail(detail: ProductDetail): ProductFormValues {
+    const mappedAttributes = (detail.attributes ?? []).map((attribute) => ({
+        key: createKey(),
+        id: attribute.id,
+        name: String(attribute.name ?? ""),
+        values: (attribute.attributeValue ?? []).map((item) => ({
+            key: createKey(),
+            id: item.id,
+            value: String(item.value ?? ""),
+            image: String(item.image ?? item.urlImage ?? item.url_image ?? ""),
+        })),
+    }));
+
+    const hasClassificationAttributes = mappedAttributes.some((attribute) => attribute.name.trim() && attribute.values.some((item) => item.value.trim()));
+
+    const mappedVariants = (detail.productVariant ?? []).map((variant) => ({
+        key: createKey(),
+        id: variant.id,
+        sku: String(variant.sku ?? ""),
+        price: String(variant.price ?? ""),
+        weight: String(variant.weight ?? ""),
+        length: String(variant.length ?? ""),
+        width: String(variant.width ?? ""),
+        height: String(variant.height ?? ""),
+        variantAttributes: (variant.variantAttributes ?? []).map((item) => ({
+            key: createKey(),
+            attribute: String(item.attribute ?? ""),
+            value: String(item.value ?? ""),
+        })),
+    }));
+
+    const defaultVariant = detail.productVariant?.[0];
+
     return {
         id: detail.id,
         name: String(detail.name ?? ""),
@@ -102,39 +134,18 @@ function createFormFromDetail(detail: ProductDetail): ProductFormValues {
         categoryId: String(detail.categoryId ?? ""),
         supplierId: String(detail.supplierId ?? ""),
         video: String(detail.video ?? ""),
-        weight: "",
-        length: "",
-        width: "",
-        height: "",
+        weight: hasClassificationAttributes ? "" : String(defaultVariant?.weight ?? ""),
+        length: hasClassificationAttributes ? "" : String(defaultVariant?.length ?? ""),
+        width: hasClassificationAttributes ? "" : String(defaultVariant?.width ?? ""),
+        height: hasClassificationAttributes ? "" : String(defaultVariant?.height ?? ""),
         coverImage: String(detail.coverImage ?? ""),
         imageProduct: Array.isArray(detail.imageProduct) ? detail.imageProduct.filter(Boolean) : [],
-        attributes: (detail.attributes ?? []).map((attribute) => ({
-            key: createKey(),
-            name: String(attribute.name ?? ""),
-            values: (attribute.attributeValue ?? []).map((item) => ({
-                key: createKey(),
-                value: String(item.value ?? ""),
-                image: String(item.image ?? item.urlImage ?? item.url_image ?? ""),
-            })),
-        })),
-        productVariant: (detail.productVariant ?? []).map((variant) => ({
-            key: createKey(),
-            sku: String(variant.sku ?? ""),
-            price: String(variant.price ?? ""),
-            weight: String(variant.weight ?? ""),
-            length: String(variant.length ?? ""),
-            width: String(variant.width ?? ""),
-            height: String(variant.height ?? ""),
-            variantAttributes: (variant.variantAttributes ?? []).map((item) => ({
-                key: createKey(),
-                attribute: String(item.attribute ?? ""),
-                value: String(item.value ?? ""),
-            })),
-        })),
+        attributes: mappedAttributes,
+        productVariant: hasClassificationAttributes ? mappedVariants : [],
     };
 }
 
-function buildAttributesPayload(form: ProductFormValues) {
+function buildAttributesPayloadForCreate(form: ProductFormValues) {
     const map = new Map<string, Map<string, string>>();
 
     for (const attribute of form.attributes) {
@@ -178,6 +189,22 @@ function buildAttributesPayload(form: ProductFormValues) {
     }));
 }
 
+function buildAttributesPayloadForUpdate(form: ProductFormValues) {
+    return form.attributes
+        .map((attribute) => ({
+            ...(attribute.id ? { id: attribute.id } : {}),
+            name: attribute.name.trim(),
+            attributeValue: attribute.values
+                .map((item) => ({
+                    ...(item.id ? { id: item.id } : {}),
+                    value: item.value.trim(),
+                    ...(item.image.trim() ? { image: item.image.trim() } : {}),
+                }))
+                .filter((item) => item.value),
+        }))
+        .filter((attribute) => attribute.name && attribute.attributeValue.length > 0);
+}
+
 function buildVariantCombinations(attributes: ProductAttributeInput[]) {
     const source = attributes
         .map((attribute) => ({
@@ -208,6 +235,13 @@ function buildVariantCombinations(attributes: ProductAttributeInput[]) {
 
     backtrack(0, []);
     return combinations;
+}
+
+function toVariantSignature(items: Array<{ attribute: string; value: string }>) {
+    return items
+        .map((item) => `${item.attribute.trim().toLowerCase()}::${item.value.trim().toLowerCase()}`)
+        .sort()
+        .join("|");
 }
 
 function buildVariantsPayload(form: ProductFormValues) {
@@ -256,6 +290,8 @@ export default function ProductsPage() {
     const [searchKeyword, setSearchKeyword] = useState("");
     const [categoryFilter, setCategoryFilter] = useState("all");
     const [deleteTarget, setDeleteTarget] = useState<Product | null>(null);
+    const [originalAttributeIds, setOriginalAttributeIds] = useState<number[]>([]);
+    const [originalAttributeValuePairs, setOriginalAttributeValuePairs] = useState<Array<{ id: number; attributeId: number }>>([]);
 
     useEffect(() => {
         return () => {
@@ -332,6 +368,8 @@ export default function ProductsPage() {
         clearCoverImage();
         clearGalleryImages();
         setForm(emptyForm);
+        setOriginalAttributeIds([]);
+        setOriginalAttributeValuePairs([]);
         setShowForm(false);
         setIsLoadingDetail(false);
     }
@@ -373,34 +411,64 @@ export default function ProductsPage() {
         setForm((current) => ({ ...current, productVariant: next }));
     }
 
-    function generateVariantsFromAttributes() {
-        const combinations = buildVariantCombinations(form.attributes);
+    useEffect(() => {
+        setForm((current) => {
+            const combinations = buildVariantCombinations(current.attributes);
 
-        if (combinations.length === 0) {
-            toast.error("Cần ít nhất 1 thuộc tính có giá trị để tạo biến thể.");
-            return;
-        }
+            if (combinations.length === 0) {
+                if (current.productVariant.length === 0) {
+                    return current;
+                }
 
-        const fallbackPrice = Number(form.salePrice) > 0 ? String(Number(form.salePrice)) : "";
+                return {
+                    ...current,
+                    productVariant: [],
+                };
+            }
 
-        const nextVariants: ProductVariantInput[] = combinations.map((combo) => ({
-            key: createKey(),
-            sku: "",
-            price: fallbackPrice,
-            weight: form.weight,
-            length: form.length,
-            width: form.width,
-            height: form.height,
-            variantAttributes: combo.map((item) => ({
-                key: createKey(),
-                attribute: item.attribute,
-                value: item.value,
-            })),
-        }));
+            const fallbackPrice = Number(current.salePrice) > 0 ? String(Number(current.salePrice)) : "";
+            const existingBySignature = new Map(current.productVariant.map((variant) => [toVariantSignature(variant.variantAttributes), variant]));
 
-        setForm((current) => ({ ...current, productVariant: nextVariants }));
-        toast.success(`Đã tạo ${nextVariants.length} biến thể từ thuộc tính.`);
-    }
+            const nextVariants: ProductVariantInput[] = combinations.map((combo) => {
+                const existingVariant = existingBySignature.get(toVariantSignature(combo));
+
+                return {
+                    key: existingVariant?.key ?? createKey(),
+                    id: existingVariant?.id,
+                    sku: existingVariant?.sku ?? "",
+                    price: existingVariant?.price ?? fallbackPrice,
+                    weight: existingVariant?.weight ?? current.weight,
+                    length: existingVariant?.length ?? current.length,
+                    width: existingVariant?.width ?? current.width,
+                    height: existingVariant?.height ?? current.height,
+                    variantAttributes: combo.map((item) => ({
+                        key: createKey(),
+                        attribute: item.attribute,
+                        value: item.value,
+                    })),
+                };
+            });
+
+            const prevSignature = current.productVariant
+                .map((variant) => `${variant.id ?? "new"}:${toVariantSignature(variant.variantAttributes)}`)
+                .sort()
+                .join(";");
+
+            const nextSignature = nextVariants
+                .map((variant) => `${variant.id ?? "new"}:${toVariantSignature(variant.variantAttributes)}`)
+                .sort()
+                .join(";");
+
+            if (prevSignature === nextSignature) {
+                return current;
+            }
+
+            return {
+                ...current,
+                productVariant: nextVariants,
+            };
+        });
+    }, [form.attributes, form.salePrice, form.weight, form.length, form.width, form.height]);
 
     async function uploadPendingMedia() {
         let resolvedCoverUrl = form.coverImage;
@@ -473,11 +541,21 @@ export default function ProductsPage() {
         try {
             const detailResponse = await ProductApi.getAdminProductDetail(product.id);
             const detail = detailResponse.data;
+            const nextForm = createFormFromDetail(detail);
 
             clearCoverImage();
             clearGalleryImages();
 
-            setForm(createFormFromDetail(detail));
+            setForm(nextForm);
+            const loadedAttributes = nextForm.attributes;
+            setOriginalAttributeIds(loadedAttributes.map((attribute) => Number(attribute.id)).filter((id) => Number.isFinite(id)));
+            setOriginalAttributeValuePairs(
+                loadedAttributes.flatMap((attribute) =>
+                    attribute.values
+                        .filter((item) => Number.isFinite(Number(item.id)))
+                        .map((item) => ({ id: Number(item.id), attributeId: Number(attribute.id) })),
+                ),
+            );
             setCoverImage(detail.coverImage ? createImageItem(detail.coverImage, "cover-image") : null);
             setGalleryImages((detail.imageProduct.length > 0 ? detail.imageProduct : detail.coverImage ? [detail.coverImage] : []).map((url, index) => createImageItem(url, `image-${index + 1}`)));
         } catch (error) {
@@ -510,11 +588,14 @@ export default function ProductsPage() {
         }
         const listPrice = Number(form.listPrice);
         const salePrice = Number(form.salePrice);
-        const hasVariants = form.productVariant.length > 0;
         const weight = Number(form.weight);
         const length = Number(form.length);
         const width = Number(form.width);
         const height = Number(form.height);
+        const attributesPayloadForCreate = buildAttributesPayloadForCreate(form);
+        const attributesPayloadForUpdate = buildAttributesPayloadForUpdate(form);
+        const hasClassificationAttributes = attributesPayloadForUpdate.length > 0;
+        const variantsPayload = buildVariantsPayload(form);
 
         if (Number.isNaN(listPrice) || listPrice <= 0) {
             toast.error("Giá niêm yết phải lớn hơn 0.");
@@ -526,18 +607,20 @@ export default function ProductsPage() {
             return;
         }
 
-        if (!hasVariants && (Number.isNaN(weight) || weight <= 0 || Number.isNaN(length) || length <= 0 || Number.isNaN(width) || width <= 0 || Number.isNaN(height) || height <= 0)) {
-            toast.error("Vui lòng nhập đầy đủ kích thước/cân nặng mặc định hoặc thêm biến thể.");
+        if (!hasClassificationAttributes && (Number.isNaN(weight) || weight <= 0 || Number.isNaN(length) || length <= 0 || Number.isNaN(width) || width <= 0 || Number.isNaN(height) || height <= 0)) {
+            toast.error("Vui lòng nhập đầy đủ thông số vận chuyển mặc định.");
             return;
         }
 
-        const variantsPayload = buildVariantsPayload(form);
-        if (hasVariants && variantsPayload.length !== form.productVariant.length) {
+        if (hasClassificationAttributes && form.productVariant.length === 0) {
+            toast.error("Vui lòng tạo bảng biến thể từ thuộc tính phân loại.");
+            return;
+        }
+
+        if (hasClassificationAttributes && variantsPayload.length !== form.productVariant.length) {
             toast.error("Biến thể chưa hợp lệ. Mỗi biến thể cần giá, kích thước, cân nặng và ít nhất 1 thuộc tính.");
             return;
         }
-
-        const attributesPayload = buildAttributesPayload(form);
 
         setIsSaving(true);
         try {
@@ -560,14 +643,16 @@ export default function ProductsPage() {
                 imageProduct: uploadedMedia.imageProduct.length > 0 ? uploadedMedia.imageProduct : [uploadedMedia.coverImage],
             };
 
-            if (!form.id) {
+            if (!form.id && !hasClassificationAttributes) {
                 payload.weight = weight;
                 payload.length = length;
                 payload.width = width;
                 payload.height = height;
+            }
 
-                if (attributesPayload.length > 0) {
-                    payload.attributes = attributesPayload;
+            if (!form.id && hasClassificationAttributes) {
+                if (attributesPayloadForCreate.length > 0) {
+                    payload.attributes = attributesPayloadForCreate;
                 }
 
                 if (variantsPayload.length > 0) {
@@ -576,7 +661,68 @@ export default function ProductsPage() {
             }
 
             if (form.id) {
+                const currentAttributeIds = form.attributes.map((attribute) => Number(attribute.id)).filter((id) => Number.isFinite(id));
+                const deletedAttributeIds = originalAttributeIds.filter((id) => !currentAttributeIds.includes(id));
+
+                const currentValueIds = form.attributes
+                    .flatMap((attribute) => attribute.values.map((item) => Number(item.id)))
+                    .filter((id) => Number.isFinite(id));
+
+                const deletedAttributeValueIds = originalAttributeValuePairs
+                    .filter((item) => !deletedAttributeIds.includes(item.attributeId) && !currentValueIds.includes(item.id))
+                    .map((item) => item.id);
+
+                if (deletedAttributeValueIds.length > 0) {
+                    await ProductApi.deleteAttributeValue(form.id, { attributeValueIds: deletedAttributeValueIds });
+                }
+
+                if (deletedAttributeIds.length > 0) {
+                    await ProductApi.deleteAttribute(form.id, { attributeIds: deletedAttributeIds });
+                }
+
+                payload.attributes = attributesPayloadForUpdate;
                 await ProductApi.updateProduct({ id: form.id, ...payload });
+
+                if (hasClassificationAttributes) {
+                    const updateRequests = form.productVariant
+                        .filter((variant) => Boolean(variant.id))
+                        .map((variant) => ({
+                            variantId: Number(variant.id),
+                            price: Number(variant.price),
+                            weight: Number(variant.weight),
+                            length: Number(variant.length),
+                            width: Number(variant.width),
+                            height: Number(variant.height),
+                            variantAttributes: variant.variantAttributes.map((item) => ({
+                                attribute: item.attribute.trim(),
+                                value: item.value.trim(),
+                            })),
+                        }));
+
+                    const addRequests = form.productVariant
+                        .filter((variant) => !variant.id)
+                        .map((variant) => ({
+                            sku: variant.sku.trim() || undefined,
+                            price: Number(variant.price),
+                            weight: Number(variant.weight),
+                            length: Number(variant.length),
+                            width: Number(variant.width),
+                            height: Number(variant.height),
+                            variantAttributes: variant.variantAttributes.map((item) => ({
+                                attribute: item.attribute.trim(),
+                                value: item.value.trim(),
+                            })),
+                        }));
+
+                    for (const variantPayload of updateRequests) {
+                        await ProductApi.updateVariants(form.id, variantPayload);
+                    }
+
+                    if (addRequests.length > 0) {
+                        await ProductApi.addVariants(form.id, addRequests);
+                    }
+                }
+
                 toast.success("Cập nhật sản phẩm thành công.");
             } else {
                 await ProductApi.addProduct(payload);
@@ -685,7 +831,6 @@ export default function ProductsPage() {
                     onRemoveGalleryImage={removeGalleryImage}
                     onAttributesChange={updateAttributes}
                     onVariantsChange={updateVariants}
-                    onGenerateVariants={generateVariantsFromAttributes}
                     onCancel={resetForm}
                     onSubmit={() => void submitProduct()}
                 />

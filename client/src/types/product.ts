@@ -32,6 +32,9 @@ export interface CategoryParent {
 export interface AttributeValue {
     id: number;
     value: string;
+    image?: string | null;
+    urlImage?: string | null;
+    url_image?: string | null;
 }
 
 export interface Attribute {

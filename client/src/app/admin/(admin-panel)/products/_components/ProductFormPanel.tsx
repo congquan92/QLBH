@@ -59,7 +59,6 @@ type ProductFormPanelProps = {
   onRemoveGalleryImage: (key: string) => void;
   onAttributesChange: (next: ProductAttributeInput[]) => void;
   onVariantsChange: (next: ProductVariantInput[]) => void;
-  onGenerateVariants: () => void;
   onCancel: () => void;
   onSubmit: () => void;
 };
@@ -128,7 +127,6 @@ export function ProductFormPanel({
   onRemoveGalleryImage,
   onAttributesChange,
   onVariantsChange,
-  onGenerateVariants,
   onCancel,
   onSubmit,
 }: ProductFormPanelProps) {
@@ -141,6 +139,11 @@ export function ProductFormPanel({
   const isUploadingMedia =
     Boolean(coverImage?.isUploading) ||
     galleryImages.some((item) => item.isUploading);
+  const hasVariantAttributes = form.attributes.some(
+    (attribute) =>
+      attribute.name.trim() &&
+      attribute.values.some((value) => value.value.trim()),
+  );
 
   function addAttribute() {
     onAttributesChange([
@@ -218,22 +221,6 @@ export function ProductFormPanel({
     );
   }
 
-  function addVariant() {
-    onVariantsChange([
-      ...form.productVariant,
-      {
-        key: createKey(),
-        sku: "",
-        price: form.salePrice,
-        weight: form.weight,
-        length: form.length,
-        width: form.width,
-        height: form.height,
-        variantAttributes: [{ key: createKey(), attribute: "", value: "" }],
-      },
-    ]);
-  }
-
   function removeVariant(variantKey: string) {
     onVariantsChange(
       form.productVariant.filter((variant) => variant.key !== variantKey),
@@ -248,57 +235,6 @@ export function ProductFormPanel({
     onVariantsChange(
       form.productVariant.map((variant) =>
         variant.key === variantKey ? { ...variant, [field]: value } : variant,
-      ),
-    );
-  }
-
-  function addVariantAttribute(variantKey: string) {
-    onVariantsChange(
-      form.productVariant.map((variant) =>
-        variant.key === variantKey
-          ? {
-              ...variant,
-              variantAttributes: [
-                ...variant.variantAttributes,
-                { key: createKey(), attribute: "", value: "" },
-              ],
-            }
-          : variant,
-      ),
-    );
-  }
-
-  function updateVariantAttribute(
-    variantKey: string,
-    attributeKey: string,
-    field: "attribute" | "value",
-    value: string,
-  ) {
-    onVariantsChange(
-      form.productVariant.map((variant) =>
-        variant.key === variantKey
-          ? {
-              ...variant,
-              variantAttributes: variant.variantAttributes.map((item) =>
-                item.key === attributeKey ? { ...item, [field]: value } : item,
-              ),
-            }
-          : variant,
-      ),
-    );
-  }
-
-  function removeVariantAttribute(variantKey: string, attributeKey: string) {
-    onVariantsChange(
-      form.productVariant.map((variant) =>
-        variant.key === variantKey
-          ? {
-              ...variant,
-              variantAttributes: variant.variantAttributes.filter(
-                (item) => item.key !== attributeKey,
-              ),
-            }
-          : variant,
       ),
     );
   }
@@ -467,72 +403,76 @@ export function ProductFormPanel({
                 />
               </div>
 
-              <Separator className="my-3" />
+              {hasVariantAttributes ? null : (
+                <>
+                  <Separator className="my-3" />
 
-              <div className="space-y-3 rounded-md border bg-background p-3">
-                <div className="flex items-center gap-2">
-                  <Truck className="h-4 w-4 text-orange-500" />
-                  <h4 className="font-medium">Thông số vận chuyển mặc định</h4>
-                </div>
-                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="default-weight">Cân nặng (gram)</Label>
-                    <Input
-                      id="default-weight"
-                      type="number"
-                      min="0"
-                      step="1"
-                      value={form.weight}
-                      onChange={(event) =>
-                        onChange("weight", event.target.value)
-                      }
-                      placeholder="350"
-                    />
+                  <div className="space-y-3 rounded-md border bg-background p-3">
+                    <div className="flex items-center gap-2">
+                      <Truck className="h-4 w-4 text-orange-500" />
+                      <h4 className="font-medium">Thông số vận chuyển mặc định</h4>
+                    </div>
+                    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="default-weight">Cân nặng (gram)</Label>
+                        <Input
+                          id="default-weight"
+                          type="number"
+                          min="0"
+                          step="1"
+                          value={form.weight}
+                          onChange={(event) =>
+                            onChange("weight", event.target.value)
+                          }
+                          placeholder="350"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="default-length">Dài (cm)</Label>
+                        <Input
+                          id="default-length"
+                          type="number"
+                          min="0"
+                          step="0.1"
+                          value={form.length}
+                          onChange={(event) =>
+                            onChange("length", event.target.value)
+                          }
+                          placeholder="25"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="default-width">Rộng (cm)</Label>
+                        <Input
+                          id="default-width"
+                          type="number"
+                          min="0"
+                          step="0.1"
+                          value={form.width}
+                          onChange={(event) =>
+                            onChange("width", event.target.value)
+                          }
+                          placeholder="10"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="default-height">Cao (cm)</Label>
+                        <Input
+                          id="default-height"
+                          type="number"
+                          min="0"
+                          step="0.1"
+                          value={form.height}
+                          onChange={(event) =>
+                            onChange("height", event.target.value)
+                          }
+                          placeholder="4"
+                        />
+                      </div>
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="default-length">Dài (cm)</Label>
-                    <Input
-                      id="default-length"
-                      type="number"
-                      min="0"
-                      step="0.1"
-                      value={form.length}
-                      onChange={(event) =>
-                        onChange("length", event.target.value)
-                      }
-                      placeholder="25"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="default-width">Rộng (cm)</Label>
-                    <Input
-                      id="default-width"
-                      type="number"
-                      min="0"
-                      step="0.1"
-                      value={form.width}
-                      onChange={(event) =>
-                        onChange("width", event.target.value)
-                      }
-                      placeholder="10"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="default-height">Cao (cm)</Label>
-                    <Input
-                      id="default-height"
-                      type="number"
-                      min="0"
-                      step="0.1"
-                      value={form.height}
-                      onChange={(event) =>
-                        onChange("height", event.target.value)
-                      }
-                      placeholder="4"
-                    />
-                  </div>
-                </div>
-              </div>
+                </>
+              )}
             </section>
 
             <section className="grid gap-4 rounded-lg border bg-card p-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
@@ -747,277 +687,251 @@ export function ProductFormPanel({
                     Hiển thị theo bảng để nhập nhanh giống sàn TMĐT.
                   </p>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={onGenerateVariants}
-                  >
-                    <Layers3 className="mr-2 h-4 w-4" />
-                    Tạo từ thuộc tính
-                  </Button>
-                  <Button type="button" size="sm" onClick={addVariant}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Thêm biến thể
-                  </Button>
-                </div>
+                {hasVariantAttributes ? (
+                  <div className="flex flex-wrap gap-2">
+                    <Badge variant="secondary">
+                      Bảng tự động đồng bộ theo thuộc tính
+                    </Badge>
+                  </div>
+                ) : null}
               </div>
 
-              <div className="rounded-md border border-orange-200 bg-orange-50/60 p-3">
-                <p className="mb-2 text-xs font-medium text-orange-700">
-                  Thiết lập nhanh cho tất cả biến thể (kiểu Shopee)
-                </p>
-                <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-6">
-                  <Input
-                    type="number"
-                    min="0"
-                    placeholder="Giá"
-                    value={bulkPrice}
-                    onChange={(event) => setBulkPrice(event.target.value)}
-                  />
-                  <Input
-                    type="number"
-                    min="0"
-                    step="1"
-                    placeholder="Nặng (g)"
-                    value={bulkWeight}
-                    onChange={(event) => setBulkWeight(event.target.value)}
-                  />
-                  <Input
-                    type="number"
-                    min="0"
-                    step="0.1"
-                    placeholder="Dài"
-                    value={bulkLength}
-                    onChange={(event) => setBulkLength(event.target.value)}
-                  />
-                  <Input
-                    type="number"
-                    min="0"
-                    step="0.1"
-                    placeholder="Rộng"
-                    value={bulkWidth}
-                    onChange={(event) => setBulkWidth(event.target.value)}
-                  />
-                  <Input
-                    type="number"
-                    min="0"
-                    step="0.1"
-                    placeholder="Cao"
-                    value={bulkHeight}
-                    onChange={(event) => setBulkHeight(event.target.value)}
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={applyBulkToVariants}
-                  >
-                    <Check className="mr-2 h-4 w-4" />
-                    Áp dụng
-                  </Button>
-                </div>
-              </div>
+              {hasVariantAttributes ? (
+                <>
+                  <div className="rounded-md border border-orange-200 bg-orange-50/60 p-3">
+                    <p className="mb-2 text-xs font-medium text-orange-700">
+                      Thiết lập nhanh cho tất cả biến thể (kiểu Shopee)
+                    </p>
+                    <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-6">
+                      <Input
+                        type="number"
+                        min="0"
+                        placeholder="Giá"
+                        value={bulkPrice}
+                        onChange={(event) => setBulkPrice(event.target.value)}
+                      />
+                      <Input
+                        type="number"
+                        min="0"
+                        step="1"
+                        placeholder="Nặng (g)"
+                        value={bulkWeight}
+                        onChange={(event) => setBulkWeight(event.target.value)}
+                      />
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.1"
+                        placeholder="Dài"
+                        value={bulkLength}
+                        onChange={(event) => setBulkLength(event.target.value)}
+                      />
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.1"
+                        placeholder="Rộng"
+                        value={bulkWidth}
+                        onChange={(event) => setBulkWidth(event.target.value)}
+                      />
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.1"
+                        placeholder="Cao"
+                        value={bulkHeight}
+                        onChange={(event) => setBulkHeight(event.target.value)}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={applyBulkToVariants}
+                      >
+                        <Check className="mr-2 h-4 w-4" />
+                        Áp dụng
+                      </Button>
+                    </div>
+                  </div>
 
-              {form.productVariant.length === 0 ? (
-                <div className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
-                  Chưa có biến thể. Bạn có thể thêm tay hoặc tạo tự động từ
-                  thuộc tính.
-                </div>
-              ) : (
-                <div className="overflow-x-auto rounded-md border">
-                  <table className="min-w-300 text-sm">
-                    <thead className="bg-muted/40 text-xs uppercase text-muted-foreground">
-                      <tr>
-                        <th className="px-3 py-2 text-left font-medium">#</th>
-                        <th className="px-3 py-2 text-left font-medium">
-                          Thuộc tính biến thể
-                        </th>
-                        <th className="px-3 py-2 text-left font-medium">SKU</th>
-                        <th className="px-3 py-2 text-left font-medium">Giá</th>
-                        <th className="px-3 py-2 text-left font-medium">
-                          Nặng (g)
-                        </th>
-                        <th className="px-3 py-2 text-left font-medium">Dài</th>
-                        <th className="px-3 py-2 text-left font-medium">
-                          Rộng
-                        </th>
-                        <th className="px-3 py-2 text-left font-medium">Cao</th>
-                        <th className="px-3 py-2 text-right font-medium">
-                          Hành động
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {form.productVariant.map((variant, variantIndex) => (
-                        <tr key={variant.key} className="border-t align-top">
-                          <td className="px-3 py-2 text-xs text-muted-foreground">
-                            {variantIndex + 1}
-                          </td>
-                          <td className="px-3 py-2">
-                            <div className="space-y-2">
-                              {variant.variantAttributes.map((item) => (
-                                <div
-                                  key={item.key}
-                                  className="grid gap-2 xl:grid-cols-[1fr_1fr_auto]"
-                                >
-                                  <Input
-                                    value={item.attribute}
-                                    onChange={(event) =>
-                                      updateVariantAttribute(
-                                        variant.key,
-                                        item.key,
-                                        "attribute",
-                                        event.target.value,
-                                      )
-                                    }
-                                    placeholder="Màu sắc"
-                                  />
-                                  <Input
-                                    value={item.value}
-                                    onChange={(event) =>
-                                      updateVariantAttribute(
-                                        variant.key,
-                                        item.key,
-                                        "value",
-                                        event.target.value,
-                                      )
-                                    }
-                                    placeholder="Đen"
-                                  />
-                                  <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="icon"
-                                    onClick={() =>
-                                      removeVariantAttribute(
-                                        variant.key,
-                                        item.key,
-                                      )
-                                    }
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
+                  {form.productVariant.length === 0 ? (
+                    <div className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
+                      Chưa có biến thể. Nhấn &quot;Tạo từ thuộc tính&quot; để sinh bảng
+                      biến thể.
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto rounded-md border">
+                      <table className="min-w-300 text-sm">
+                        <thead className="bg-muted/40 text-xs uppercase text-muted-foreground">
+                          <tr>
+                            <th className="px-3 py-2 text-left font-medium">
+                              #
+                            </th>
+                            <th className="px-3 py-2 text-left font-medium">
+                              Thuộc tính biến thể
+                            </th>
+                            <th className="px-3 py-2 text-left font-medium">
+                              SKU
+                            </th>
+                            <th className="px-3 py-2 text-left font-medium">
+                              Giá
+                            </th>
+                            <th className="px-3 py-2 text-left font-medium">
+                              Nặng (g)
+                            </th>
+                            <th className="px-3 py-2 text-left font-medium">
+                              Dài
+                            </th>
+                            <th className="px-3 py-2 text-left font-medium">
+                              Rộng
+                            </th>
+                            <th className="px-3 py-2 text-left font-medium">
+                              Cao
+                            </th>
+                            <th className="px-3 py-2 text-right font-medium">
+                              Hành động
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {form.productVariant.map((variant, variantIndex) => (
+                            <tr key={variant.key} className="border-t align-top">
+                              <td className="px-3 py-2 text-xs text-muted-foreground">
+                                {variantIndex + 1}
+                              </td>
+                              <td className="px-3 py-2">
+                                <div className="flex min-h-9 flex-wrap items-center gap-1.5">
+                                  {variant.variantAttributes.length > 0 ? (
+                                    variant.variantAttributes.map((item) => (
+                                      <Badge key={item.key} variant="secondary">
+                                        {item.attribute}: {item.value}
+                                      </Badge>
+                                    ))
+                                  ) : (
+                                    <span className="text-xs text-muted-foreground">
+                                      Không có
+                                    </span>
+                                  )}
                                 </div>
-                              ))}
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={() => addVariantAttribute(variant.key)}
-                              >
-                                <Plus className="mr-2 h-4 w-4" />
-                                Thêm cặp thuộc tính
-                              </Button>
-                            </div>
-                          </td>
-                          <td className="px-3 py-2">
-                            <Input
-                              value={variant.sku}
-                              onChange={(event) =>
-                                updateVariantField(
-                                  variant.key,
-                                  "sku",
-                                  event.target.value,
-                                )
-                              }
-                              placeholder="DRIFT-BLACK-S"
-                            />
-                          </td>
-                          <td className="px-3 py-2">
-                            <Input
-                              type="number"
-                              min="0"
-                              value={variant.price}
-                              onChange={(event) =>
-                                updateVariantField(
-                                  variant.key,
-                                  "price",
-                                  event.target.value,
-                                )
-                              }
-                              placeholder="329000"
-                            />
-                          </td>
-                          <td className="px-3 py-2">
-                            <Input
-                              type="number"
-                              min="0"
-                              step="1"
-                              value={variant.weight}
-                              onChange={(event) =>
-                                updateVariantField(
-                                  variant.key,
-                                  "weight",
-                                  event.target.value,
-                                )
-                              }
-                              placeholder="350"
-                            />
-                          </td>
-                          <td className="px-3 py-2">
-                            <Input
-                              type="number"
-                              min="0"
-                              step="0.1"
-                              value={variant.length}
-                              onChange={(event) =>
-                                updateVariantField(
-                                  variant.key,
-                                  "length",
-                                  event.target.value,
-                                )
-                              }
-                              placeholder="25"
-                            />
-                          </td>
-                          <td className="px-3 py-2">
-                            <Input
-                              type="number"
-                              min="0"
-                              step="0.1"
-                              value={variant.width}
-                              onChange={(event) =>
-                                updateVariantField(
-                                  variant.key,
-                                  "width",
-                                  event.target.value,
-                                )
-                              }
-                              placeholder="10"
-                            />
-                          </td>
-                          <td className="px-3 py-2">
-                            <Input
-                              type="number"
-                              min="0"
-                              step="0.1"
-                              value={variant.height}
-                              onChange={(event) =>
-                                updateVariantField(
-                                  variant.key,
-                                  "height",
-                                  event.target.value,
-                                )
-                              }
-                              placeholder="4"
-                            />
-                          </td>
-                          <td className="px-3 py-2 text-right">
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => removeVariant(variant.key)}
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Xoá
-                            </Button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                              </td>
+                              <td className="px-3 py-2">
+                                <Input
+                                  value={variant.sku}
+                                  readOnly={Boolean(form.id)}
+                                  onChange={(event) =>
+                                    updateVariantField(
+                                      variant.key,
+                                      "sku",
+                                      event.target.value,
+                                    )
+                                  }
+                                  placeholder={
+                                    form.id
+                                      ? "SKU được tạo tự động"
+                                      : "DRIFT-BLACK-S"
+                                  }
+                                />
+                              </td>
+                              <td className="px-3 py-2">
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  value={variant.price}
+                                  onChange={(event) =>
+                                    updateVariantField(
+                                      variant.key,
+                                      "price",
+                                      event.target.value,
+                                    )
+                                  }
+                                  placeholder="329000"
+                                />
+                              </td>
+                              <td className="px-3 py-2">
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  step="1"
+                                  value={variant.weight}
+                                  onChange={(event) =>
+                                    updateVariantField(
+                                      variant.key,
+                                      "weight",
+                                      event.target.value,
+                                    )
+                                  }
+                                  placeholder="350"
+                                />
+                              </td>
+                              <td className="px-3 py-2">
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  step="0.1"
+                                  value={variant.length}
+                                  onChange={(event) =>
+                                    updateVariantField(
+                                      variant.key,
+                                      "length",
+                                      event.target.value,
+                                    )
+                                  }
+                                  placeholder="25"
+                                />
+                              </td>
+                              <td className="px-3 py-2">
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  step="0.1"
+                                  value={variant.width}
+                                  onChange={(event) =>
+                                    updateVariantField(
+                                      variant.key,
+                                      "width",
+                                      event.target.value,
+                                    )
+                                  }
+                                  placeholder="10"
+                                />
+                              </td>
+                              <td className="px-3 py-2">
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  step="0.1"
+                                  value={variant.height}
+                                  onChange={(event) =>
+                                    updateVariantField(
+                                      variant.key,
+                                      "height",
+                                      event.target.value,
+                                    )
+                                  }
+                                  placeholder="4"
+                                />
+                              </td>
+                              <td className="px-3 py-2 text-right">
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => removeVariant(variant.key)}
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Xoá
+                                </Button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
+                  Bảng biến thể chỉ hiển thị khi đã có thuộc tính phân loại hợp
+                  lệ (ví dụ: Màu sắc, Kích thước).
                 </div>
               )}
             </section>

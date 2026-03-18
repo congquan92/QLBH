@@ -19,12 +19,14 @@ export type ProductFormValues = {
 
 export type ProductAttributeValueInput = {
   key: string;
+  id?: number;
   value: string;
   image: string;
 };
 
 export type ProductAttributeInput = {
   key: string;
+  id?: number;
   name: string;
   values: ProductAttributeValueInput[];
 };
@@ -37,6 +39,7 @@ export type ProductVariantAttributeInput = {
 
 export type ProductVariantInput = {
   key: string;
+  id?: number;
   sku: string;
   price: string;
   weight: string;
