@@ -12,12 +12,12 @@ import { CustomerOrdersDialog } from "./customer-orders-dialog";
 type TopCustomersCardProps = {
     customers: TopCustomerStats[];
     loading: boolean;
-    periodLabel: string;
+
     sort: "desc" | "asc";
     onSortChange: (value: "desc" | "asc") => void;
 };
 
-export function TopCustomersCard({ customers, loading, periodLabel, sort, onSortChange }: TopCustomersCardProps) {
+export function TopCustomersCard({ customers, loading, sort, onSortChange }: TopCustomersCardProps) {
     const [selectedCustomer, setSelectedCustomer] = useState<TopCustomerStats | null>(null);
 
     const sortedCustomers = useMemo(() => {
@@ -34,7 +34,7 @@ export function TopCustomersCard({ customers, loading, periodLabel, sort, onSort
                             <Users className="h-5 w-5 text-primary" />
                             Top 5 khách hàng theo tổng mua
                         </CardTitle>
-                        <CardDescription>Thống kê theo kỳ {periodLabel.toLowerCase()}.</CardDescription>
+                       
                     </div>
                     <div className="w-full md:w-52">
                         <Select value={sort} onValueChange={(value) => onSortChange(value as "desc" | "asc")}>

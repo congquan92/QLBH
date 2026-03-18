@@ -549,13 +549,7 @@ export default function ProductsPage() {
             setForm(nextForm);
             const loadedAttributes = nextForm.attributes;
             setOriginalAttributeIds(loadedAttributes.map((attribute) => Number(attribute.id)).filter((id) => Number.isFinite(id)));
-            setOriginalAttributeValuePairs(
-                loadedAttributes.flatMap((attribute) =>
-                    attribute.values
-                        .filter((item) => Number.isFinite(Number(item.id)))
-                        .map((item) => ({ id: Number(item.id), attributeId: Number(attribute.id) })),
-                ),
-            );
+            setOriginalAttributeValuePairs(loadedAttributes.flatMap((attribute) => attribute.values.filter((item) => Number.isFinite(Number(item.id))).map((item) => ({ id: Number(item.id), attributeId: Number(attribute.id) }))));
             setCoverImage(detail.coverImage ? createImageItem(detail.coverImage, "cover-image") : null);
             setGalleryImages((detail.imageProduct.length > 0 ? detail.imageProduct : detail.coverImage ? [detail.coverImage] : []).map((url, index) => createImageItem(url, `image-${index + 1}`)));
         } catch (error) {
@@ -664,13 +658,9 @@ export default function ProductsPage() {
                 const currentAttributeIds = form.attributes.map((attribute) => Number(attribute.id)).filter((id) => Number.isFinite(id));
                 const deletedAttributeIds = originalAttributeIds.filter((id) => !currentAttributeIds.includes(id));
 
-                const currentValueIds = form.attributes
-                    .flatMap((attribute) => attribute.values.map((item) => Number(item.id)))
-                    .filter((id) => Number.isFinite(id));
+                const currentValueIds = form.attributes.flatMap((attribute) => attribute.values.map((item) => Number(item.id))).filter((id) => Number.isFinite(id));
 
-                const deletedAttributeValueIds = originalAttributeValuePairs
-                    .filter((item) => !deletedAttributeIds.includes(item.attributeId) && !currentValueIds.includes(item.id))
-                    .map((item) => item.id);
+                const deletedAttributeValueIds = originalAttributeValuePairs.filter((item) => !deletedAttributeIds.includes(item.attributeId) && !currentValueIds.includes(item.id)).map((item) => item.id);
 
                 if (deletedAttributeValueIds.length > 0) {
                     await ProductApi.deleteAttributeValue(form.id, { attributeValueIds: deletedAttributeValueIds });

@@ -47,8 +47,7 @@ export function OrdersFilters({
     filters.startDate,
     filters.endDate,
   ].filter((value) => value.trim().length > 0).length;
-
-  return (
+  return (  
     <Card className="overflow-hidden border-orange-200/80 shadow-sm">
       <CardHeader>
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -108,8 +107,8 @@ export function OrdersFilters({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="ALL">Tất cả quận/huyện</SelectItem>
-              {districtOptions.map((district) => (
-                <SelectItem key={district} value={district}>
+              {districtOptions.map((district, index) => (
+                <SelectItem key={index} value={district}>
                   {district}
                 </SelectItem>
               ))}
@@ -133,8 +132,8 @@ export function OrdersFilters({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="ALL">Tất cả tỉnh/thành phố</SelectItem>
-              {provinceOptions.map((province) => (
-                <SelectItem key={province} value={province}>
+              {provinceOptions.map((province, index) => (
+                <SelectItem key={index} value={province}>
                   {province}
                 </SelectItem>
               ))}
