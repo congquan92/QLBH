@@ -47,4 +47,30 @@ class UserRankService{
             $userRank->update($data);
         });
     }
+
+    public function getUsersByRank(?string $rankId, ?string $keyword, int $page, int $size): PageResponse
+    {
+        $query = \App\Models\User::query()
+            ->where('user_rank_id', $rankId)
+            ->with(['userRank', 'role']);
+
+        if (!empty($keyword)) {
+            $lower = '%' . strtolower($keyword) . '%';
+            $query->where(function ($q) use ($lower) {
+                $q->where('full_name', 'like', $lower)
+                  ->orWhere('email', 'like', $lower)
+                  ->orWhere('phone', 'like', $lower);
+            });
+        }
+
+        $paginator = $query->orderBy('total_spent', 'desc')->paginate($size, ['*'], 'page', $page);
+
+        $dtoItems = $paginator->getCollection()->map(function ($user) {
+            return \App\Http\Mapper\UserMapper::toUserResponse($user);
+        });
+
+        $paginator->setCollection($dtoItems);
+
+        return PageResponse::fromLaravelPaginator($paginator);
+    }
 }    

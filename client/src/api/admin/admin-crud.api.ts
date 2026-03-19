@@ -199,6 +199,16 @@ export const AdminCrudApi = {
         await axiosInstance.put(`/user-rank/${id}/update`, payload);
     },
 
+    getUsersByRank: async (rankId: number, query?: { keyword?: string; page?: number; size?: number }) => {
+        try {
+            const res = await axiosInstance.get(`/user-rank/${rankId}/users`, { params: query });
+            return normalizeList<import("@/types/user").UserProfile>(res.data, "Users by rank fetched");
+        } catch (error) {
+            console.warn(`${WARNING_PREFIX} /user-rank/${rankId}/users [GET] failed.`, error);
+            return normalizeList<import("@/types/user").UserProfile>(null, "Users by rank fallback");
+        }
+    },
+
     getImportProducts: async (query?: { keyword?: string; sort?: string; page?: number; size?: number }) => {
         try {
             const res = await axiosInstance.get("/import-products", { params: query });

@@ -345,6 +345,10 @@ Route::middleware('auth')->group(function () {
         // Cập nhật hạng
         Route::put('/{id}/update', action: [UserRankController::class, 'update'])
             ->middleware('can:UPDATE_USER_RANK');
+
+        // Lấy danh sách khách hàng theo hạng
+        Route::get('/{id}/users', [UserRankController::class, 'getUsersByRank'])
+            ->middleware('can:VIEW_USER_RANKS');
     });
     // Salaries
     Route::get('salaries/calculate/{userId}', [SalaryController::class, 'calculateMonthlySalary'])->middleware('can:CALCULATE_SALARY');

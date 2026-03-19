@@ -41,4 +41,14 @@ use ApiResponse;
         $this->userRankService->update($id, $request->all());
         return $this->success(null, "Cập nhật hạng người dùng");
     }
+
+    public function getUsersByRank(Request $request, $id): JsonResponse
+    {
+        $keyword = $request->query('keyword');
+        $page = (int) $request->query('page', 1);
+        $size = (int) $request->query('size', 10);
+
+        $result = $this->userRankService->getUsersByRank($id, $keyword, $page, $size);
+        return $this->success($result, "Danh sách khách hàng theo hạng");
+    }
 }
