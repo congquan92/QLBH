@@ -52,6 +52,7 @@ class UserRankService{
     {
         $query = \App\Models\User::query()
             ->where('user_rank_id', $rankId)
+            ->whereHas('role', fn($q) => $q->where('name', 'USER'))
             ->with(['userRank', 'role']);
 
         if (!empty($keyword)) {

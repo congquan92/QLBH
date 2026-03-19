@@ -123,15 +123,15 @@ export default function UserRanksPage() {
         }
     }
 
-    const activeCount = ranks.filter((r) => r.status === "ACTIVE").length;
+    // const activeCount = ranks.filter((r) => r.status === "ACTIVE").length;
 
     return (
         <AdminPageShell
-            title="Xếp hạng khách hàng"
+            title="Quản lý xếp hạng khách hàng"
             description="Quản lý các hạng thành viên và mức chi tiêu tương ứng"
         >
             {/* Stats row */}
-            <div className="grid gap-4 sm:grid-cols-3">
+            {/* <div className="grid gap-4 sm:grid-cols-3">
                 <Card>
                     <CardContent className="flex items-center gap-4 p-5">
                         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
@@ -165,7 +165,7 @@ export default function UserRanksPage() {
                         </div>
                     </CardContent>
                 </Card>
-            </div>
+            </div> */}
 
             {/* Main Table Card */}
             <Card>

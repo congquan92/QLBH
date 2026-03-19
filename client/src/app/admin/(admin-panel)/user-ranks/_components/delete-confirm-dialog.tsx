@@ -35,13 +35,13 @@ export function DeleteConfirmDialog({
                             <AlertTriangle className="h-5 w-5 text-red-600" />
                         </div>
                         <div>
-                            <DialogTitle>Xác nhận vô hiệu hóa</DialogTitle>
+                            <DialogTitle>Xác nhận xóa</DialogTitle>
                             <DialogDescription className="mt-0.5">
-                                Bạn có chắc muốn vô hiệu hóa hạng{" "}
+                                Bạn có chắc muốn xóa hạng{" "}
                                 <span className="font-semibold text-foreground">
                                     &quot;{rankName}&quot;
                                 </span>
-                                ? Hành động này sẽ đánh dấu hạng là DISABLED.
+                                ? Hành động này sẽ xóa vĩnh viễn hạng này. Bạn không thể hoàn tác hành động này.
                             </DialogDescription>
                         </div>
                     </div>
