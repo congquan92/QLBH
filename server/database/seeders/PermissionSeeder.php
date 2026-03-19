@@ -33,7 +33,6 @@ class PermissionSeeder extends Seeder
                     'groups' => [
                         'Danh mục' => ['/admin/categories', 'Layers', ['CATEGORIES']],
                         'Sản phẩm' => ['/admin/products', 'Box', ['PRODUCT', 'VARIANT', 'ATTRIBUTE', 'IMAGE_PRODUCT']],
-                        'Đánh giá' => ['/admin/reviews', 'Star', ['REVIEWS']],
                         'Khuyến mãi' => ['/admin/vouchers', 'Ticket', ['VOUCHER']],
                     ]
                 ],

@@ -43,8 +43,8 @@ export function CreateUserForm({ open, form, roles, positions, isSaving, onOpenC
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="max-h-[80vh] overflow-y-auto p-5 sm:max-w-xl md:max-w-2xl">
                 <DialogHeader className="space-y-1.5 border-b pb-3">
-                    <DialogTitle className="text-xl">Thêm user nội bộ</DialogTitle>
-                    <DialogDescription>Điền thông tin tài khoản và hồ sơ cơ bản để tạo người dùng nội bộ trong hệ thống.</DialogDescription>
+                    <DialogTitle className="text-xl">Thêm tài khoản nội bội</DialogTitle>
+                    <DialogDescription>Điền thông tin đầy đủ của tài khoản.</DialogDescription>
                 </DialogHeader>
 
                 <div className="space-y-4 py-1">
