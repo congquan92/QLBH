@@ -13,18 +13,8 @@ type ProductPageHeaderProps = {
 
 export function ProductPageHeader({ totalProducts, activeProducts, hiddenProducts, categoriesCount, onCreate }: ProductPageHeaderProps) {
     return (
-        <div className="space-y-4">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                <div className="space-y-2">
-                    <Badge variant="outline" className="w-fit px-3 py-1 text-xs uppercase tracking-[0.24em]">
-                        Admin catalog
-                    </Badge>
-                    <div>
-                        <h1 className="text-3xl font-bold tracking-tight">Sản phẩm</h1>
-                        <p className="text-muted-foreground">Quản lý danh mục hàng hoá, ảnh hiển thị và trạng thái bán hàng từ dữ liệu backend thật.</p>
-                    </div>
-                </div>
-
+        <div className="space-y-4 flex flex-col">
+            <div className="flex justify-end">
                 <Button onClick={onCreate} className="h-11 px-5">
                     <Plus className="mr-2 h-4 w-4" />
                     Thêm sản phẩm

@@ -41,7 +41,6 @@ export function ProductTable({ products, isLoading, isSaving, searchKeyword, cat
             <CardHeader className="gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <div>
                     <CardTitle>Danh sách sản phẩm</CardTitle>
-                    <CardDescription>{`${products.length} sản phẩm phù hợp bộ lọc hiện tại`}</CardDescription>
                 </div>
 
                 <div className="flex w-full flex-col gap-3 lg:w-auto lg:flex-row">

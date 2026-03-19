@@ -768,14 +768,14 @@ export default function ProductsPage() {
 
     const filteredProducts = searchKeyword.trim()
         ? products.filter(
-              (product) =>
-                  String(product.name ?? "")
-                      .toLowerCase()
-                      .includes(searchKeyword.toLowerCase()) ||
-                  String(product.description ?? "")
-                      .toLowerCase()
-                      .includes(searchKeyword.toLowerCase()),
-          )
+            (product) =>
+                String(product.name ?? "")
+                    .toLowerCase()
+                    .includes(searchKeyword.toLowerCase()) ||
+                String(product.description ?? "")
+                    .toLowerCase()
+                    .includes(searchKeyword.toLowerCase()),
+        )
         : products;
 
     const categoryFilteredProducts = categoryFilter === "all" ? filteredProducts : filteredProducts.filter((product) => String(product.categoryId) === categoryFilter);
@@ -784,7 +784,7 @@ export default function ProductsPage() {
     const hiddenProducts = products.filter((product) => product.status === "INACTIVE").length;
 
     return (
-        <AdminPageShell title="Sản phẩm" description="Quản lý sản phẩm theo đúng hợp đồng dữ liệu của server.">
+        <AdminPageShell title="Sản phẩm" description="Quản lý sản phẩm .">
             <div className="space-y-4">
                 <ProductPageHeader
                     totalProducts={products.length}
