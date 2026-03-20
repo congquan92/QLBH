@@ -351,6 +351,7 @@ Route::middleware('auth')->group(function () {
             ->middleware('can:VIEW_USER_RANKS');
     });
     // Salaries
+    Route::get('salaries/all', [SalaryController::class, 'calculateAllSalaries'])->middleware('can:CALCULATE_SALARY');
     Route::get('salaries/calculate/{userId}', [SalaryController::class, 'calculateMonthlySalary'])->middleware('can:CALCULATE_SALARY');
-    Route::get('salaries/calculate/me', [SalaryController::class, 'calculateMonthlySalary']);
+    Route::get('salaries/calculate/me', [SalaryController::class, 'calculateMonthlySalaryMe']);
 });

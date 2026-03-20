@@ -24,18 +24,16 @@ class SalaryService
             ->first();
 
         if (!$jobHistory) {
-            throw new \Exception("Không tìm thấy thông tin lương hợp lệ cho tháng này.");
+            throw new \Exception("Khong tim thay thong tin luong cho thang nay.");
         }
 
         $monthlyBaseSalary = $jobHistory->current_salary;
 
-        // 2. TÍNH HOURLY RATE DỰA TRÊN LOẠI HÌNH CÔNG VIỆC
+        // TINH HOURLY RATE
         if ($jobHistory->employment_type === EmploymentType::FULLTIME) {
-            // Lấy các ngày làm việc mặc định trong tuần (VD: T2 -> T6)
             $defaultSchedules = $jobHistory->position->defaultSchedules;
-            $workingDaysInWeek = $defaultSchedules->pluck('day_of_week')->toArray(); // [1, 2, 3, 4, 5]
+            $workingDaysInWeek = $defaultSchedules->pluck('day_of_week')->toArray();
 
-            // Đếm tổng số ngày làm việc thực tế trong tháng này dựa trên lịch mặc định
             $totalWorkingDaysInMonth = 0;
             $tempDate = $startDate->copy();
             while ($tempDate->lte($endDate)) {
@@ -45,24 +43,20 @@ class SalaryService
                 $tempDate->addDay();
             }
 
-            // Tính trung bình số giờ làm việc mỗi ngày từ các ca (Shift)
             $avgHoursPerDay = $defaultSchedules->avg(function ($schedule) {
                 $shift = $schedule->shift;
-                if (!$shift)
-                    return 8; // Mặc định 8h nếu không có ca
+                if (!$shift) return 8;
                 return Carbon::parse($shift->start_time)->diffInHours(Carbon::parse($shift->end_time));
             }) ?: 8;
 
-            // Công thức: Lương tháng / Tổng ngày làm trong tháng / Số giờ mỗi ngày
             $hourlyRate = ($totalWorkingDaysInMonth > 0)
                 ? ($monthlyBaseSalary / $totalWorkingDaysInMonth / $avgHoursPerDay)
                 : 0;
-
         } else {
-            // PART_TIME: Lấy trực tiếp lương trong JobHistory (Lương theo giờ)
             $hourlyRate = $monthlyBaseSalary;
         }
-        // 3. Tính thưởng ngày lễ (Bonus)
+
+        // TINH BONUS NGAY LE
         $holidayAttendances = Attendance::where('user_id', $userId)
             ->whereBetween('date', [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')])
             ->where('is_holiday', true)
@@ -72,7 +66,6 @@ class SalaryService
         $bonusDetails = [];
 
         foreach ($holidayAttendances as $record) {
-            // Lấy config thưởng theo loại hình (Full-time/Part-time) từ JobHistory
             $config = SalaryConfig::where('employee_type', $jobHistory->employment_type)
                 ->where('is_holiday', true)
                 ->first();
@@ -82,23 +75,63 @@ class SalaryService
 
             $totalSalaryBonus += $bonusAmount;
             $bonusDetails[] = [
-                'date' => $record->date,
+                'date'  => $record->date,
                 'hours' => $record->total_hours,
-                'bonus' => round($bonusAmount, 0)
+                'bonus' => round($bonusAmount, 0),
             ];
         }
 
-        // 4. Tổng lương cuối cùng
         $finalSalary = $monthlyBaseSalary + $totalSalaryBonus;
 
         return [
-            'employee' => $user->full_name,
-            'month' => "$month/$year",
-            'position' => $jobHistory->position->name,
-            'base_salary' => round($monthlyBaseSalary, 0),
+            'user_id'             => $user->id,
+            'employee'            => $user->full_name,
+            'month'               => "$month/$year",
+            'position'            => $jobHistory->position->name,
+            'employment_type'     => $jobHistory->employment_type,
+            'base_salary'         => round($monthlyBaseSalary, 0),
             'total_holiday_bonus' => round($totalSalaryBonus, 0),
-            'final_salary' => round($finalSalary, 0),
-            'bonus_details' => $bonusDetails
+            'final_salary'        => round($finalSalary, 0),
+            'bonus_details'       => $bonusDetails,
         ];
+    }
+
+    /**
+     * Tinh luong cho tat ca nhan vien (role name != 'USER') trong 1 thang.
+     * User model dung single role qua role_id (belongsTo), khong phai many-to-many.
+     */
+    public function calculateAllMonthlySalaries($month, $year)
+    {
+        // User co role_id FK toi bang roles, dung whereHas('role', ...) (singular)
+        $employees = User::whereHas('role', function ($q) {
+                $q->where('name', '!=', 'USER');
+            })
+            ->with(['position', 'role'])
+            ->get();
+
+        $results = [];
+
+        foreach ($employees as $employee) {
+            try {
+                $salary = $this->calculateMonthlySalary($employee->id, $month, $year);
+                $results[] = array_merge($salary, ['status' => 'ok', 'error' => null]);
+            } catch (\Exception $e) {
+                $results[] = [
+                    'user_id'             => $employee->id,
+                    'employee'            => $employee->full_name,
+                    'month'               => "$month/$year",
+                    'position'            => optional($employee->position)->name ?? '-',
+                    'employment_type'     => null,
+                    'base_salary'         => 0,
+                    'total_holiday_bonus' => 0,
+                    'final_salary'        => 0,
+                    'bonus_details'       => [],
+                    'status'              => 'error',
+                    'error'               => $e->getMessage(),
+                ];
+            }
+        }
+
+        return $results;
     }
 }
