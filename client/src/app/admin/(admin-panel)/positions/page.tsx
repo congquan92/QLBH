@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { BriefcaseBusiness, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import type { Position } from "@/types/admin-crud";
@@ -145,9 +146,19 @@ export default function PositionsPage() {
                     </CardHeader>
                     <CardContent>
                         {isLoading ? (
-                            <div className="flex items-center text-sm text-muted-foreground">
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                Đang tải...
+                            <div className="space-y-3">
+                                {Array.from({ length: 4 }).map((_, i) => (
+                                    <div key={i} className="rounded-md border p-3 flex items-center justify-between gap-3">
+                                        <div className="space-y-2 flex-1">
+                                            <Skeleton className="h-4 w-36" />
+                                            <Skeleton className="h-3 w-52" />
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <Skeleton className="h-8 w-8 rounded-md" />
+                                            <Skeleton className="h-8 w-8 rounded-md" />
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
                         ) : (
                             <div className="space-y-3">

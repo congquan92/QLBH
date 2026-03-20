@@ -12,6 +12,7 @@ import {
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import type { OrderSummary } from "@/types/order";
 import { Loader2 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
@@ -184,12 +185,6 @@ export default function OrdersPage() {
         onReset={resetFilters}
       />
 
-      {isLoading && (
-        <div className="flex items-center text-sm text-muted-foreground">
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          Đang tải danh sách đơn hàng...
-        </div>
-      )}
 
       <Card>
         <CardHeader>

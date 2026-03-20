@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Calendar, Users, Clock, Loader2, ChevronLeft, ChevronRight, Plus, Trash2 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import type { Shift } from "@/types/admin-crud";
@@ -171,9 +172,20 @@ export default function SchedulePage() {
             {/* Content */}
             {isLoading ? (
                 <Card>
-                    <CardContent className="flex items-center justify-center py-12">
-                        <Loader2 className="mr-2 h-6 w-6 animate-spin" />
-                        <span className="text-muted-foreground">Đang tải...</span>
+                    <CardContent className="space-y-3 py-6">
+                        <Skeleton className="h-5 w-48" />
+                        {Array.from({ length: 7 }).map((_, i) => (
+                            <div key={i} className="flex items-center justify-between rounded-lg border p-4">
+                                <div className="space-y-2">
+                                    <Skeleton className="h-4 w-24" />
+                                    <Skeleton className="h-3 w-32" />
+                                </div>
+                                <div className="space-y-2 text-right">
+                                    <Skeleton className="h-4 w-20 ml-auto" />
+                                    <Skeleton className="h-3 w-28 ml-auto" />
+                                </div>
+                            </div>
+                        ))}
                     </CardContent>
                 </Card>
             ) : (

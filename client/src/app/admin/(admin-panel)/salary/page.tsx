@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Landmark, Loader2, Pencil, Plus, Scale, Trash2 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import type { SalaryConfig, SalaryScale } from "@/types/admin-crud";
@@ -219,7 +220,20 @@ export default function SalaryPage() {
                         </div>
                         <div className="space-y-2 border-t pt-3">
                             {isLoading ? (
-                                <p className="text-sm text-muted-foreground">Đang tải...</p>
+                                <div className="space-y-2">
+                                    {Array.from({ length: 3 }).map((_, i) => (
+                                        <div key={i} className="flex items-center justify-between rounded-md border p-2">
+                                            <div className="space-y-1.5">
+                                                <Skeleton className="h-4 w-36" />
+                                                <Skeleton className="h-3 w-52" />
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <Skeleton className="h-8 w-8 rounded-md" />
+                                                <Skeleton className="h-8 w-8 rounded-md" />
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
                             ) : (
                                 configs.map((item) => (
                                     <div key={item.id} className="rounded-md border p-2">
@@ -283,7 +297,20 @@ export default function SalaryPage() {
                         </div>
                         <div className="space-y-2 border-t pt-3">
                             {isLoading ? (
-                                <p className="text-sm text-muted-foreground">Đang tải...</p>
+                                <div className="space-y-2">
+                                    {Array.from({ length: 3 }).map((_, i) => (
+                                        <div key={i} className="flex items-center justify-between rounded-md border p-2">
+                                            <div className="space-y-1.5">
+                                                <Skeleton className="h-4 w-36" />
+                                                <Skeleton className="h-3 w-44" />
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <Skeleton className="h-8 w-8 rounded-md" />
+                                                <Skeleton className="h-8 w-8 rounded-md" />
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
                             ) : (
                                 scales.map((item) => (
                                     <div key={item.id} className="rounded-md border p-2">

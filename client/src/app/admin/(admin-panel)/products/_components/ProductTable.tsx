@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Helper } from "@/lib/helper";
 import type { Product } from "@/types/product";
 import { Loader2, Pencil, RotateCcw, Search, Trash2 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import type { CategoryOption } from "./product-types";
 
 type ProductTableProps = {
@@ -66,9 +67,45 @@ export function ProductTable({ products, isLoading, isSaving, searchKeyword, cat
             </CardHeader>
             <CardContent>
                 {isLoading ? (
-                    <div className="flex min-h-32 items-center justify-center text-sm text-muted-foreground">
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Đang tải danh sách sản phẩm...
+                    <div className="overflow-x-auto">
+                        <table className="w-full min-w-230 text-left text-sm">
+                            <thead className="border-b bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground">
+                                <tr>
+                                    <th className="px-4 py-3">Sản phẩm</th>
+                                    <th className="px-4 py-3">Phân loại</th>
+                                    <th className="px-4 py-3">Giá</th>
+                                    <th className="px-4 py-3">Đã bán</th>
+                                    <th className="px-4 py-3">Trạng thái</th>
+                                    <th className="px-4 py-3 text-right">Thao tác</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {Array.from({ length: 6 }).map((_, i) => (
+                                    <tr key={i} className="border-b">
+                                        <td className="px-4 py-4">
+                                            <div className="flex gap-3">
+                                                <Skeleton className="h-16 w-16 rounded-lg shrink-0" />
+                                                <div className="space-y-2 pt-1">
+                                                    <Skeleton className="h-4 w-32" />
+                                                    <Skeleton className="h-3 w-16" />
+                                                    <Skeleton className="h-3 w-56" />
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="px-4 py-4"><Skeleton className="h-4 w-24" /></td>
+                                        <td className="px-4 py-4"><Skeleton className="h-4 w-20" /></td>
+                                        <td className="px-4 py-4"><Skeleton className="h-4 w-12" /></td>
+                                        <td className="px-4 py-4"><Skeleton className="h-5 w-16 rounded-full" /></td>
+                                        <td className="px-4 py-4">
+                                            <div className="flex justify-end gap-2">
+                                                <Skeleton className="h-8 w-8 rounded-md" />
+                                                <Skeleton className="h-8 w-8 rounded-md" />
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
                     </div>
                 ) : products.length === 0 ? (
                     <div className="rounded-lg border border-dashed px-4 py-8 text-sm text-muted-foreground">Không có sản phẩm nào khớp điều kiện tìm kiếm.</div>
