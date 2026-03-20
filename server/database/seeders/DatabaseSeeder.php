@@ -9,33 +9,37 @@ class DatabaseSeeder extends Seeder
 {
     use WithoutModelEvents;
 
-    /**
-     * Seed the application's database.
-     */
     public function run(): void
     {
         $this->call([
-            // RBAC and core accounts
-            \Database\Seeders\PermissionSeeder::class,
-            \Database\Seeders\RoleSeeder::class,
-            \Database\Seeders\AppSeeder::class,
+            // 1. RBAC core
+            PermissionSeeder::class,
+            RoleSeeder::class,
 
-            // HR / payroll baseline
-            \Database\Seeders\SalaryScaleSeeder::class,
-            \Database\Seeders\SalaryConfigSeeder::class,
-            \Database\Seeders\ShiftSeeder::class,
-            \Database\Seeders\PositionSeeder::class,
-            \Database\Seeders\HolidaySeeder::class,
+            // 2. HR baselines (must run before PositionSeeder)
+            SalaryScaleSeeder::class,
+            SalaryConfigSeeder::class,
+            ShiftSeeder::class,
 
-            // Sales demo data by domain
-            \Database\Seeders\CatalogDemoSeeder::class,
-            \Database\Seeders\ProductAttributeDemoSeeder::class,
-            \Database\Seeders\CustomerDemoSeeder::class,
-            \Database\Seeders\OrderDemoSeeder::class,
-            \Database\Seeders\VoucherDemoSeeder::class,
-            \Database\Seeders\ReviewDemoSeeder::class,
-            \Database\Seeders\ImportDemoSeeder::class,
-            \Database\Seeders\WorkforceDemoSeeder::class,
+            // 3. Core accounts + positions + job histories (tightly coupled)
+            AppSeeder::class,
+            PositionSeeder::class,
+
+            // 4. Calendar
+            HolidaySeeder::class,
+
+            // 5. Catalog: suppliers → categories → products → variants → images
+            CatalogSeeder::class,
+
+            // 6. Sales: customers → orders → vouchers → reviews → imports
+            CustomerSeeder::class,
+            OrderSeeder::class,
+            VoucherSeeder::class,
+            ReviewSeeder::class,
+            ImportSeeder::class,
+
+            // 7. HR activity: shift assignments + attendances
+            WorkforceSeeder::class,
         ]);
     }
 }

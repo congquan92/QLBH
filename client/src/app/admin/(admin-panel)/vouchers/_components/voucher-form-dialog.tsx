@@ -120,7 +120,7 @@ export function VoucherFormDialog({
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="PERCENTAGE">Phần trăm (%)</SelectItem>
-                                <SelectItem value="FIXED">Cố định (VND)</SelectItem>
+                                <SelectItem value="FIXED_AMOUNT">Cố định (VND)</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
