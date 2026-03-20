@@ -2,22 +2,29 @@ import type { ApiResponse } from "@/types/api";
 
 export interface JobHistoryRecord {
     id: number;
-    user_id: number;
-    old_position_id?: number;
-    new_position_id: number;
-    old_position_name?: string;
-    new_position_name: string;
-    promotion_date: string;
-    reason?: string;
-    created_at?: string;
+    position_id?: number;
+    position_name?: string;
+    salary?: string;
+    employment_type?: string;
+    effective_date?: string;
+    end_date?: string;
+    status?: string;
     [key: string]: unknown;
 }
 
 export interface CareerPath {
     user_id: number;
     full_name: string;
-    current_position: string;
-    history: JobHistoryRecord[];
+    email?: string;
+    seniority?: string;
+    current_position?: {
+        id?: number;
+        name?: string;
+        salary?: string;
+        salary_type?: string;
+    };
+    career_history?: JobHistoryRecord[];
+    [key: string]: unknown;
 }
 
 export type JobHistoryRecordResponse = ApiResponse<JobHistoryRecord>;

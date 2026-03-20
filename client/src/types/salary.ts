@@ -2,22 +2,17 @@ import type { ApiResponse } from "@/types/api";
 
 export interface SalaryCalculation {
     user_id: number;
-    full_name: string;
+    employee: string;
+    month: string;
     position: string;
-    month: number;
-    year: number;
+    employment_type: string;
     base_salary: number;
-    total_hours: number;
-    total_days_worked: number;
-    overtime_hours: number;
-    late_deductions: number;
-    bonus: number;
-    total_salary: number;
-    details: Array<{
-        date: string;
-        hours_worked: number;
-        status: string;
-        amount: number;
+    total_holiday_bonus: number;
+    final_salary: number;
+    bonus_details: Array<{
+        name?: string;
+        amount?: number;
+        [key: string]: unknown;
     }>;
     [key: string]: unknown;
 }

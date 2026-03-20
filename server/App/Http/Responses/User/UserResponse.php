@@ -1,6 +1,7 @@
 <?php
 namespace App\Http\Responses\User;
 
+use App\Http\Responses\Position\PositionResponse;
 use App\Http\Responses\Role\RoleResponse;
 use App\Http\Responses\UserRank\UserRankResponse;
 
@@ -20,7 +21,9 @@ class UserResponse {
         public ?bool $verifiedPhone,
         public ?float $totalSpent,
         public ?array $addressResponses,
-        public ?UserRankResponse $userRankResponse, 
-        public ?RoleResponse $role
+        public ?UserRankResponse $userRankResponse,
+        public ?RoleResponse $role,
+        public ?string $employmentType = null,
+        public ?PositionResponse $positionResponse = null,
     ) {}
 }
