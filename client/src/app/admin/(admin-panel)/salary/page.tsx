@@ -18,6 +18,8 @@ import { SalaryConfigTable } from "./_components/SalaryConfigTable";
 import { SalaryOverviewTable } from "./_components/SalaryOverviewTable";
 import { SalaryScaleDialog, type SalaryScaleForm } from "./_components/SalaryScaleDialog";
 import { SalaryScaleTable } from "./_components/SalaryScaleTable";
+import { HolidayManagerDialog } from "./_components/HolidayManagerDialog";
+
 
 const emptyConfigForm: SalaryConfigForm = {
     rule_name: "",
@@ -45,6 +47,9 @@ export default function SalaryPage() {
     // Scale dialog
     const [scaleDialogOpen, setScaleDialogOpen] = useState(false);
     const [scaleForm, setScaleForm] = useState<SalaryScaleForm>(emptyScaleForm);
+
+    // Holiday Manager dialog
+    const [holidayManagerOpen, setHolidayManagerOpen] = useState(false);
 
     // Bảng lương tổng hợp
     const [overviewMonth, setOverviewMonth] = useState(String(new Date().getMonth() + 1));
@@ -221,6 +226,7 @@ export default function SalaryPage() {
                     onAdd={openAddConfig}
                     onEdit={openEditConfig}
                     onDelete={handleDeleteConfig}
+                    onOpenHolidayManager={() => setHolidayManagerOpen(true)}
                 />
                 <SalaryScaleTable
                     scales={scales}
@@ -307,6 +313,10 @@ export default function SalaryPage() {
                 onChange={setScaleForm}
                 onSubmit={() => void handleSubmitScale()}
                 onClose={() => setScaleDialogOpen(false)}
+            />
+            <HolidayManagerDialog
+                open={holidayManagerOpen}
+                onClose={() => setHolidayManagerOpen(false)}
             />
         </AdminPageShell>
     );

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { SalaryConfig } from "@/types/admin-crud";
-import { Landmark, Pencil, Plus, Trash2 } from "lucide-react";
+import { CalendarDays, Landmark, Pencil, Plus, Trash2 } from "lucide-react";
 
 type Props = {
     configs: SalaryConfig[];
@@ -14,9 +14,11 @@ type Props = {
     onAdd: () => void;
     onEdit: (item: SalaryConfig) => void;
     onDelete: (id: number) => void;
+    onOpenHolidayManager: () => void;
 };
 
-export function SalaryConfigTable({ configs, isLoading, isSaving, onAdd, onEdit, onDelete }: Props) {
+export function SalaryConfigTable({ configs, isLoading, isSaving, onAdd, onEdit, onDelete, onOpenHolidayManager }: Props) {
+
     return (
         <Card>
             <CardHeader>
@@ -28,10 +30,16 @@ export function SalaryConfigTable({ configs, isLoading, isSaving, onAdd, onEdit,
                         </CardTitle>
                         <p className="text-sm text-muted-foreground mt-1">Quản lý cấu hình nhân hệ số lương theo loại nhân viên và ngày lễ</p>
                     </div>
-                    <Button size="sm" onClick={onAdd}>
-                        <Plus className="mr-2 h-4 w-4" />
-                        Thêm
-                    </Button>
+                    <div className="flex gap-2 items-center justify-center">
+                        <Button size="sm" onClick={onAdd}>
+                            <Plus className="mr-2 h-4 w-4" />
+                            Thêm
+                        </Button>
+                        <Button variant="outline" onClick={onOpenHolidayManager}>
+                            <CalendarDays className="mr-2 h-4 w-4" />
+                            Quản lý Ngày Lễ
+                        </Button>
+                    </div>
                 </div>
             </CardHeader>
             <CardContent>
