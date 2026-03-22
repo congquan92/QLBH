@@ -69,7 +69,7 @@ export function MyScheduleView({ employee, position, weekSchedule }: Props) {
                 </div>
             </div>
 
-            {/* Weekly Timeline - giao diện dạng timeline dọc */}
+            {/* Weekly Timeline */}
             <div className="rounded-xl border bg-card overflow-hidden">
                 <div className="grid grid-cols-7 divide-x">
                     {weekSchedule.map((day) => {
@@ -142,7 +142,6 @@ export function MyScheduleView({ employee, position, weekSchedule }: Props) {
                                                         shift.type === "Ca đặc biệt" && "border-l-violet-500"
                                                     )}
                                                 >
-                                                    {/* Shift name */}
                                                     <div className="flex items-center gap-1.5">
                                                         <div className={cn("flex items-center", style.text)}>
                                                             {style.icon}
@@ -152,7 +151,6 @@ export function MyScheduleView({ employee, position, weekSchedule }: Props) {
                                                         </span>
                                                     </div>
 
-                                                    {/* Time */}
                                                     <div className="flex items-center gap-1 mt-1.5 text-[10px] text-muted-foreground">
                                                         <Clock className="w-3 h-3" />
                                                         <span>{startTime?.slice(0, 5)}</span>
@@ -160,7 +158,6 @@ export function MyScheduleView({ employee, position, weekSchedule }: Props) {
                                                         <span>{endTime?.slice(0, 5)}</span>
                                                     </div>
 
-                                                    {/* Type Badge */}
                                                     <div className="mt-2">
                                                         <span
                                                             className={cn(

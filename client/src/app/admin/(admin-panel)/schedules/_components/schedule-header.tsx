@@ -1,9 +1,9 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, Calendar, Clock, Users, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar, Users, Plus } from "lucide-react";
 
-type ViewMode = "weekly-report" | "daily-staff" | "my-schedule" | "assign";
+type ViewMode = "weekly-report" | "daily-staff" | "assign";
 
 type Props = {
     viewMode: ViewMode;
@@ -14,7 +14,6 @@ type Props = {
 };
 
 const VIEW_TABS: { key: ViewMode; label: string; icon: React.ReactNode }[] = [
-    { key: "my-schedule", label: "Lịch của tôi", icon: <Clock className="h-4 w-4" /> },
     { key: "weekly-report", label: "Báo cáo tuần", icon: <Calendar className="h-4 w-4" /> },
     { key: "daily-staff", label: "Nhân viên hôm nay", icon: <Users className="h-4 w-4" /> },
     { key: "assign", label: "Phân ca", icon: <Plus className="h-4 w-4" /> },

@@ -7,7 +7,6 @@ import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import type { Shift } from "@/types/admin-crud";
 import type {
-    MyScheduleDay,
     WeeklyReportDay,
     DailyStaffEmployee,
 } from "@/types/schedule";
@@ -15,13 +14,12 @@ import type { UserProfile } from "@/types/user";
 
 import { ScheduleHeader } from "./_components/schedule-header";
 import { WeeklyCalendarGrid } from "./_components/weekly-calendar-grid";
-import { MyScheduleView } from "./_components/my-schedule-view";
 import { DailyStaffView } from "./_components/daily-staff-view";
 import { DayDetailPanel } from "./_components/day-detail-panel";
 import { AssignShiftForm } from "./_components/assign-shift-form";
-import { CalendarSkeleton, MyScheduleSkeleton, DailyStaffSkeleton } from "./_components/schedule-skeletons";
+import { CalendarSkeleton, DailyStaffSkeleton } from "./_components/schedule-skeletons";
 
-type ViewMode = "weekly-report" | "daily-staff" | "my-schedule" | "assign";
+type ViewMode = "weekly-report" | "daily-staff" | "assign";
 
 type AssignForm = {
     user_id: string;
@@ -63,11 +61,6 @@ export default function SchedulePage() {
     // Data states
     const [weeklySchedule, setWeeklySchedule] = useState<WeeklyReportDay[]>([]);
     const [weekRange, setWeekRange] = useState("");
-    const [myScheduleData, setMyScheduleData] = useState<{
-        employee: string;
-        position: string;
-        week_schedule: MyScheduleDay[];
-    } | null>(null);
     const [dailyStaff, setDailyStaff] = useState<DailyStaffEmployee[]>([]);
     const [selectedDayDetail, setSelectedDayDetail] = useState<WeeklyReportDay | null>(null);
 
@@ -92,19 +85,6 @@ export default function SchedulePage() {
                 setWeeklySchedule(raw.data?.weekly_schedule ?? []);
                 setWeekRange(raw.data?.week_range ?? formatWeekRange(currentDate));
                 setSelectedDayDetail(null);
-            } else if (viewMode === "my-schedule") {
-                const res = await ScheduleApi.getMySchedule(dateStr);
-                const raw = res as unknown as {
-                    status: string;
-                    employee: string;
-                    position: string;
-                    week_schedule: MyScheduleDay[];
-                };
-                setMyScheduleData({
-                    employee: raw.employee ?? "",
-                    position: raw.position ?? "",
-                    week_schedule: raw.week_schedule ?? [],
-                });
             } else if (viewMode === "daily-staff") {
                 const res = await ScheduleApi.getDailyStaff(dateStr);
                 const raw = res as unknown as {
@@ -191,7 +171,6 @@ export default function SchedulePage() {
             {isLoading ? (
                 <>
                     {viewMode === "weekly-report" && <CalendarSkeleton />}
-                    {viewMode === "my-schedule" && <MyScheduleSkeleton />}
                     {viewMode === "daily-staff" && <DailyStaffSkeleton />}
                     {viewMode === "assign" && <CalendarSkeleton />}
                 </>
@@ -212,15 +191,6 @@ export default function SchedulePage() {
                                 />
                             )}
                         </div>
-                    )}
-
-                    {/* My Schedule */}
-                    {viewMode === "my-schedule" && myScheduleData && (
-                        <MyScheduleView
-                            employee={myScheduleData.employee}
-                            position={myScheduleData.position}
-                            weekSchedule={myScheduleData.week_schedule}
-                        />
                     )}
 
                     {/* Daily Staff */}

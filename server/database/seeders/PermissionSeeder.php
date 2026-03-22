@@ -61,6 +61,13 @@ class PermissionSeeder extends Seeder
                         'Thống kê' => ['/admin/statistical', 'BarChart', ['STATISTICAL', 'EXPORT']],
                     ]
                 ],
+                'Cá nhân' => [
+                    'icon' => 'User', 'sort' => 5,
+                    'groups' => [
+                        'Lịch cá nhân' => ['/admin/u-schedules', 'Calendar', ['SCHEDULE', 'SHIFT']],
+                        'Đơn nghỉ phép' => ['/admin/u-leave', 'LogOut', ['LEAVE', 'HOLIDAY']],
+                    ]
+                ],
             ];
 
             foreach ($structure as $pageTitle => $pageData) {

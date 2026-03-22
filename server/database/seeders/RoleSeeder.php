@@ -30,20 +30,19 @@ class RoleSeeder extends Seeder
                     $role->groupPermissions()->sync(GroupPermission::pluck('id'));
                     break;
 
-                // Trong RoleSeeder.php
                 case RoleType::WAREHOUSE_STAFF:
-                    // Tìm các mục con thuộc Page 'Sản phẩm' và 'Bán hàng'
+                    // Sản phẩm + Bán hàng + Cá nhân (lịch & nghỉ phép)
                     $ids = GroupPermission::whereHas('page', function ($q) {
-                        $q->whereIn('title', ['Quản lý Sản phẩm', 'Quản lý Bán hàng']);
+                        $q->whereIn('title', ['Quản lý Sản phẩm', 'Quản lý Bán hàng', 'Cá nhân']);
                     })->pluck('id');
 
                     $role->groupPermissions()->sync($ids);
                     break;
 
                 case RoleType::ORDER_STAFF:
-                    // Chỉ lấy các Group con thuộc Page Bán hàng
+                    // Bán hàng + Cá nhân (lịch & nghỉ phép)
                     $ids = GroupPermission::whereHas('page', function ($q) {
-                        $q->whereIn('title', ['Quản lý Bán hàng']);
+                        $q->whereIn('title', ['Quản lý Bán hàng', 'Cá nhân']);
                     })->pluck('id');
                     $role->groupPermissions()->sync($ids);
                     break;
