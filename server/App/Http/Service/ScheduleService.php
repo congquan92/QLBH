@@ -309,7 +309,10 @@ class ScheduleService
 
             // 2. Với mỗi ca, lọc ra danh sách nhân viên thuộc ca đó
             $shiftStats = $allShifts->map(function ($shift) use ($staffInDay) {
-                $employeesInShift = $staffInDay->where('shift', $shift->id)->values();
+                // Lọc nhân viên có ca trùng khớp (shifts là array, cần check bên trong)
+                $employeesInShift = $staffInDay->filter(function ($emp) use ($shift) {
+                    return collect($emp['shifts'] ?? [])->contains('id', $shift->id);
+                })->values();
 
                 return [
                     'shift_id' => $shift->id,
@@ -317,13 +320,17 @@ class ScheduleService
                     'start_time' => $shift->start_time,
                     'end_time' => $shift->end_time,
                     'staff_count' => $employeesInShift->count(),
-                    'employees' => $employeesInShift->map(function ($emp) {
+                    'employees' => $employeesInShift->map(function ($emp) use ($shift) {
+                        // Lấy is_special từ shift entry tương ứng
+                        $matchingShift = collect($emp['shifts'] ?? [])->firstWhere('id', $shift->id);
+                        $isSpecial = $matchingShift['is_special'] ?? false;
+
                         return [
                             'user_id' => $emp['user_id'],
                             'name' => $emp['name'],
                             'position' => $emp['position'],
-                            'is_special' => $emp['is_special'], // TRẢ VỀ Ở ĐÂY
-                            'assignment_type' => $emp['is_special'] ? 'Ca đặc biệt' : 'Mặc định'
+                            'is_special' => $isSpecial,
+                            'assignment_type' => $isSpecial ? 'Ca đặc biệt' : 'Mặc định'
                         ];
                     })
                 ];

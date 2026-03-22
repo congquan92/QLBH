@@ -2,78 +2,76 @@
 
 import { AdminCrudApi } from "@/api/admin/admin-crud.api";
 import { AdminPageShell } from "@/components/feature/admin-page-shell";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Crown, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useEffect, useState } from "react";
-import { toast } from "sonner";
 import type { UserRank } from "@/types/admin-crud";
 import { Helper } from "@/lib/helper";
+import { Crown, Plus, RefreshCw } from "lucide-react";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
 
-type UserRankForm = {
-    id?: number;
-    name: string;
-    min_spent: string;
-    status?: string;
-};
-
-const emptyForm: UserRankForm = {
-    name: "",
-    min_spent: "",
-};
-
-const STATUS_OPTIONS = [
-    { value: "ACTIVE", label: "ACTIVE", className: "text-green-700" },
-    { value: "INACTIVE", label: "INACTIVE", className: "text-yellow-600" },
-];
+import { DeleteConfirmDialog } from "./_components/delete-confirm-dialog";
+import { emptyForm, type UserRankForm, UserRankFormDialog } from "./_components/user-rank-form-dialog";
+import { UserRankTable } from "./_components/user-rank-table";
+import { UsersByRankDialog } from "./_components/users-by-rank-dialog";
 
 export default function UserRanksPage() {
     const [ranks, setRanks] = useState<UserRank[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
+
+    // Dialog states
+    const [formDialogOpen, setFormDialogOpen] = useState(false);
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+    const [usersDialogOpen, setUsersDialogOpen] = useState(false);
+
     const [form, setForm] = useState<UserRankForm>(emptyForm);
+    const [deleteTarget, setDeleteTarget] = useState<UserRank | null>(null);
+    const [viewUsersRank, setViewUsersRank] = useState<UserRank | null>(null);
 
     async function fetchRanks() {
         setIsLoading(true);
-        const response = await AdminCrudApi.getUserRanks({ page: 1, size: 10, sort: "min_spent:asc" });
-        console.log("Fetched ranks:", response.data.data);
-        setRanks(response.data.data);
-        setIsLoading(false);
+        try {
+            const response = await AdminCrudApi.getUserRanks({ page: 1, size: 50, sort: "min_spent:asc" });
+            setRanks(response.data.data);
+        } catch {
+            toast.error("Không thể tải danh sách hạng.");
+        } finally {
+            setIsLoading(false);
+        }
     }
 
     useEffect(() => {
         void fetchRanks();
     }, []);
 
-    function resetForm() {
+    function handleOpenCreate() {
         setForm(emptyForm);
+        setFormDialogOpen(true);
     }
 
-    function startEdit(item: UserRank) {
+    function handleOpenEdit(item: UserRank) {
         setForm({
             id: item.id,
             name: String(item.name ?? ""),
             min_spent: String(item.minSpent ?? ""),
             status: String(item.status ?? "ACTIVE"),
         });
+        setFormDialogOpen(true);
     }
 
-    async function disableRank(item: UserRank) {
-        if (!confirm(`Xóa hạng "${String(item.name)}"? Hành động này xóa hạng khỏi hệ thống.`)) return;
-        try {
-            await AdminCrudApi.updateUserRank(item.id, { name: item.name, min_spent: Number(item.minSpent), status: "DISABLED" });
-            toast.success(`Đã vô hiệu hóa hạng "${String(item.name)}".`);
-            await fetchRanks();
-        } catch (error) {
-            toast.error(Helper.errorMessage(error));
-        }
+    function handleOpenDelete(item: UserRank) {
+        setDeleteTarget(item);
+        setDeleteDialogOpen(true);
     }
 
-    async function submitRank() {
+    function handleOpenViewUsers(item: UserRank) {
+        setViewUsersRank(item);
+        setUsersDialogOpen(true);
+    }
+
+    async function handleSubmit() {
         if (!form.name.trim() || !form.min_spent) {
             toast.error("Vui lòng nhập tên hạng và mức chi tiêu tối thiểu.");
             return;
@@ -82,13 +80,21 @@ export default function UserRanksPage() {
         setIsSaving(true);
         try {
             if (form.id) {
-                await AdminCrudApi.updateUserRank(form.id, { name: form.name.trim(), min_spent: Number(form.min_spent), status: form.status ?? "ACTIVE" });
-                toast.success("Cập nhật hạng người dùng thành công.");
+                await AdminCrudApi.updateUserRank(form.id, {
+                    name: form.name.trim(),
+                    min_spent: Number(form.min_spent),
+                    status: form.status ?? "ACTIVE",
+                });
+                toast.success("Cập nhật hạng thành công.");
             } else {
-                await AdminCrudApi.createUserRank({ name: form.name.trim(), minSpent: Number(form.min_spent) });
-                toast.success("Tạo hạng người dùng thành công.");
+                await AdminCrudApi.createUserRank({
+                    name: form.name.trim(),
+                    minSpent: Number(form.min_spent),
+                });
+                toast.success("Tạo hạng thành viên thành công.");
             }
-            resetForm();
+            setFormDialogOpen(false);
+            setForm(emptyForm);
             await fetchRanks();
         } catch (error) {
             toast.error(Helper.errorMessage(error));
@@ -97,108 +103,141 @@ export default function UserRanksPage() {
         }
     }
 
-    return (
-        <AdminPageShell title="Xếp hạng khách hàng" description="Quản lý các hạng thành viên và mức chi tiêu tương ứng">
-            <div className="grid gap-6 lg:grid-cols-3">
-                {/* Form */}
-                <Card className="lg:col-span-1">
-                    <CardHeader>
-                        <CardTitle className="text-base">{form.id ? "Cập nhật hạng" : "Tạo hạng mới"}</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <div className="space-y-1.5">
-                            <Label>Tên hạng</Label>
-                            <Input placeholder="VD: DIAMOND" value={form.name} onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))} />
-                        </div>
-                        {form.id && (
-                            <div className="space-y-1.5">
-                                <Label>Trạng thái</Label>
-                                <Select value={form.status ?? "ACTIVE"} onValueChange={(val) => setForm((prev) => ({ ...prev, status: val }))}>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Chọn trạng thái" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {STATUS_OPTIONS.map((opt) => (
-                                            <SelectItem key={opt.value} value={opt.value}>
-                                                <span className={opt.className}>{opt.label}</span>
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        )}
-                        <div className="space-y-1.5">
-                            <Label>Mức chi tiêu tối thiểu (VND)</Label>
-                            <Input type="number" min={0} placeholder="VD: 10000000" value={form.min_spent} onChange={(e) => setForm((prev) => ({ ...prev, min_spent: e.target.value }))} />
-                            {form.min_spent && !isNaN(Number(form.min_spent)) && <p className="text-xs text-muted-foreground">{Helper.formatCurrency(form.min_spent)}</p>}
-                        </div>
-                        <div className="flex gap-2 pt-1">
-                            <Button className="flex-1" onClick={() => void submitRank()} disabled={isSaving}>
-                                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
-                                {form.id ? "Lưu thay đổi" : "Tạo hạng"}
-                            </Button>
-                            {form.id && (
-                                <Button variant="outline" onClick={resetForm}>
-                                    Hủy
-                                </Button>
-                            )}
-                        </div>
-                    </CardContent>
-                </Card>
+    async function handleDelete() {
+        if (!deleteTarget) return;
+        setIsDeleting(true);
+        try {
+            await AdminCrudApi.updateUserRank(deleteTarget.id, {
+                name: deleteTarget.name,
+                min_spent: Number(deleteTarget.minSpent),
+                status: "DISABLED",
+            });
+            toast.success(`Đã vô hiệu hóa hạng "${String(deleteTarget.name)}".`);
+            setDeleteDialogOpen(false);
+            setDeleteTarget(null);
+            await fetchRanks();
+        } catch (error) {
+            toast.error(Helper.errorMessage(error));
+        } finally {
+            setIsDeleting(false);
+        }
+    }
 
-                {/* List */}
-                <Card className="lg:col-span-2">
-                    <CardHeader>
-                        <CardTitle className="text-base">Danh sách hạng</CardTitle>
-                        <CardDescription>{ranks.length} hạng thành viên</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        {isLoading ? (
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground py-8 justify-center">
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                                Đang tải...
-                            </div>
-                        ) : ranks.length === 0 ? (
-                            <p className="py-8 text-center text-sm text-muted-foreground">Không có dữ liệu hạng người dùng.</p>
-                        ) : (
-                            <div className="space-y-3">
-                                {ranks.map((item) => {
-                                    return (
-                                        <div key={item.id} className={`rounded-lg border-2 p-4 transition-colors`}>
-                                            <div className="flex items-center justify-between gap-4">
-                                                <div className="flex items-center gap-3">
-                                                    <div className={`rounded-full p-2  border`}>
-                                                        <Crown className={`h-5 w-5`} />
-                                                    </div>
-                                                    <div>
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="font-semibold tracking-wide">{String(item.name ?? `Rank #${item.id}`)}</span>
-                                                            <Badge variant="outline" className={`text-xs font-medium ${item.status === "ACTIVE" ? "bg-green-50 text-green-700 border-green-300" : "bg-red-50 text-red-600 border-red-300"}`}>
-                                                                {String(item.status ?? "ACTIVE")}
-                                                            </Badge>
-                                                        </div>
-                                                        <p className="mt-0.5 text-sm text-muted-foreground">
-                                                            Chi tiêu tối thiểu: <span className="font-medium text-foreground">{Helper.formatCurrency(item.minSpent)}</span>
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                                <div className="flex items-center gap-1.5 shrink-0">
-                                                    <Button variant="outline" size="sm" onClick={() => startEdit(item)}>
-                                                        <Pencil className="h-3.5 w-3.5" />
-                                                    </Button>
-                                                    <Button variant="outline" size="sm" className="text-red-600 hover:bg-red-50 hover:border-red-300" onClick={() => void disableRank(item)}>
-                                                        <Trash2 className="h-3.5 w-3.5" />
-                                                    </Button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        )}
+    // const activeCount = ranks.filter((r) => r.status === "ACTIVE").length;
+
+    return (
+        <AdminPageShell
+            title="Quản lý xếp hạng khách hàng"
+            description="Quản lý các hạng thành viên và mức chi tiêu tương ứng"
+        >
+            {/* Stats row */}
+            {/* <div className="grid gap-4 sm:grid-cols-3">
+                <Card>
+                    <CardContent className="flex items-center gap-4 p-5">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+                            <Crown className="h-5 w-5 text-primary" />
+                        </div>
+                        <div>
+                            <p className="text-sm text-muted-foreground">Tổng hạng</p>
+                            <p className="text-2xl font-bold">{ranks.length}</p>
+                        </div>
                     </CardContent>
                 </Card>
-            </div>
+                <Card>
+                    <CardContent className="flex items-center gap-4 p-5">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-100">
+                            <Crown className="h-5 w-5 text-green-600" />
+                        </div>
+                        <div>
+                            <p className="text-sm text-muted-foreground">Đang hoạt động</p>
+                            <p className="text-2xl font-bold text-green-600">{activeCount}</p>
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardContent className="flex items-center gap-4 p-5">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100">
+                            <Crown className="h-5 w-5 text-slate-500" />
+                        </div>
+                        <div>
+                            <p className="text-sm text-muted-foreground">Vô hiệu / Tạm dừng</p>
+                            <p className="text-2xl font-bold text-slate-600">{ranks.length - activeCount}</p>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div> */}
+
+            {/* Main Table Card */}
+            <Card>
+                <CardHeader className="flex-row items-center justify-between gap-4">
+                    <div>
+                        <CardTitle className="text-base">Danh sách hạng thành viên</CardTitle>
+                        <CardDescription>
+                            {ranks.length} hạng · Nhấn <strong>Khách hàng</strong> để xem members theo từng hạng
+                        </CardDescription>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="gap-1.5"
+                            onClick={() => void fetchRanks()}
+                            disabled={isLoading}
+                        >
+                            <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? "animate-spin" : ""}`} />
+                            Làm mới
+                        </Button>
+                        <Button size="sm" className="gap-1.5" onClick={handleOpenCreate}>
+                            <Plus className="h-4 w-4" />
+                            Thêm hạng mới
+                        </Button>
+                    </div>
+                </CardHeader>
+                <CardContent>
+                    <UserRankTable
+                        ranks={ranks}
+                        isLoading={isLoading}
+                        onEdit={handleOpenEdit}
+                        onDelete={handleOpenDelete}
+                        onViewUsers={handleOpenViewUsers}
+                    />
+                </CardContent>
+            </Card>
+
+            {/* Form Dialog (Add/Edit) */}
+            <UserRankFormDialog
+                open={formDialogOpen}
+                onOpenChange={(open) => {
+                    setFormDialogOpen(open);
+                    if (!open) setForm(emptyForm);
+                }}
+                form={form}
+                onChange={setForm}
+                onSubmit={() => void handleSubmit()}
+                isSaving={isSaving}
+            />
+
+            {/* Delete Confirm Dialog */}
+            <DeleteConfirmDialog
+                open={deleteDialogOpen}
+                onOpenChange={(open) => {
+                    setDeleteDialogOpen(open);
+                    if (!open) setDeleteTarget(null);
+                }}
+                rankName={String(deleteTarget?.name ?? "")}
+                onConfirm={() => void handleDelete()}
+                isLoading={isDeleting}
+            />
+
+            {/* Users by Rank Dialog */}
+            <UsersByRankDialog
+                open={usersDialogOpen}
+                onOpenChange={(open) => {
+                    setUsersDialogOpen(open);
+                    if (!open) setViewUsersRank(null);
+                }}
+                rank={viewUsersRank}
+            />
         </AdminPageShell>
     );
 }

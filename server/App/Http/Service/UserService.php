@@ -39,7 +39,9 @@ class UserService
     {
         $currentUser = auth()->user();
 
-        $query = User::query()->where('id', '!=', $currentUser->id);
+        $query = User::query()
+            ->with(['role', 'userRank', 'address', 'position', 'currentJob'])
+            ->where('id', '!=', $currentUser->id);
 
         if (!empty($keyword)) {
             $query->where(function ($q) use ($keyword) {
@@ -287,13 +289,17 @@ class UserService
     }
     public function findUserById($id)
     {
-        $user = User::where('id', $id)->firstOrFail();
+        $user = User::with(['role', 'userRank', 'address', 'position', 'currentJob'])
+            ->where('id', $id)
+            ->firstOrFail();
         return UserMapper::toUserResponse($user);
     }
 
     public function getMyInfo()
     {
-        $currentUser = auth()->user();
+        $currentUser = User::with(['role', 'userRank', 'address', 'position', 'currentJob'])
+            ->where('id', auth()->id())
+            ->firstOrFail();
         return UserMapper::toUserResponse($currentUser);
     }
 

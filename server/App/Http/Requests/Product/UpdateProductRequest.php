@@ -37,7 +37,16 @@ class UpdateProductRequest extends FormRequest
             'video' => 'nullable|string',
 
             'removeVideo' => 'nullable|boolean',
-            'removeCoverImage' => 'nullable|boolean'
+            'removeCoverImage' => 'nullable|boolean',
+
+            // ===== Attributes =====
+            'attributes' => 'nullable|array',
+            'attributes.*.id' => 'nullable|integer|exists:product_attributes,id',
+            'attributes.*.name' => 'required|string|max:255',
+            'attributes.*.attributeValue' => 'required|array|min:1',
+            'attributes.*.attributeValue.*.id' => 'nullable|integer|exists:product_attribute_values,id',
+            'attributes.*.attributeValue.*.value' => 'required|string|max:255',
+            'attributes.*.attributeValue.*.image' => 'nullable|string',
         ];
     }
 

@@ -33,7 +33,6 @@ class PermissionSeeder extends Seeder
                     'groups' => [
                         'Danh mục' => ['/admin/categories', 'Layers', ['CATEGORIES']],
                         'Sản phẩm' => ['/admin/products', 'Box', ['PRODUCT', 'VARIANT', 'ATTRIBUTE', 'IMAGE_PRODUCT']],
-                        'Đánh giá' => ['/admin/reviews', 'Star', ['REVIEWS']],
                         'Khuyến mãi' => ['/admin/vouchers', 'Ticket', ['VOUCHER']],
                     ]
                 ],
@@ -60,6 +59,13 @@ class PermissionSeeder extends Seeder
                         'Phân quyền' => ['/admin/roles', 'ShieldCheck', ['ROLES', 'PERMISSION_GROUPS']],
                         'Hạng người dùng' => ['/admin/user-ranks', 'Medal', ['USER_RANK']],
                         'Thống kê' => ['/admin/statistical', 'BarChart', ['STATISTICAL', 'EXPORT']],
+                    ]
+                ],
+                'Cá nhân' => [
+                    'icon' => 'User', 'sort' => 5,
+                    'groups' => [
+                        'Lịch cá nhân' => ['/admin/u-schedules', 'Calendar', ['SCHEDULE', 'SHIFT']],
+                        'Đơn nghỉ phép' => ['/admin/u-leave', 'LogOut', ['LEAVE', 'HOLIDAY']],
                     ]
                 ],
             ];

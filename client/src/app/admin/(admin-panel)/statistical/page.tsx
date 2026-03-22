@@ -324,64 +324,70 @@ export default function StatisticalPage() {
                 </Card>
             </div>
 
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                        <Boxes className="h-5 w-5 text-primary" />
-                        Danh mục hiệu suất cao
-                    </CardTitle>
-                    <CardDescription>Xếp hạng danh mục theo số lượng bán trong kỳ {periodMeta.label.toLowerCase()}.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    {loading ? (
-                        <Skeleton className="h-72 w-full" />
-                    ) : categories.length === 0 ? (
-                        <p className="text-sm text-muted-foreground">Chưa có dữ liệu danh mục.</p>
-                    ) : (
-                        <ResponsiveContainer width="100%" height={300}>
-                            <PieChart>
-                                <Pie
-                                    data={[...categories]
-                                        .sort((a, b) => Number(b.quantity || 0) - Number(a.quantity || 0))
-                                        .slice(0, 6)
-                                        .map((cat) => ({ name: cat.categoryName, value: cat.quantity }))}
-                                    cx="50%"
-                                    cy="50%"
-                                    innerRadius={70}
-                                    outerRadius={110}
-                                    paddingAngle={3}
-                                    dataKey="value"
-                                    label={({ percent }: { percent?: number }) => `${((percent ?? 0) * 100).toFixed(1)}%`}
-                                    labelLine={false}
-                                >
-                                    {[...categories]
-                                        .sort((a, b) => Number(b.quantity || 0) - Number(a.quantity || 0))
-                                        .slice(0, 6)
-                                        .map((_, i) => {
-                                            const colors = ["#6366f1", "#f59e0b", "#10b981", "#fb7185", "#06b6d4", "#8b5cf6"];
-                                            return <Cell key={i} fill={colors[i] ?? "#6366f1"} />;
-                                        })}
-                                </Pie>
-                                <Tooltip
-                                    content={({ active, payload }) => {
-                                        if (!active || !payload?.length) return null;
-                                        return (
-                                            <div className="rounded-lg border bg-background p-2 text-xs shadow-md">
-                                                <p className="mb-1 font-medium">{payload[0]?.name}</p>
-                                                <p>Đã bán: {Helper.formatNumber(Number(payload[0]?.value ?? 0))}</p>
-                                                <p>Tăng trưởng: {Helper.formatPercent([...categories].find((c) => c.categoryName === payload[0]?.name)?.percentChange ?? 0)}</p>
-                                            </div>
-                                        );
-                                    }}
-                                />
-                                <Legend iconType="circle" iconSize={10} />
-                            </PieChart>
-                        </ResponsiveContainer>
-                    )}
-                </CardContent>
-            </Card>
+            <div className="grid gap-4 xl:grid-cols-3">
+                <div className="col-span-2">
+                    <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <Boxes className="h-5 w-5 text-primary" />
+                            Danh mục hiệu suất cao
+                        </CardTitle>
+                        <CardDescription>Xếp hạng danh mục theo số lượng bán trong kỳ {periodMeta.label.toLowerCase()}.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        {loading ? (
+                            <Skeleton className="h-72 w-full" />
+                        ) : categories.length === 0 ? (
+                            <p className="text-sm text-muted-foreground">Chưa có dữ liệu danh mục.</p>
+                        ) : (
+                            <ResponsiveContainer width="100%" height={300}>
+                                <PieChart>
+                                    <Pie
+                                        data={[...categories]
+                                            .sort((a, b) => Number(b.quantity || 0) - Number(a.quantity || 0))
+                                            .slice(0, 6)
+                                            .map((cat) => ({ name: cat.categoryName, value: cat.quantity }))}
+                                        cx="50%"
+                                        cy="50%"
+                                        innerRadius={70}
+                                        outerRadius={110}
+                                        paddingAngle={3}
+                                        dataKey="value"
+                                        label={({ percent }: { percent?: number }) => `${((percent ?? 0) * 100).toFixed(1)}%`}
+                                        labelLine={false}
+                                    >
+                                        {[...categories]
+                                            .sort((a, b) => Number(b.quantity || 0) - Number(a.quantity || 0))
+                                            .slice(0, 6)
+                                            .map((_, i) => {
+                                                const colors = ["#6366f1", "#f59e0b", "#10b981", "#fb7185", "#06b6d4", "#8b5cf6"];
+                                                return <Cell key={i} fill={colors[i] ?? "#6366f1"} />;
+                                            })}
+                                    </Pie>
+                                    <Tooltip
+                                        content={({ active, payload }) => {
+                                            if (!active || !payload?.length) return null;
+                                            return (
+                                                <div className="rounded-lg border bg-background p-2 text-xs shadow-md">
+                                                    <p className="mb-1 font-medium">{payload[0]?.name}</p>
+                                                    <p>Đã bán: {Helper.formatNumber(Number(payload[0]?.value ?? 0))}</p>
+                                                    <p>Tăng trưởng: {Helper.formatPercent([...categories].find((c) => c.categoryName === payload[0]?.name)?.percentChange ?? 0)}</p>
+                                                </div>
+                                            );
+                                        }}
+                                    />
+                                    <Legend iconType="circle" iconSize={10} />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        )}
+                    </CardContent>
+                </Card>
+                </div>
 
-            <TopCustomersCard customers={topCustomers} loading={loading} periodLabel={periodMeta.label} sort={customerSort} onSortChange={setCustomerSort} />
+                <div className="col-span-1">
+                    <TopCustomersCard customers={topCustomers} loading={loading} sort={customerSort} onSortChange={setCustomerSort} />
+                </div>
+            </div>
         </AdminPageShell>
     );
 }

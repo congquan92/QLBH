@@ -110,17 +110,20 @@ public function findMyLeaves(?string $keyword, ?string $status, ?string $sort, i
     public function createLeaveRequest(array $data)
 {
     $userId = Auth::id();
-    $user = Auth::user(); 
+    $user = Auth::user();
     $leaveDate = Carbon::parse($data['leave_date']);
-    $dayOfWeek = $leaveDate->dayOfWeek; 
 
-    $hasSchedule = PositionDefaultSchedule::where('position_id', $user->position_id)
-        ->where('day_of_week', $dayOfWeek)
-        ->where('shift_id', $data['shift_id'])
-        ->exists();
+    // Chỉ kiểm tra lịch làm thực tế với nhân viên (không áp dụng cho ADMIN)
+    $roleName = $user->role?->name;
+    if ($roleName !== 'ADMIN') {
+        $hasSchedule = \App\Models\ShiftAssignment::where('user_id', $userId)
+            ->where('date', $leaveDate->toDateString())
+            ->where('shift_id', $data['shift_id'])
+            ->exists();
 
-    if (!$hasSchedule) {
-        throw new Exception("Bạn không có lịch làm việc cho ca này vào ngày " . $leaveDate->format('d/m/Y'));
+        if (!$hasSchedule) {
+            throw new Exception("Bạn không có lịch làm việc cho ca này vào ngày " . $leaveDate->format('d/m/Y'));
+        }
     }
 
     $exists = LeaveRequest::where('user_id', $userId)

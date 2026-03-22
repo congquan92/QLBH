@@ -243,6 +243,10 @@ class ProductService
                     ]);
                 }
             }
+
+            if (array_key_exists('attributes', $data) && is_array($data['attributes'])) {
+                $this->syncProductAttributes($product, $data['attributes']);
+            }
         });
 
         $product->refresh();
@@ -265,6 +269,90 @@ class ProductService
         }
 
         return $product;
+    }
+
+    private function syncProductAttributes(Product $product, array $attributesData): void
+    {
+        foreach ($attributesData as $attrReq) {
+            if (!is_array($attrReq)) {
+                continue;
+            }
+
+            $attributeName = trim((string) ($attrReq['name'] ?? ''));
+            if ($attributeName === '') {
+                continue;
+            }
+
+            $attribute = Attribute::firstOrCreate(['name' => $attributeName]);
+
+            $productAttribute = null;
+            $productAttributeId = isset($attrReq['id']) ? (int) $attrReq['id'] : 0;
+            if ($productAttributeId > 0) {
+                $productAttribute = ProductAttribute::where('id', $productAttributeId)
+                    ->where('product_id', $product->id)
+                    ->first();
+            }
+
+            if ($productAttribute instanceof ProductAttribute) {
+                if ((int) $productAttribute->attribute_id !== (int) $attribute->id) {
+                    $productAttribute->attribute_id = $attribute->id;
+                    $productAttribute->save();
+                }
+            } else {
+                $productAttribute = ProductAttribute::firstOrCreate([
+                    'product_id' => $product->id,
+                    'attribute_id' => $attribute->id,
+                ]);
+            }
+
+            $values = $attrReq['attributeValue'] ?? [];
+            if (!is_array($values)) {
+                continue;
+            }
+
+            foreach ($values as $valReq) {
+                if (!is_array($valReq)) {
+                    continue;
+                }
+
+                $value = trim((string) ($valReq['value'] ?? ''));
+                if ($value === '') {
+                    continue;
+                }
+
+                $image = isset($valReq['image']) ? trim((string) $valReq['image']) : null;
+                $valueId = isset($valReq['id']) ? (int) $valReq['id'] : 0;
+
+                $productAttributeValue = null;
+                if ($valueId > 0) {
+                    $productAttributeValue = ProductAttributeValue::where('id', $valueId)
+                        ->where('product_attribute_id', $productAttribute->id)
+                        ->first();
+                }
+
+                if ($productAttributeValue instanceof ProductAttributeValue) {
+                    $productAttributeValue->value = $value;
+                    $productAttributeValue->url_image = $image ?: null;
+                    $productAttributeValue->save();
+                    continue;
+                }
+
+                $productAttributeValue = ProductAttributeValue::firstOrCreate(
+                    [
+                        'product_attribute_id' => $productAttribute->id,
+                        'value' => $value,
+                    ],
+                    [
+                        'url_image' => $image ?: null,
+                    ]
+                );
+
+                if ($image && $productAttributeValue->url_image !== $image) {
+                    $productAttributeValue->url_image = $image;
+                    $productAttributeValue->save();
+                }
+            }
+        }
     }
 
     public function deleteAttribute(int $productId, array $attributeIds)
@@ -321,7 +409,9 @@ class ProductService
 
                 // 2. Xóa các biến thể liên quan (Hard delete)
                 foreach ($attributeValue->productVariants as $variant) {
-                    $variant->delete();
+                    if ($variant instanceof ProductVariant) {
+                        $variant->delete();
+                    }
                 }
 
                 // 3. Xóa chính giá trị
@@ -332,6 +422,7 @@ class ProductService
     public function cleanupOrphanVariants(int $productId)
     {
         // Lấy tất cả biến thể của sản phẩm
+        /** @var \Illuminate\Database\Eloquent\Collection<int, ProductVariant> $variants */
         $variants = ProductVariant::where('product_id', $productId)->get();
 
         foreach ($variants as $variant) {
@@ -341,7 +432,7 @@ class ProductService
                 ->exists();
 
             // Nếu không còn thuộc tính nào, biến thể này không còn ý nghĩa -> Xóa cứng
-            if (!$hasAttributes) {
+            if (!$hasAttributes && $variant instanceof ProductVariant) {
                 $variant->delete();
             }
         }
@@ -448,35 +539,74 @@ class ProductService
             ->where('status', Status::ACTIVE)
             ->firstOrFail();
 
+        if (isset($requests['variants']) && is_array($requests['variants'])) {
+            $requests = $requests['variants'];
+        }
+
         \DB::transaction(function () use ($product, $requests) {
-            foreach ($requests as $req) {
-                // Kiểm tra biến thể tồn tại
+            $normalizedRequests = collect($requests)
+                ->filter(fn($req) => is_array($req) && !empty($req['variantAttributes']))
+                ->map(function ($req) {
+                    $normalizedAttributes = collect($req['variantAttributes'])
+                        ->map(fn($item) => $this->normalizeVariantAttributeItem($item))
+                        ->filter()
+                        ->values()
+                        ->all();
+
+                    if (empty($normalizedAttributes)) {
+                        return null;
+                    }
+
+                    return [
+                        'sku' => $req['sku'] ?? null,
+                        'price' => $req['price'] ?? null,
+                        'height' => $req['height'] ?? null,
+                        'length' => $req['length'] ?? null,
+                        'width' => $req['width'] ?? null,
+                        'weight' => $req['weight'] ?? null,
+                        'variantAttributes' => $normalizedAttributes,
+                    ];
+                })
+                ->filter()
+                ->values();
+
+            if ($normalizedRequests->isEmpty()) {
+                return;
+            }
+
+            ProductVariant::where('product_id', $product->id)
+                ->whereDoesntHave('attributeValues')
+                ->delete();
+
+            foreach ($normalizedRequests as $req) {
                 if ($this->checkVariantExists($product, $req)) {
                     continue;
                 }
 
-                // Tạo biến thể cơ sở
                 $variant = $this->makeBaseProductVariant($req, $product);
 
                 foreach ($req['variantAttributes'] as $item) {
-                    // Sử dụng ID từ request thay vì tìm theo tên
-                    $attributeId = $item['attributeId'];
-
-                    // Tìm hoặc tạo ProductAttribute bằng ID
                     $productAttribute = ProductAttribute::firstOrCreate([
                         'product_id' => $product->id,
-                        'attribute_id' => $attributeId
+                        'attribute_id' => $item['attributeId']
                     ]);
 
-                    // Tạo giá trị thuộc tính
-                    $value = ProductAttributeValue::create([
-                        'product_attribute_id' => $productAttribute->id,
-                        'value' => $item['value'],
-                        'url_image' => $item['image'] ?? null
-                    ]);
+                    $value = ProductAttributeValue::firstOrCreate(
+                        [
+                            'product_attribute_id' => $productAttribute->id,
+                            'value' => $item['value'],
+                        ],
+                        [
+                            'url_image' => $item['image'] ?? null
+                        ]
+                    );
 
-                    // Gắn vào biến thể
-                    $variant->attributeValues()->attach($value->id);
+                    if (!empty($item['image']) && $value->url_image !== $item['image']) {
+                        $value->url_image = $item['image'];
+                        $value->save();
+                    }
+
+                    $variant->attributeValues()->syncWithoutDetaching([$value->id]);
                 }
             }
         });
@@ -502,25 +632,28 @@ class ProductService
         ]);
 
         // 3. Xử lý thuộc tính (Update tại chỗ)
-        if (isset($data['variantAttributes'])) {
+        if (!empty($data['variantAttributes']) && is_array($data['variantAttributes'])) {
             $newAttributeValueIds = [];
 
             foreach ($data['variantAttributes'] as $item) {
-                // Đảm bảo ProductAttribute tồn tại cho sản phẩm này
+                $normalizedItem = $this->normalizeVariantAttributeItem($item);
+
+                if (!$normalizedItem) {
+                    continue;
+                }
+
                 $productAttribute = ProductAttribute::firstOrCreate([
                     'product_id' => $productId,
-                    'attribute_id' => $item['attributeId']
+                    'attribute_id' => $normalizedItem['attributeId']
                 ]);
 
-                // Tìm hoặc cập nhật giá trị thuộc tính. 
-                // Quan trọng: UpdateOrCreate dựa trên cả product_attribute_id VÀ value
                 $value = ProductAttributeValue::updateOrCreate(
                     [
                         'product_attribute_id' => $productAttribute->id,
-                        'value' => $item['value'] // Nếu value đổi, nó sẽ tìm bản ghi cũ hoặc tạo mới
+                        'value' => $normalizedItem['value']
                     ],
                     [
-                        'url_image' => $item['image'] ?? null
+                        'url_image' => $normalizedItem['image'] ?? null
                     ]
                 );
                 
@@ -558,18 +691,16 @@ private function cleanupUnusedImages(array $oldImageUrls)
 }
     private function checkVariantExists($product, $variantReq): bool
     {
-        // Dùng get() thay vì firstOrFail() để tránh lỗi 404 khi chưa có biến thể nào
         $existingVariants = ProductVariant::where('product_id', $product->id)
             ->where('status', Status::ACTIVE)
             ->get();
 
-        // Nếu không có biến thể nào, trả về false ngay (chưa tồn tại)
         if ($existingVariants->isEmpty()) {
             return false;
         }
 
-        $reqAttributes = collect($variantReq['variantAttributes'])
-            ->map(fn($item) => trim($item['attributeId']) . ':' . trim($item['value']))
+        $reqAttributes = collect($variantReq['variantAttributes'] ?? [])
+            ->map(fn($item) => trim((string) $item['attributeId']) . ':' . trim((string) $item['value']))
             ->sort()
             ->values()
             ->toArray();
@@ -585,6 +716,35 @@ private function cleanupUnusedImages(array $oldImageUrls)
         }
 
         return false;
+    }
+
+    private function normalizeVariantAttributeItem(mixed $item): ?array
+    {
+        if (!is_array($item)) {
+            return null;
+        }
+
+        $value = trim((string) ($item['value'] ?? ''));
+        if ($value === '') {
+            return null;
+        }
+
+        $attributeId = isset($item['attributeId']) ? (int) $item['attributeId'] : 0;
+        if ($attributeId <= 0) {
+            $attributeName = trim((string) ($item['attribute'] ?? ''));
+            if ($attributeName === '') {
+                return null;
+            }
+
+            $attribute = Attribute::firstOrCreate(['name' => $attributeName]);
+            $attributeId = (int) $attribute->id;
+        }
+
+        return [
+            'attributeId' => $attributeId,
+            'value' => $value,
+            'image' => isset($item['image']) ? trim((string) $item['image']) : null,
+        ];
     }
     private function processAttributes(Product $product, array $attributesData)
     {

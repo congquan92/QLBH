@@ -1,5 +1,12 @@
 import type { ApiResponse, PageResponse } from "@/types/api";
 
+export interface VoucherUserRank {
+    id: number;
+    name: string;
+    minSpent?: string | number;
+    status?: string;
+}
+
 export interface Voucher {
     id: number;
     name?: string;
@@ -11,8 +18,13 @@ export interface Voucher {
     minDiscountValue?: number | string;
     startDate?: string;
     endDate?: string;
-    remainingQuantity?: number;
     status?: string;
+    totalQuantity?: number;
+    remaining_quantity?: string | number;
+    used_quantity?: string | number;
+    isShipping?: boolean;
+    usageLimitPerUser?: number;
+    userRankResponse?: VoucherUserRank;
     [key: string]: unknown;
 }
 
