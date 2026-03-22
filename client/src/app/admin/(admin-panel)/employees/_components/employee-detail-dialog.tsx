@@ -288,9 +288,10 @@ export function EmployeeDetailDialog({ open, onOpenChange, user, positions }: Pr
                                     </div>
 
                                     {/* Thông tin cơ bản */}
-                                    <div className="grid grid-cols-2 gap-3">
+                                    <div className="grid grid-cols-3 gap-3">
                                         <SalaryCard label="Lương cơ bản" value={Helper.formatCurrency(salary.base_salary ?? 0)} />
-                                        <SalaryCard label="Tổng tiền thưởng" value={Helper.formatCurrency(salary.total_holiday_bonus ?? 0)} color="text-green-600" />
+                                        <SalaryCard label="Thưởng lễ" value={Helper.formatCurrency(salary.total_holiday_bonus ?? 0)} color="text-green-600" />
+                                        <SalaryCard label="Cộng thêm" value={Helper.formatCurrency(salary.total_manual_bonus ?? 0)} color="text-amber-600" />
                                     </div>
 
                                     {/* Chi tiết chế độ lương */}
@@ -307,13 +308,55 @@ export function EmployeeDetailDialog({ open, onOpenChange, user, positions }: Pr
                                         </div>
                                     )}
 
-                                    {/* Chi tiết thưởng nếu có */}
+                                    {/* Chi tiết khoản cộng thêm (manual bonus) */}
+                                    {Array.isArray(salary.manual_bonus_details) && salary.manual_bonus_details.length > 0 && (
+                                        <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
+                                            <div className="bg-amber-50/60 px-4 py-3 border-b">
+                                                <p className="text-xs font-semibold uppercase tracking-wide text-amber-700 flex items-center gap-1.5">
+                                                    <Star className="h-4 w-4" />
+                                                    Khoản cộng thêm ({salary.manual_bonus_details.length})
+                                                </p>
+                                            </div>
+                                            <div className="max-h-48 overflow-y-auto">
+                                                <table className="w-full text-sm">
+                                                    <thead className="sticky top-0 bg-muted/20 z-10 backdrop-blur-sm">
+                                                        <tr>
+                                                            <th className="px-4 py-2.5 text-left font-semibold text-xs text-muted-foreground uppercase">Loại</th>
+                                                            <th className="px-4 py-2.5 text-left font-semibold text-xs text-muted-foreground uppercase">Lý do</th>
+                                                            <th className="px-4 py-2.5 text-right font-semibold text-xs text-muted-foreground uppercase">Số tiền</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y">
+                                                        {salary.manual_bonus_details.map((d) => (
+                                                            <tr key={d.id} className="hover:bg-muted/30 transition-colors">
+                                                                <td className="px-4 py-3">
+                                                                    <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${
+                                                                        d.type === "OVERTIME" ? "bg-blue-50 text-blue-700 border-blue-200"
+                                                                        : d.type === "BONUS" ? "bg-green-50 text-green-700 border-green-200"
+                                                                        : "bg-purple-50 text-purple-700 border-purple-200"
+                                                                    }`}>
+                                                                        {d.type === "OVERTIME" ? "Tăng ca" : d.type === "BONUS" ? "Thưởng" : "Phụ cấp"}
+                                                                    </Badge>
+                                                                </td>
+                                                                <td className="px-4 py-3 text-xs text-muted-foreground">{d.reason || "-"}</td>
+                                                                <td className="px-4 py-3 text-right font-semibold text-amber-600">
+                                                                    +{Helper.formatCurrency(d.amount ?? 0)}
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Chi tiết thưởng lễ nếu có */}
                                     {Array.isArray(salary.bonus_details) && salary.bonus_details.length > 0 && (
                                         <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
                                             <div className="bg-muted/40 px-4 py-3 border-b">
                                                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
                                                     <Banknote className="h-4 w-4" />
-                                                    Chi tiết khoản thưởng ({salary.bonus_details.length})
+                                                    Chi tiết thưởng lễ ({salary.bonus_details.length})
                                                 </p>
                                             </div>
                                             <div className="max-h-56 overflow-y-auto">

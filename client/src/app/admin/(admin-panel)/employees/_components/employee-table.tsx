@@ -8,7 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import type { Position } from "@/types/admin-crud";
 import type { RbacRole } from "@/types/rbac";
 import type { UserProfile } from "@/types/user";
-import { Eye, Lock, Mail, Pencil, Phone, Search, Unlock, Users } from "lucide-react";
+import { DollarSign, Eye, Lock, Mail, Pencil, Phone, Search, TrendingUp, Unlock, Users } from "lucide-react";
 import { useMemo, useState } from "react";
 
 type Props = {
@@ -18,6 +18,8 @@ type Props = {
     isSaving: boolean;
     onEdit: (user: UserProfile) => void;
     onViewDetail: (user: UserProfile) => void;
+    onPromote: (user: UserProfile) => void;
+    onBonus: (user: UserProfile) => void;
     onToggleStatus: (userId: number, currentStatus: string) => void;
 };
 
@@ -123,7 +125,7 @@ function TableSkeleton() {
 
 // ─── Main component ────────────────────────────────────────────────────────────
 
-export function EmployeeTable({ users, roles, isLoading, isSaving, onEdit, onViewDetail, onToggleStatus }: Props) {
+export function EmployeeTable({ users, roles, isLoading, isSaving, onEdit, onViewDetail, onPromote, onBonus, onToggleStatus }: Props) {
     const [searchKeyword, setSearchKeyword] = useState("");
     const [filterRole, setFilterRole] = useState("all");
     const [filterStatus, setFilterStatus] = useState("all");
@@ -344,6 +346,26 @@ export function EmployeeTable({ users, roles, isLoading, isSaving, onEdit, onVie
                                                     disabled={isSaving}
                                                 >
                                                     <Pencil className="h-3.5 w-3.5" />
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="h-7 w-7 p-0 hover:bg-purple-50 hover:text-purple-600"
+                                                    onClick={() => onPromote(user)}
+                                                    title="Thăng chức / Điều chuyển"
+                                                    disabled={isSaving}
+                                                >
+                                                    <TrendingUp className="h-3.5 w-3.5" />
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="h-7 w-7 p-0 hover:bg-amber-50 hover:text-amber-600"
+                                                    onClick={() => onBonus(user)}
+                                                    title="Thêm tiền thưởng"
+                                                    disabled={isSaving}
+                                                >
+                                                    <DollarSign className="h-3.5 w-3.5" />
                                                 </Button>
                                                 <Button
                                                     variant="ghost"

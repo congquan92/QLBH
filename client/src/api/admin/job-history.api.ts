@@ -6,9 +6,9 @@ export const JobHistoryApi = {
     promote: async (
         userId: number,
         payload: {
-            new_position_id: number;
-            promotion_date: string;
-            reason?: string;
+            position_id: number;
+            employment_type: string;
+            effective_date: string;
         },
     ): Promise<ApiResponse<JobHistoryRecord>> => {
         try {

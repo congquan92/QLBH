@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator";
 import type { RbacRole } from "@/types/rbac";
 import type { UserProfile } from "@/types/user";
-import { Loader2, Pencil } from "lucide-react";
+import { Loader2, Pencil, TrendingUp } from "lucide-react";
 import { getUsername } from "./employee-table";
 
 type Props = {
@@ -67,6 +67,28 @@ export function EditEmployeeDialog({ editingUser, roles, isSaving, editRoleId, e
                     </div>
 
                     <Separator />
+
+                    {/* Chức vụ hiện tại (read-only) */}
+                    <div className="space-y-2">
+                        <Label className="text-sm font-medium flex items-center gap-1.5">
+                            <TrendingUp className="h-3.5 w-3.5 text-purple-500" />
+                            Chức vụ hiện tại
+                        </Label>
+                        <div className="rounded-md border bg-muted/30 px-3 py-2">
+                            <p className="text-sm font-medium">
+                                {editingUser.positionResponse?.name ?? "Chưa có chức vụ"}
+                            </p>
+                            {editingUser.positionResponse?.baseSalary && (
+                                <p className="text-xs text-muted-foreground mt-0.5">
+                                    Lương cơ bản: {Number(editingUser.positionResponse.baseSalary).toLocaleString("vi-VN")}đ
+                                    {editingUser.positionResponse.salaryType === "HOURLY" ? "/giờ" : "/tháng"}
+                                </p>
+                            )}
+                        </div>
+                        <p className="text-[11px] text-muted-foreground italic">
+                            Để thay đổi chức vụ, hãy sử dụng chức năng <strong>"Thăng chức / Điều chuyển"</strong> (nút <TrendingUp className="inline h-3 w-3 text-purple-500" />) ở bảng nhân viên.
+                        </p>
+                    </div>
 
                     {/* Vai trò */}
                     <div className="space-y-2">

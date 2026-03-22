@@ -3,7 +3,7 @@
 namespace App\Http\Service;
 
 use App\Enums\EmploymentType;
-use App\Models\{Attendance, JobHistory, User, SalaryConfig};
+use App\Models\{Attendance, Bonus, JobHistory, User, SalaryConfig};
 use Carbon\Carbon;
 
 class SalaryService
@@ -81,18 +81,36 @@ class SalaryService
             ];
         }
 
-        $finalSalary = $monthlyBaseSalary + $totalSalaryBonus;
+        // TINH BONUS THU CONG (tăng ca, thưởng, phụ cấp)
+        $manualBonuses = Bonus::where('user_id', $userId)
+            ->where('month', $month)
+            ->where('year', $year)
+            ->get();
+
+        $totalManualBonus = $manualBonuses->sum('amount');
+        $manualBonusDetails = $manualBonuses->map(function ($b) {
+            return [
+                'id'     => $b->id,
+                'amount' => round($b->amount, 0),
+                'reason' => $b->reason,
+                'type'   => $b->type,
+            ];
+        })->toArray();
+
+        $finalSalary = $monthlyBaseSalary + $totalSalaryBonus + $totalManualBonus;
 
         return [
-            'user_id'             => $user->id,
-            'employee'            => $user->full_name,
-            'month'               => "$month/$year",
-            'position'            => $jobHistory->position->name,
-            'employment_type'     => $jobHistory->employment_type,
-            'base_salary'         => round($monthlyBaseSalary, 0),
-            'total_holiday_bonus' => round($totalSalaryBonus, 0),
-            'final_salary'        => round($finalSalary, 0),
-            'bonus_details'       => $bonusDetails,
+            'user_id'              => $user->id,
+            'employee'             => $user->full_name,
+            'month'                => "$month/$year",
+            'position'             => $jobHistory->position->name,
+            'employment_type'      => $jobHistory->employment_type,
+            'base_salary'          => round($monthlyBaseSalary, 0),
+            'total_holiday_bonus'  => round($totalSalaryBonus, 0),
+            'total_manual_bonus'   => round($totalManualBonus, 0),
+            'manual_bonus_details' => $manualBonusDetails,
+            'final_salary'         => round($finalSalary, 0),
+            'bonus_details'        => $bonusDetails,
         ];
     }
 
@@ -117,17 +135,19 @@ class SalaryService
                 $results[] = array_merge($salary, ['status' => 'ok', 'error' => null]);
             } catch (\Exception $e) {
                 $results[] = [
-                    'user_id'             => $employee->id,
-                    'employee'            => $employee->full_name,
-                    'month'               => "$month/$year",
-                    'position'            => optional($employee->position)->name ?? '-',
-                    'employment_type'     => null,
-                    'base_salary'         => 0,
-                    'total_holiday_bonus' => 0,
-                    'final_salary'        => 0,
-                    'bonus_details'       => [],
-                    'status'              => 'error',
-                    'error'               => $e->getMessage(),
+                    'user_id'              => $employee->id,
+                    'employee'             => $employee->full_name,
+                    'month'                => "$month/$year",
+                    'position'             => optional($employee->position)->name ?? '-',
+                    'employment_type'      => null,
+                    'base_salary'          => 0,
+                    'total_holiday_bonus'  => 0,
+                    'total_manual_bonus'   => 0,
+                    'manual_bonus_details' => [],
+                    'final_salary'         => 0,
+                    'bonus_details'        => [],
+                    'status'               => 'error',
+                    'error'                => $e->getMessage(),
                 ];
             }
         }

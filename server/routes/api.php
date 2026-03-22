@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AttendanceController;
+use App\Http\Controllers\BonusController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\ExportController;
 use App\Http\Controllers\FirebaseController;
@@ -350,6 +351,15 @@ Route::middleware('auth')->group(function () {
         Route::get('/{id}/users', [UserRankController::class, 'getUsersByRank'])
             ->middleware('can:VIEW_USER_RANKS');
     });
+    // Bonuses
+    Route::prefix('bonuses')->group(function () {
+        Route::get('/', [BonusController::class, 'index'])->middleware('can:VIEW_USERS');
+        Route::get('/summary', [BonusController::class, 'summary'])->middleware('can:VIEW_USERS');
+        Route::post('/', [BonusController::class, 'store'])->middleware('can:PROMOTE_EMPLOYEE');
+        Route::put('/{id}', [BonusController::class, 'update'])->middleware('can:PROMOTE_EMPLOYEE');
+        Route::delete('/{id}', [BonusController::class, 'destroy'])->middleware('can:PROMOTE_EMPLOYEE');
+    });
+
     // Salaries
     Route::get('salaries/all', [SalaryController::class, 'calculateAllSalaries'])->middleware('can:CALCULATE_SALARY');
     Route::get('salaries/calculate/{userId}', [SalaryController::class, 'calculateMonthlySalary'])->middleware('can:CALCULATE_SALARY');

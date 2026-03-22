@@ -59,6 +59,7 @@ export function SalaryOverviewTable({ data, isLoading, month, year }: Props) {
                                 <th className="px-4 py-3">Loại HĐ</th>
                                 <th className="px-4 py-3 text-right">Lương cơ bản</th>
                                 <th className="px-4 py-3 text-right">Thưởng lễ</th>
+                                <th className="px-4 py-3 text-right">Cộng thêm</th>
                                 <th className="px-4 py-3 text-right font-bold">Tổng lương</th>
                                 <th className="px-4 py-3 text-center">Trạng thái</th>
                             </tr>
@@ -73,6 +74,7 @@ export function SalaryOverviewTable({ data, isLoading, month, year }: Props) {
                                           <td className="px-4 py-3"><Skeleton className="h-5 w-20 rounded-full" /></td>
                                           <td className="px-4 py-3 text-right"><Skeleton className="h-4 w-24 ml-auto" /></td>
                                           <td className="px-4 py-3 text-right"><Skeleton className="h-4 w-16 ml-auto" /></td>
+                                          <td className="px-4 py-3 text-right"><Skeleton className="h-4 w-16 ml-auto" /></td>
                                           <td className="px-4 py-3 text-right"><Skeleton className="h-4 w-28 ml-auto" /></td>
                                           <td className="px-4 py-3 text-center"><Skeleton className="h-5 w-16 mx-auto rounded-full" /></td>
                                       </tr>
@@ -80,7 +82,7 @@ export function SalaryOverviewTable({ data, isLoading, month, year }: Props) {
                                 : data.length === 0
                                 ? (
                                     <tr>
-                                        <td colSpan={8} className="px-4 py-10 text-center text-muted-foreground">
+                                        <td colSpan={9} className="px-4 py-10 text-center text-muted-foreground">
                                             Chưa có dữ liệu. Nhấn &quot;Tính lương&quot; để xem kết quả.
                                         </td>
                                     </tr>
@@ -121,6 +123,11 @@ export function SalaryOverviewTable({ data, isLoading, month, year }: Props) {
                                                       ? `+${Helper.formatPrice(String(item.total_holiday_bonus))}`
                                                       : item.status === "ok" ? "0" : "-"}
                                               </td>
+                                              <td className="px-4 py-3 text-right font-mono text-amber-600">
+                                                  {item.status === "ok" && (item.total_manual_bonus ?? 0) > 0
+                                                      ? `+${Helper.formatPrice(String(item.total_manual_bonus))}`
+                                                      : item.status === "ok" ? "0" : "-"}
+                                              </td>
                                               <td className="px-4 py-3 text-right font-mono font-bold">
                                                   {item.status === "ok" ? Helper.formatPrice(String(item.final_salary)) : "-"}
                                               </td>
@@ -143,7 +150,7 @@ export function SalaryOverviewTable({ data, isLoading, month, year }: Props) {
                         {!isLoading && data.length > 0 && (
                             <tfoot>
                                 <tr className="border-t-2 bg-muted/30 font-semibold">
-                                    <td colSpan={6} className="px-4 py-3 text-right text-sm">
+                                    <td colSpan={7} className="px-4 py-3 text-right text-sm">
                                         Tổng quỹ lương:
                                     </td>
                                     <td className="px-4 py-3 text-right font-mono font-bold text-primary">

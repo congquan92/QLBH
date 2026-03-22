@@ -1,6 +1,7 @@
 "use client";
 
 import { AdminCrudApi } from "@/api/admin/admin-crud.api";
+import { JobHistoryApi } from "@/api/admin/job-history.api";
 import { UserApi } from "@/api/user.api";
 import { RbacApi } from "@/api/admin/rbac.api";
 import { AdminPageShell } from "@/components/feature/admin-page-shell";
@@ -17,6 +18,8 @@ import { CreateEmployeeDialog, emptyCreateForm, type CreateEmployeeFormData } fr
 import { EditEmployeeDialog } from "./_components/edit-employee-dialog";
 import { EmployeeDetailDialog } from "./_components/employee-detail-dialog";
 import { EmployeeTable } from "./_components/employee-table";
+import { PromoteEmployeeDialog } from "./_components/promote-employee-dialog";
+import { BonusEmployeeDialog } from "./_components/bonus-employee-dialog";
 
 export default function EmployeesPage() {
     const [employees, setEmployees] = useState<UserProfile[]>([]);
@@ -39,6 +42,15 @@ export default function EmployeesPage() {
     const [detailUser, setDetailUser] = useState<UserProfile | null>(null);
     const [detailDialogOpen, setDetailDialogOpen] = useState(false);
 
+    // Promote dialog
+    const [promotingUser, setPromotingUser] = useState<UserProfile | null>(null);
+    const [promotePositionId, setPromotePositionId] = useState("");
+    const [promoteEmploymentType, setPromoteEmploymentType] = useState("");
+    const [promoteEffectiveDate, setPromoteEffectiveDate] = useState("");
+
+    // Bonus dialog
+    const [bonusUser, setBonusUser] = useState<UserProfile | null>(null);
+
     const employeeRoles = roles.filter((role) => String(role.name).toUpperCase() !== "USER");
 
     const fetchEmployees = useCallback(async () => {
@@ -57,8 +69,8 @@ export default function EmployeesPage() {
             const normalizedRoles: RbacRole[] = Array.isArray(rolesBody)
                 ? (rolesBody as RbacRole[])
                 : Array.isArray((rolesBody as { data?: unknown })?.data)
-                  ? ((rolesBody as { data: RbacRole[] }).data ?? [])
-                  : [];
+                    ? ((rolesBody as { data: RbacRole[] }).data ?? [])
+                    : [];
             setRoles(normalizedRoles);
 
             setPositions(positionsRes.data.data ?? []);
@@ -175,6 +187,55 @@ export default function EmployeesPage() {
         setDetailDialogOpen(true);
     }
 
+    // ── Promote ───────────────────────────────────────────────────────────────
+    function openPromoteDialog(user: UserProfile) {
+        setPromotingUser(user);
+        // Pre-fill with current position & employment type
+        setPromotePositionId(user.positionResponse?.id ? String(user.positionResponse.id) : "");
+        const et = user.employmentType
+            ?? (user as { employment_type?: unknown }).employment_type;
+        setPromoteEmploymentType(typeof et === "string" && et.trim() ? et : "FULL_TIME");
+        setPromoteEffectiveDate("");
+    }
+
+    function closePromoteDialog() {
+        setPromotingUser(null);
+        setPromotePositionId("");
+        setPromoteEmploymentType("");
+        setPromoteEffectiveDate("");
+    }
+
+    async function handlePromoteEmployee() {
+        if (!promotingUser) return;
+        if (!promotePositionId || !promoteEmploymentType || !promoteEffectiveDate) {
+            toast.error("Vui lòng nhập đầy đủ thông tin thăng chức.");
+            return;
+        }
+
+        setIsSaving(true);
+        try {
+            await JobHistoryApi.promote(promotingUser.id, {
+                position_id: Number(promotePositionId),
+                employment_type: promoteEmploymentType,
+                effective_date: promoteEffectiveDate,
+            });
+            toast.success("Thăng chức / điều chuyển thành công!");
+            closePromoteDialog();
+            await fetchEmployees();
+        } catch (error: unknown) {
+            const errMsg = error instanceof Error ? error.message : "Thăng chức thất bại.";
+            // Try to extract validation errors from Laravel response
+            const axiosErr = error as { response?: { data?: { message?: string; errors?: Record<string, string[]> } } };
+            if (axiosErr?.response?.data?.message) {
+                toast.error(axiosErr.response.data.message);
+            } else {
+                toast.error(errMsg);
+            }
+        } finally {
+            setIsSaving(false);
+        }
+    }
+
     // ── Stats ──────────────────────────────────────────────────────────────────
     const activeCount = employees.filter((e) => String(e.status ?? "ACTIVE") === "ACTIVE").length;
     const fullTimeCount = employees.filter((e) => {
@@ -186,7 +247,7 @@ export default function EmployeesPage() {
     return (
         <AdminPageShell
             title="Quản lý nhân viên"
-            description="Xem, thêm và quản lý toàn bộ tài khoản nội bộ trong hệ thống"
+            description="Xem, thêm và quản lý tài khoản nội bộ"
         >
             {/* Stats row */}
             <div className="grid gap-4 sm:grid-cols-3">
@@ -231,7 +292,7 @@ export default function EmployeesPage() {
                     <div>
                         <CardTitle className="text-base">Danh sách nhân viên</CardTitle>
                         <CardDescription>
-                            {employees.length} nhân viên · Nhấn <strong>👁</strong> để xem chi tiết lương & lộ trình
+                            {employees.length} nhân viên
                         </CardDescription>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
@@ -266,6 +327,8 @@ export default function EmployeesPage() {
                         isSaving={isSaving}
                         onEdit={openEditDialog}
                         onViewDetail={openDetailDialog}
+                        onPromote={openPromoteDialog}
+                        onBonus={(user) => setBonusUser(user)}
                         onToggleStatus={(userId, status) => void handleToggleStatus(userId, status)}
                     />
                 </CardContent>
@@ -312,6 +375,27 @@ export default function EmployeesPage() {
                 }}
                 user={detailUser}
                 positions={positions}
+            />
+
+            {/* Promote Dialog */}
+            <PromoteEmployeeDialog
+                user={promotingUser}
+                positions={positions}
+                isSaving={isSaving}
+                positionId={promotePositionId}
+                employmentType={promoteEmploymentType}
+                effectiveDate={promoteEffectiveDate}
+                onChangePosition={setPromotePositionId}
+                onChangeEmploymentType={setPromoteEmploymentType}
+                onChangeEffectiveDate={setPromoteEffectiveDate}
+                onSave={() => void handlePromoteEmployee()}
+                onClose={closePromoteDialog}
+            />
+
+            {/* Bonus Dialog */}
+            <BonusEmployeeDialog
+                user={bonusUser}
+                onClose={() => setBonusUser(null)}
             />
         </AdminPageShell>
     );
