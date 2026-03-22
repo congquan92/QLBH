@@ -3,17 +3,23 @@
 import { ScheduleApi } from "@/api/admin/schedule.api";
 import { AdminCrudApi } from "@/api/admin/admin-crud.api";
 import { UserApi } from "@/api/user.api";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Calendar, Users, Clock, Loader2, ChevronLeft, ChevronRight, Plus, Trash2 } from "lucide-react";
-import { Skeleton } from "@/components/ui/skeleton";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import type { Shift } from "@/types/admin-crud";
-import type { DailyStaff, MySchedule, WeeklyReport } from "@/types/schedule";
+import type {
+    MyScheduleDay,
+    WeeklyReportDay,
+    DailyStaffEmployee,
+} from "@/types/schedule";
 import type { UserProfile } from "@/types/user";
+
+import { ScheduleHeader } from "./_components/schedule-header";
+import { WeeklyCalendarGrid } from "./_components/weekly-calendar-grid";
+import { MyScheduleView } from "./_components/my-schedule-view";
+import { DailyStaffView } from "./_components/daily-staff-view";
+import { DayDetailPanel } from "./_components/day-detail-panel";
+import { AssignShiftForm } from "./_components/assign-shift-form";
+import { CalendarSkeleton, MyScheduleSkeleton, DailyStaffSkeleton } from "./_components/schedule-skeletons";
 
 type ViewMode = "weekly-report" | "daily-staff" | "my-schedule" | "assign";
 
@@ -29,52 +35,125 @@ const emptyAssignForm: AssignForm = {
     date: new Date().toISOString().split("T")[0],
 };
 
+/** Helpers để tính tuần */
+function getMonday(d: Date) {
+    const copy = new Date(d);
+    const day = copy.getDay(); // 0 = Sunday
+    const diff = day === 0 ? -6 : 1 - day;
+    copy.setDate(copy.getDate() + diff);
+    return copy;
+}
+
+function formatWeekRange(d: Date) {
+    const monday = getMonday(d);
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    const fmt = (dt: Date) =>
+        dt.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" });
+    return `Tuần ${fmt(monday)} – ${fmt(sunday)}`;
+}
+
 export default function SchedulePage() {
-    const [viewMode, setViewMode] = useState<ViewMode>("my-schedule");
+    const [viewMode, setViewMode] = useState<ViewMode>("weekly-report");
+    const [currentDate, setCurrentDate] = useState(() => new Date());
     const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0]);
-    const [weeklyData, setWeeklyData] = useState<WeeklyReport | null>(null);
-    const [dailyData, setDailyData] = useState<DailyStaff | null>(null);
-    const [mySchedule, setMySchedule] = useState<MySchedule | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
+
+    // Data states
+    const [weeklySchedule, setWeeklySchedule] = useState<WeeklyReportDay[]>([]);
+    const [weekRange, setWeekRange] = useState("");
+    const [myScheduleData, setMyScheduleData] = useState<{
+        employee: string;
+        position: string;
+        week_schedule: MyScheduleDay[];
+    } | null>(null);
+    const [dailyStaff, setDailyStaff] = useState<DailyStaffEmployee[]>([]);
+    const [selectedDayDetail, setSelectedDayDetail] = useState<WeeklyReportDay | null>(null);
+
+    // Assign mode
     const [assignForm, setAssignForm] = useState<AssignForm>(emptyAssignForm);
     const [shifts, setShifts] = useState<Shift[]>([]);
     const [employees, setEmployees] = useState<UserProfile[]>([]);
+
+    const dateStr = currentDate.toISOString().split("T")[0];
 
     const fetchData = useCallback(async () => {
         setIsLoading(true);
         try {
             if (viewMode === "weekly-report") {
-                const res = await ScheduleApi.getWeeklyReport(selectedDate);
-                setWeeklyData(res.data);
-            } else if (viewMode === "daily-staff") {
-                const res = await ScheduleApi.getDailyStaff(selectedDate);
-                setDailyData(res.data);
+                const res = await ScheduleApi.getWeeklyReport(dateStr);
+                // Adapt to actual API response
+                const raw = res as unknown as {
+                    status: string;
+                    message: string;
+                    data: { week_range: string; weekly_schedule: WeeklyReportDay[] };
+                };
+                setWeeklySchedule(raw.data?.weekly_schedule ?? []);
+                setWeekRange(raw.data?.week_range ?? formatWeekRange(currentDate));
+                setSelectedDayDetail(null);
             } else if (viewMode === "my-schedule") {
-                const res = await ScheduleApi.getMySchedule(selectedDate);
-                setMySchedule(res.data);
+                const res = await ScheduleApi.getMySchedule(dateStr);
+                const raw = res as unknown as {
+                    status: string;
+                    employee: string;
+                    position: string;
+                    week_schedule: MyScheduleDay[];
+                };
+                setMyScheduleData({
+                    employee: raw.employee ?? "",
+                    position: raw.position ?? "",
+                    week_schedule: raw.week_schedule ?? [],
+                });
+            } else if (viewMode === "daily-staff") {
+                const res = await ScheduleApi.getDailyStaff(dateStr);
+                const raw = res as unknown as {
+                    message: string;
+                    data: DailyStaffEmployee[];
+                };
+                setDailyStaff(raw.data ?? []);
             } else if (viewMode === "assign") {
-                const [shiftsRes, usersRes] = await Promise.all([AdminCrudApi.getShifts({ page: 1, size: 100 }), UserApi.getUsers({ page: 1, size: 100, hasUserRole: false })]);
-                setShifts(shiftsRes.data.data);
-                setEmployees(usersRes.data.data);
+                const [shiftsRes, usersRes] = await Promise.all([
+                    AdminCrudApi.getShifts({ page: 1, size: 100 }),
+                    UserApi.getUsers({ page: 1, size: 100, hasUserRole: false }),
+                ]);
+                // Both APIs return ApiResponse<PageResponse<T>>, extract .data.data
+                const shiftsRaw = shiftsRes as unknown as { data?: { data?: Shift[] } };
+                const usersRaw = usersRes as unknown as { data?: { data?: UserProfile[] } };
+                setShifts(Array.isArray(shiftsRaw?.data?.data) ? shiftsRaw.data.data : []);
+                setEmployees(Array.isArray(usersRaw?.data?.data) ? usersRaw.data.data : []);
             }
         } catch (error) {
-            toast.error(error instanceof Error ? error.message : "Không thể tải dữ liệu lịch làm việc");
+            toast.error(
+                error instanceof Error ? error.message : "Không thể tải dữ liệu lịch làm việc"
+            );
         } finally {
             setIsLoading(false);
         }
-    }, [selectedDate, viewMode]);
+    }, [dateStr, viewMode, currentDate]);
 
     useEffect(() => {
         void fetchData();
     }, [fetchData]);
 
-    function changeDate(days: number) {
-        const date = new Date(selectedDate);
-        date.setDate(date.getDate() + days);
-        setSelectedDate(date.toISOString().split("T")[0]);
+    /** Navigation */
+    function navigate(direction: "prev" | "next" | "today") {
+        setCurrentDate((prev) => {
+            if (direction === "today") return new Date();
+            const next = new Date(prev);
+            next.setDate(next.getDate() + (direction === "next" ? 7 : -7));
+            return next;
+        });
     }
 
+    /** When user clicks a day in the weekly grid */
+    function handleSelectDate(date: string) {
+        setSelectedDate(date);
+        const day = weeklySchedule.find((d) => d.date === date);
+        setSelectedDayDetail(day ?? null);
+    }
+
+    /** Assignment submission */
     async function submitAssignment() {
         if (!assignForm.user_id || !assignForm.shift_id || !assignForm.date) {
             toast.error("Vui lòng chọn đủ nhân viên, ca và ngày.");
@@ -97,252 +176,68 @@ export default function SchedulePage() {
         }
     }
 
-    async function handleDeleteAssignment(assignmentId: number) {
-        if (!confirm("Bạn có chắc chắn muốn xóa phân ca này?")) return;
-
-        setIsSaving(true);
-        try {
-            await ScheduleApi.deleteAssignment({ id: assignmentId });
-            toast.success("Đã xóa phân ca.");
-            await fetchData();
-        } catch (error) {
-            toast.error(error instanceof Error ? error.message : "Xóa phân ca thất bại");
-        } finally {
-            setIsSaving(false);
-        }
-    }
-
     return (
-        <div className="space-y-4">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Lịch làm việc</h1>
-                    <p className="text-muted-foreground">Xem lịch và phân ca làm việc</p>
-                </div>
-            </div>
+        <div className="space-y-5">
+            {/* Header */}
+            <ScheduleHeader
+                viewMode={viewMode}
+                currentDate={currentDate}
+                weekRange={weekRange || formatWeekRange(currentDate)}
+                onViewModeChange={setViewMode}
+                onNavigate={navigate}
+            />
 
-            {/* View Mode Selector */}
-            <Card>
-                <CardHeader>
-                    <CardTitle>Chế độ xem</CardTitle>
-                    <CardDescription>Chọn loại thông tin lịch làm việc bạn muốn xem</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <div className="flex gap-2 flex-wrap">
-                        <Button variant={viewMode === "my-schedule" ? "default" : "outline"} onClick={() => setViewMode("my-schedule")}>
-                            <Clock className="mr-2 h-4 w-4" />
-                            Lịch của tôi
-                        </Button>
-                        <Button variant={viewMode === "daily-staff" ? "default" : "outline"} onClick={() => setViewMode("daily-staff")}>
-                            <Users className="mr-2 h-4 w-4" />
-                            Lịch theo ngày
-                        </Button>
-                        <Button variant={viewMode === "weekly-report" ? "default" : "outline"} onClick={() => setViewMode("weekly-report")}>
-                            <Calendar className="mr-2 h-4 w-4" />
-                            Báo cáo tuần
-                        </Button>
-                        <Button variant={viewMode === "assign" ? "default" : "outline"} onClick={() => setViewMode("assign")}>
-                            <Plus className="mr-2 h-4 w-4" />
-                            Phân ca
-                        </Button>
-                    </div>
-                </CardContent>
-            </Card>
-
-            {/* Date Selector */}
-            {viewMode !== "assign" && (
-                <Card>
-                    <CardContent className="pt-6">
-                        <div className="flex items-center gap-4">
-                            <Button variant="outline" size="icon" onClick={() => changeDate(-1)}>
-                                <ChevronLeft className="h-4 w-4" />
-                            </Button>
-                            <Input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="max-w-xs" />
-                            <Button variant="outline" size="icon" onClick={() => changeDate(1)}>
-                                <ChevronRight className="h-4 w-4" />
-                            </Button>
-                            <Button variant="outline" onClick={() => setSelectedDate(new Date().toISOString().split("T")[0])}>
-                                Hôm nay
-                            </Button>
-                        </div>
-                    </CardContent>
-                </Card>
-            )}
-
-            {/* Content */}
+            {/* Main Content */}
             {isLoading ? (
-                <Card>
-                    <CardContent className="space-y-3 py-6">
-                        <Skeleton className="h-5 w-48" />
-                        {Array.from({ length: 7 }).map((_, i) => (
-                            <div key={i} className="flex items-center justify-between rounded-lg border p-4">
-                                <div className="space-y-2">
-                                    <Skeleton className="h-4 w-24" />
-                                    <Skeleton className="h-3 w-32" />
-                                </div>
-                                <div className="space-y-2 text-right">
-                                    <Skeleton className="h-4 w-20 ml-auto" />
-                                    <Skeleton className="h-3 w-28 ml-auto" />
-                                </div>
-                            </div>
-                        ))}
-                    </CardContent>
-                </Card>
+                <>
+                    {viewMode === "weekly-report" && <CalendarSkeleton />}
+                    {viewMode === "my-schedule" && <MyScheduleSkeleton />}
+                    {viewMode === "daily-staff" && <DailyStaffSkeleton />}
+                    {viewMode === "assign" && <CalendarSkeleton />}
+                </>
             ) : (
                 <>
-                    {/* Assignment Form */}
-                    {viewMode === "assign" && (
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Phân ca làm việc</CardTitle>
-                                <CardDescription>Chọn nhân viên, ca và ngày để phân ca</CardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-3">
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                                    <div className="space-y-2">
-                                        <Label>Nhân viên</Label>
-                                        <select className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={assignForm.user_id} onChange={(e) => setAssignForm((prev) => ({ ...prev, user_id: e.target.value }))}>
-                                            <option value="">Chọn nhân viên</option>
-                                            {employees.map((emp) => (
-                                                <option key={emp.id} value={String(emp.id)}>
-                                                    {String(emp.fullName ?? emp.username ?? `User #${emp.id}`)}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>Ca làm việc</Label>
-                                        <select className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={assignForm.shift_id} onChange={(e) => setAssignForm((prev) => ({ ...prev, shift_id: e.target.value }))}>
-                                            <option value="">Chọn ca</option>
-                                            {shifts.map((shift) => (
-                                                <option key={shift.id} value={String(shift.id)}>
-                                                    {String(shift.name ?? `Shift #${shift.id}`)} ({String(shift.start_time ?? "")} - {String(shift.end_time ?? "")})
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>Ngày</Label>
-                                        <Input type="date" value={assignForm.date} onChange={(e) => setAssignForm((prev) => ({ ...prev, date: e.target.value }))} />
-                                    </div>
-                                </div>
-                                <Button onClick={() => void submitAssignment()} disabled={isSaving}>
-                                    {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
-                                    Phân ca
-                                </Button>
-                            </CardContent>
-                        </Card>
+                    {/* Weekly Report - Google Calendar Style */}
+                    {viewMode === "weekly-report" && (
+                        <div className="grid grid-cols-1 lg:grid-cols-[1fr,380px] gap-4">
+                            <WeeklyCalendarGrid
+                                weeklySchedule={weeklySchedule}
+                                selectedDate={selectedDate}
+                                onSelectDate={handleSelectDate}
+                            />
+                            {selectedDayDetail && (
+                                <DayDetailPanel
+                                    day={selectedDayDetail}
+                                    onClose={() => setSelectedDayDetail(null)}
+                                />
+                            )}
+                        </div>
                     )}
 
                     {/* My Schedule */}
-                    {viewMode === "my-schedule" && mySchedule && (
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Lịch làm việc của {mySchedule.employee}</CardTitle>
-                                <CardDescription>
-                                    {mySchedule.position} - Tuần từ {mySchedule.week_start}
-                                </CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="space-y-2">
-                                    {mySchedule.schedule?.map((day, idx) => (
-                                        <div key={idx} className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50">
-                                            <div>
-                                                <div className="font-semibold">{day.day_name}</div>
-                                                <div className="text-sm text-muted-foreground">{new Date(day.date).toLocaleDateString("vi-VN")}</div>
-                                            </div>
-                                            <div className="text-right">
-                                                <div className="font-medium">{day.shift_name}</div>
-                                                <div className="text-sm text-muted-foreground">
-                                                    {day.start_time} - {day.end_time}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ))}
-                                    {(!mySchedule.schedule || mySchedule.schedule.length === 0) && <div className="text-center py-8 text-muted-foreground">Không có lịch làm việc trong tuần này</div>}
-                                </div>
-                            </CardContent>
-                        </Card>
+                    {viewMode === "my-schedule" && myScheduleData && (
+                        <MyScheduleView
+                            employee={myScheduleData.employee}
+                            position={myScheduleData.position}
+                            weekSchedule={myScheduleData.week_schedule}
+                        />
                     )}
 
                     {/* Daily Staff */}
-                    {viewMode === "daily-staff" && dailyData && (
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Lịch làm việc ngày {new Date(selectedDate).toLocaleDateString("vi-VN")}</CardTitle>
-                                <CardDescription>Danh sách nhân viên theo ca làm việc</CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="space-y-4">
-                                    {dailyData.shifts?.map((shift, idx) => (
-                                        <div key={idx} className="border rounded-lg p-4">
-                                            <div className="font-semibold text-lg mb-2">
-                                                {shift.shift_name} ({shift.employees?.length || 0} người)
-                                            </div>
-                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                                                {shift.employees?.map((emp, empIdx) => (
-                                                    <div key={empIdx} className="flex items-center justify-between p-2 bg-muted rounded">
-                                                        <div className="flex items-center gap-2">
-                                                            <Users className="h-4 w-4" />
-                                                            <div>
-                                                                <div className="text-sm font-medium">{emp.full_name}</div>
-                                                                <div className="text-xs text-muted-foreground">{emp.position}</div>
-                                                            </div>
-                                                        </div>
-                                                        {(emp as { assignment_id?: number }).assignment_id && (
-                                                            <Button variant="ghost" size="sm" onClick={() => void handleDeleteAssignment((emp as { assignment_id: number }).assignment_id)} disabled={isSaving}>
-                                                                <Trash2 className="h-3 w-3" />
-                                                            </Button>
-                                                        )}
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    ))}
-                                    {(!dailyData.shifts || dailyData.shifts.length === 0) && <div className="text-center py-8 text-muted-foreground">Không có dữ liệu lịch làm việc</div>}
-                                </div>
-                            </CardContent>
-                        </Card>
+                    {viewMode === "daily-staff" && (
+                        <DailyStaffView date={dateStr} staff={dailyStaff} />
                     )}
 
-                    {/* Weekly Report */}
-                    {viewMode === "weekly-report" && weeklyData && (
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>
-                                    Báo cáo tuần: {weeklyData.week_start} - {weeklyData.week_end}
-                                </CardTitle>
-                                <CardDescription>Thống kê quân số và phân ca trong tuần</CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="space-y-4">
-                                    {weeklyData.days?.map((day, idx) => (
-                                        <div key={idx} className="border rounded-lg p-4">
-                                            <div className="flex items-center justify-between mb-2">
-                                                <div>
-                                                    <div className="font-semibold">{day.day_name}</div>
-                                                    <div className="text-sm text-muted-foreground">{new Date(day.date).toLocaleDateString("vi-VN")}</div>
-                                                </div>
-                                                <div className="text-right">
-                                                    <div className="text-2xl font-bold">{day.total_employees}</div>
-                                                    <div className="text-xs text-muted-foreground">Nhân viên</div>
-                                                </div>
-                                            </div>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
-                                                {day.shifts?.map((shift, shiftIdx) => (
-                                                    <div key={shiftIdx} className="p-2 bg-muted rounded">
-                                                        <div className="font-medium text-sm">
-                                                            {shift.shift_name} ({shift.count})
-                                                        </div>
-                                                        <div className="text-xs text-muted-foreground">{shift.employees?.join(", ") || "Không có nhân viên"}</div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </CardContent>
-                        </Card>
+                    {/* Assign Shift */}
+                    {viewMode === "assign" && (
+                        <AssignShiftForm
+                            assignForm={assignForm}
+                            shifts={shifts}
+                            employees={employees}
+                            isSaving={isSaving}
+                            onFormChange={setAssignForm}
+                            onSubmit={() => void submitAssignment()}
+                        />
                     )}
                 </>
             )}

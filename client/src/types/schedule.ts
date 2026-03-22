@@ -10,6 +10,82 @@ export interface ScheduleAssignment {
     [key: string]: unknown;
 }
 
+// ── My Schedule ────────────────────────────────────────────────────────
+export interface MyScheduleShift {
+    shift_id: number | null;
+    shift_name: string;
+    time: string;
+    type: string; // "Mặc định" | "Ca đặc biệt" | "Nghỉ"
+}
+
+export interface MyScheduleDay {
+    date: string;
+    day_name: string;
+    shifts: MyScheduleShift[];
+}
+
+export interface MyScheduleResponse {
+    status: string;
+    employee: string;
+    position: string;
+    week_schedule: MyScheduleDay[];
+}
+
+// ── Daily Staff ────────────────────────────────────────────────────────
+export interface DailyStaffEmployee {
+    user_id: number;
+    name: string;
+    position: string;
+    shifts: Array<{
+        id: number;
+        name: string;
+        time: string;
+        is_special: boolean;
+    }>;
+}
+
+export interface DailyStaffResponse {
+    message: string;
+    data: DailyStaffEmployee[];
+}
+
+// ── Weekly Report ──────────────────────────────────────────────────────
+export interface WeeklyReportEmployee {
+    user_id: number;
+    name: string;
+    position: string;
+    is_special: boolean;
+    assignment_type: string;
+}
+
+export interface WeeklyReportShift {
+    shift_id: number;
+    shift_name: string;
+    start_time: string;
+    end_time: string;
+    staff_count: number;
+    employees: WeeklyReportEmployee[];
+}
+
+export interface WeeklyReportDay {
+    date: string;
+    day_name: string;
+    total_staff_working: number;
+    shifts: WeeklyReportShift[];
+}
+
+export interface WeeklyReportData {
+    week_range: string;
+    weekly_schedule: WeeklyReportDay[];
+}
+
+export interface WeeklyReportResponse {
+    status: string;
+    message: string;
+    data: WeeklyReportData;
+}
+
+// ── Legacy compatibility types ─────────────────────────────────────────
 export interface DailyStaff {
     date: string;
     shifts: Array<{
@@ -51,6 +127,6 @@ export interface MySchedule {
     }>;
 }
 
-export type WeeklyReportResponse = ApiResponse<WeeklyReport>;
-export type DailyStaffResponse = ApiResponse<DailyStaff>;
-export type MyScheduleResponse = ApiResponse<MySchedule>;
+export type WeeklyReportApiResponse = ApiResponse<WeeklyReport>;
+export type DailyStaffApiResponse = ApiResponse<DailyStaff>;
+export type MyScheduleApiResponse = ApiResponse<MySchedule>;
