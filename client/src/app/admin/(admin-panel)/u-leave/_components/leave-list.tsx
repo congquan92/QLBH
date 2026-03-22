@@ -86,7 +86,7 @@ export function LeaveList({ leaves, isLoading }: Props) {
                                                 {new Date(leave.leave_date).toLocaleDateString("vi-VN")}
                                             </td>
                                             <td className="px-6 py-4">
-                                                {String(leave.shift_name || `Ca ${leave.shift_id}`)}
+                                                {leave.shift?.name ?? leave.shift_name ?? "-"}
                                             </td>
                                             <td className="px-6 py-4">{leave.reason || "-"}</td>
                                             <td className="px-6 py-4 text-muted-foreground">

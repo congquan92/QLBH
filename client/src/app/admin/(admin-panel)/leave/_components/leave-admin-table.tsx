@@ -90,13 +90,13 @@ export function LeaveAdminTable({ leaves, isLoading, updatingId, onApprove, onRe
                                                     #{leave.id}
                                                 </td>
                                                 <td className="px-5 py-3.5 font-medium">
-                                                    {String(leave.employee_name || "N/A")}
+                                                    {String(leave.user_name ?? leave.employee_name ?? "N/A")}
                                                 </td>
                                                 <td className="px-5 py-3.5">
                                                     {new Date(leave.leave_date).toLocaleDateString("vi-VN")}
                                                 </td>
                                                 <td className="px-5 py-3.5">
-                                                    {String(leave.shift_name || `Ca ${leave.shift_id}`)}
+                                                    {leave.shift?.name ?? leave.shift_name ?? "-"}
                                                 </td>
                                                 <td className="px-5 py-3.5 text-muted-foreground max-w-[180px] truncate">
                                                     {leave.reason || <span className="italic text-muted-foreground/50">—</span>}
