@@ -1,11 +1,11 @@
 import { CategoryApi } from "@/api/category.api";
 import { ProductApi } from "@/api/product.api";
 import BannerCarousel, { Banner } from "@/components/feature/page/bannerCarousel";
-import ProductGrid from "@/components/feature/page/ProductGrid";
-import { Helper } from "@/lib/helper";
-import { Category } from "@/types/navbar";
-import Link from "next/link";
-import { id } from "zod/v4/locales";
+// import ProductGrid from "@/components/feature/page/ProductGrid";
+// import { Helper } from "@/lib/helper";
+// import { Category } from "@/types/navbar";
+// import Link from "next/link";
+// import { id } from "zod/v4/locales";
 
 async function getHomeData() {
     const [categoriesResponse, productsResponse] = await Promise.all([CategoryApi.getPublicCategories({ page: 1, size: 20, sort: "id:asc" }), ProductApi.getAllProducts({ page: 1, size: 10, sort: "id:desc" })]);

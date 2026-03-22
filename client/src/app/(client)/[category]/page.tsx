@@ -1,7 +1,7 @@
 import { CategoryApi } from "@/api/category.api";
 import { ProductApi } from "@/api/product.api";
 import ListProduct from "@/app/(client)/san-pham/_components/listProduct";
-import StaticContentPage from "@/components/feature/static-content-page";
+import PageComingSoon from "@/components/feature/page/PageComingSoon";
 import { PUBLIC_PAGES } from "@/data/public-pages";
 import { Helper } from "@/lib/helper";
 import { findRootCategoryBySlug } from "@/lib/public-catalog";
@@ -15,10 +15,10 @@ interface CategoryPageProps {
 
 export default async function CategoryPage({ params, searchParams }: CategoryPageProps) {
     const { category } = await params;
-    const content = PUBLIC_PAGES[category];
+    const content = PUBLIC_PAGES.find((page) => page === category);
 
     if (content) {
-        return <StaticContentPage content={content} />;
+        return <PageComingSoon />;
     }
 
     const query = await searchParams;
