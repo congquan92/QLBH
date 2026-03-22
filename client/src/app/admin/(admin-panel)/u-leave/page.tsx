@@ -8,7 +8,6 @@ import type { Shift } from "@/types/admin-crud";
 import type { LeaveRequest } from "@/types/leave";
 
 import { LeaveHeader } from "./_components/leave-header";
-import { LeaveRequestForm } from "./_components/leave-form";
 import { LeaveList } from "./_components/leave-list";
 
 type LeaveForm = {
@@ -17,16 +16,9 @@ type LeaveForm = {
     reason: string;
 };
 
-const emptyForm: LeaveForm = {
-    leave_date: "",
-    shift_id: "",
-    reason: "",
-};
-
 export default function UserLeavePage() {
     const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
     const [shifts, setShifts] = useState<Shift[]>([]);
-    const [form, setForm] = useState<LeaveForm>(emptyForm);
     const [isLoading, setIsLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -50,17 +42,11 @@ export default function UserLeavePage() {
         void fetchData();
     }, [fetchData]);
 
-    function resetForm() {
-        setForm(emptyForm);
-    }
-
-    async function handleSubmit(e: React.FormEvent) {
-        e.preventDefault();
+    async function handleSubmit(form: LeaveForm) {
         if (!form.leave_date || !form.shift_id) {
             toast.error("Vui lòng điền đầy đủ thông tin");
             return;
         }
-
         setIsSubmitting(true);
         try {
             await LeaveApi.create({
@@ -69,10 +55,10 @@ export default function UserLeavePage() {
                 reason: form.reason,
             });
             toast.success("Đã gửi đơn nghỉ phép thành công");
-            resetForm();
             await fetchData();
         } catch (error) {
             toast.error(error instanceof Error ? error.message : "Không thể tạo đơn nghỉ phép");
+            throw error; // để dialog không tự đóng khi lỗi
         } finally {
             setIsSubmitting(false);
         }
@@ -80,20 +66,11 @@ export default function UserLeavePage() {
 
     return (
         <div className="space-y-5">
-            {/* Header */}
-            <LeaveHeader />
-
-            {/* Create Form */}
-            <LeaveRequestForm
-                form={form}
+            <LeaveHeader
                 shifts={shifts}
                 isSubmitting={isSubmitting}
-                onFormChange={setForm}
                 onSubmit={handleSubmit}
-                onReset={resetForm}
             />
-
-            {/* List */}
             <LeaveList leaves={leaves} isLoading={isLoading} />
         </div>
     );
