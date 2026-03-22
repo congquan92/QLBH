@@ -10,10 +10,17 @@ use Illuminate\Support\Facades\Log;
 
 class CloudinaryService
 {
+    private ?string $lastError = null;
+
     public function __construct()
     {
         // Khởi tạo cấu hình bằng CLOUDINARY_URL trong file .env
         Configuration::instance(env('CLOUDINARY_URL'));
+    }
+
+    public function getLastError(): ?string
+    {
+        return $this->lastError;
     }
 
     /**
@@ -22,6 +29,7 @@ class CloudinaryService
     public function upload(UploadedFile $file): ?string
     {
         try {
+            $this->lastError = null;
             $uploadApi = new UploadApi();
 
             // Tận dụng getRealPath() để lấy đường dẫn file tạm trên server
@@ -32,6 +40,7 @@ class CloudinaryService
 
             return $response['secure_url'] ?? null;
         } catch (\Exception $e) {
+            $this->lastError = $e->getMessage();
             Log::error("Cloudinary Upload Error: " . $e->getMessage());
             return null;
         }

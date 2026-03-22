@@ -15,6 +15,13 @@ export interface UserRoleResponse {
     page?: unknown[];
 }
 
+export interface PositionResponse {
+    id: number;
+    name: string;
+    baseSalary?: string;
+    salaryType?: string;
+}
+
 export interface UserProfile {
     id: number;
     userName?: string;
@@ -32,6 +39,8 @@ export interface UserProfile {
     addressResponses?: UserAddress[];
     userRankResponse?: UserRankResponse | null;
     role?: UserRoleResponse | unknown;
+    employmentType?: string | null;
+    positionResponse?: PositionResponse | null;
     [key: string]: unknown;
 }
 

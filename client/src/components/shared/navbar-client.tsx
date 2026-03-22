@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useState } from "react";
-import { ChevronDown, Menu, Search, ShoppingCart, User } from "lucide-react";
+import { FormEvent, useRef, useState } from "react";
+import { ChevronDown, Menu, Search, ShoppingCart, User, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -21,6 +21,8 @@ export default function NavbarClient({ navItems }: NavbarClientProps) {
     const [mobileOpen, setMobileOpen] = useState(false);
     const [mobileDropdown, setMobileDropdown] = useState<string | null>(null);
     const [keyword, setKeyword] = useState("");
+    const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+    const mobileInputRef = useRef<HTMLInputElement>(null);
     const router = useRouter();
     const session = UserAuthStore.useStore((state) => state.session);
     const isLoading = UserAuthStore.useStore((state) => state.isLoading);
@@ -31,6 +33,19 @@ export default function NavbarClient({ navItems }: NavbarClientProps) {
         event.preventDefault();
         const query = keyword.trim();
         router.push(query ? `/san-pham?keyword=${encodeURIComponent(query)}` : "/san-pham");
+    };
+
+    const handleMobileSearch = (event: FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        const query = keyword.trim();
+        setMobileSearchOpen(false);
+        router.push(query ? `/san-pham?keyword=${encodeURIComponent(query)}` : "/san-pham");
+    };
+
+    const openMobileSearch = () => {
+        setMobileSearchOpen(true);
+        // focus vào input sau khi render
+        setTimeout(() => mobileInputRef.current?.focus(), 50);
     };
 
     return (
@@ -76,6 +91,7 @@ export default function NavbarClient({ navItems }: NavbarClientProps) {
                     </div>
 
                     <div className="flex items-center gap-2">
+                        {/* Desktop search */}
                         <form onSubmit={handleSearch} className="relative hidden md:block">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-gray-400" />
                             <input
@@ -86,9 +102,16 @@ export default function NavbarClient({ navItems }: NavbarClientProps) {
                                 className="pl-10 pr-4 py-2 w-64 border border-gray-300 rounded-none text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
                             />
                         </form>
-                        <button onClick={() => router.push(keyword.trim() ? `/san-pham?keyword=${encodeURIComponent(keyword.trim())}` : "/san-pham")} className="md:hidden p-2 hover:bg-gray-100 rounded-full transition-colors cursor-pointer">
+
+                        {/* Mobile search icon */}
+                        <button
+                            onClick={openMobileSearch}
+                            className="md:hidden p-2 hover:bg-gray-100 rounded-full transition-colors cursor-pointer"
+                            aria-label="Mở tìm kiếm"
+                        >
                             <Search className="size-5 text-gray-700" />
                         </button>
+
                         <Link href={isAuthenticated ? "/tai-khoan" : "/dang-nhap"} className="inline-flex items-center gap-2 p-2 hover:bg-gray-100 rounded-full transition-colors cursor-pointer">
                             <User className="size-5 text-gray-700" />
                             <span className="hidden xl:inline text-sm text-gray-700">{isLoading ? "Tài khoản" : isAuthenticated ? session?.fullName?.split(" ").slice(-1)[0] || "Tài khoản" : "Đăng nhập"}</span>
@@ -164,6 +187,39 @@ export default function NavbarClient({ navItems }: NavbarClientProps) {
                     </div>
                 </div>
             </div>
+
+            {/* Mobile search bar */}
+            {mobileSearchOpen && (
+                <div className="md:hidden border-t border-gray-200 bg-white px-4 py-3 animate-in slide-in-from-top-2 duration-200">
+                    <form onSubmit={handleMobileSearch} className="flex items-center gap-2">
+                        <div className="relative flex-1">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-gray-400" />
+                            <input
+                                ref={mobileInputRef}
+                                value={keyword}
+                                onChange={(e) => setKeyword(e.target.value)}
+                                type="text"
+                                placeholder="Tìm kiếm sản phẩm..."
+                                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-none text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                            />
+                        </div>
+                        <button
+                            type="submit"
+                            className="px-4 py-2.5 bg-red-600 text-white text-sm font-medium rounded-none hover:bg-red-700 transition-colors"
+                        >
+                            Tìm
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => { setMobileSearchOpen(false); setKeyword(""); }}
+                            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                            aria-label="Đóng tìm kiếm"
+                        >
+                            <X className="size-5 text-gray-500" />
+                        </button>
+                    </form>
+                </div>
+            )}
         </nav>
     );
 }

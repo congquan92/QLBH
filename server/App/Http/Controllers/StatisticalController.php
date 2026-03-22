@@ -43,4 +43,11 @@ class StatisticalController extends Controller
         $period = $request->query('period', 1);
         return response()->json($this->statisticalService->getCategoryStatistics((int)$period));
     }
+
+    public function getTopCustomers(Request $request)
+    {
+        $period = $request->query('period', 1);
+        $top = $request->query('top', 5);
+        return response()->json($this->statisticalService->getTopCustomers((int)$period, (int)$top));
+    }
 }

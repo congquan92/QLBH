@@ -8,10 +8,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import type { ActiveUserStats, CategoryStats, MonthlyRevenue, OrderStats, TopProduct } from "@/types/statistics";
+import type { ActiveUserStats, CategoryStats, MonthlyRevenue, OrderStats, TopCustomerStats, TopProduct } from "@/types/statistics";
 import { Activity, Boxes, ChartColumnIncreasing, CircleDollarSign, PackageSearch, RefreshCw, ShoppingBag, Users } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Helper } from "@/lib/helper";
+import { TopCustomersCard } from "./_components/top-customers-card";
 
 type PeriodValue = "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" | "10" | "11" | "12";
 
@@ -64,6 +65,7 @@ function MetricCard({ title, value, caption, icon, tone = "blue" }: MetricCardPr
 
 export default function StatisticalPage() {
     const [period, setPeriod] = useState<PeriodValue>("1");
+    const [customerSort, setCustomerSort] = useState<"desc" | "asc">("desc");
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -72,6 +74,7 @@ export default function StatisticalPage() {
     const [revenue12Months, setRevenue12Months] = useState<MonthlyRevenue[]>([]);
     const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
     const [categories, setCategories] = useState<CategoryStats[]>([]);
+    const [topCustomers, setTopCustomers] = useState<TopCustomerStats[]>([]);
 
     const loadDashboard = useCallback(async () => {
         setLoading(true);
@@ -79,12 +82,13 @@ export default function StatisticalPage() {
 
         try {
             const periodNumber = Number(period);
-            const [usersRes, ordersRes, revenueRes, productsRes, categoriesRes] = await Promise.all([
+            const [usersRes, ordersRes, revenueRes, productsRes, categoriesRes, customersRes] = await Promise.all([
                 StatisticsApi.getActiveUsers(periodNumber),
                 StatisticsApi.getOrders(periodNumber),
                 StatisticsApi.getRevenue12Months(),
                 StatisticsApi.getTopProducts(periodNumber, 5),
                 StatisticsApi.getCategories(periodNumber),
+                StatisticsApi.getTopCustomers(periodNumber, 5),
             ]);
 
             setActiveUsers(usersRes.data ?? null);
@@ -92,6 +96,7 @@ export default function StatisticalPage() {
             setRevenue12Months(Array.isArray(revenueRes.data) ? revenueRes.data : []);
             setTopProducts(Array.isArray(productsRes.data) ? productsRes.data : []);
             setCategories(Array.isArray(categoriesRes.data) ? categoriesRes.data : []);
+            setTopCustomers(Array.isArray(customersRes.data) ? customersRes.data : []);
         } catch (err) {
             const message = err instanceof Error ? err.message : "Không thể tải dữ liệu thống kê.";
             setError(message);
@@ -319,62 +324,70 @@ export default function StatisticalPage() {
                 </Card>
             </div>
 
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                        <Boxes className="h-5 w-5 text-primary" />
-                        Danh mục hiệu suất cao
-                    </CardTitle>
-                    <CardDescription>Xếp hạng danh mục theo số lượng bán trong kỳ {periodMeta.label.toLowerCase()}.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    {loading ? (
-                        <Skeleton className="h-72 w-full" />
-                    ) : categories.length === 0 ? (
-                        <p className="text-sm text-muted-foreground">Chưa có dữ liệu danh mục.</p>
-                    ) : (
-                        <ResponsiveContainer width="100%" height={300}>
-                            <PieChart>
-                                <Pie
-                                    data={[...categories]
-                                        .sort((a, b) => Number(b.quantity || 0) - Number(a.quantity || 0))
-                                        .slice(0, 6)
-                                        .map((cat) => ({ name: cat.categoryName, value: cat.quantity }))}
-                                    cx="50%"
-                                    cy="50%"
-                                    innerRadius={70}
-                                    outerRadius={110}
-                                    paddingAngle={3}
-                                    dataKey="value"
-                                    label={({ percent }: { percent?: number }) => `${((percent ?? 0) * 100).toFixed(1)}%`}
-                                    labelLine={false}
-                                >
-                                    {[...categories]
-                                        .sort((a, b) => Number(b.quantity || 0) - Number(a.quantity || 0))
-                                        .slice(0, 6)
-                                        .map((_, i) => {
-                                            const colors = ["#6366f1", "#f59e0b", "#10b981", "#fb7185", "#06b6d4", "#8b5cf6"];
-                                            return <Cell key={i} fill={colors[i] ?? "#6366f1"} />;
-                                        })}
-                                </Pie>
-                                <Tooltip
-                                    content={({ active, payload }) => {
-                                        if (!active || !payload?.length) return null;
-                                        return (
-                                            <div className="rounded-lg border bg-background p-2 text-xs shadow-md">
-                                                <p className="mb-1 font-medium">{payload[0]?.name}</p>
-                                                <p>Đã bán: {Helper.formatNumber(Number(payload[0]?.value ?? 0))}</p>
-                                                <p>Tăng trưởng: {Helper.formatPercent([...categories].find((c) => c.categoryName === payload[0]?.name)?.percentChange ?? 0)}</p>
-                                            </div>
-                                        );
-                                    }}
-                                />
-                                <Legend iconType="circle" iconSize={10} />
-                            </PieChart>
-                        </ResponsiveContainer>
-                    )}
-                </CardContent>
-            </Card>
+            <div className="grid gap-4 xl:grid-cols-3">
+                <div className="col-span-2">
+                    <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <Boxes className="h-5 w-5 text-primary" />
+                            Danh mục hiệu suất cao
+                        </CardTitle>
+                        <CardDescription>Xếp hạng danh mục theo số lượng bán trong kỳ {periodMeta.label.toLowerCase()}.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        {loading ? (
+                            <Skeleton className="h-72 w-full" />
+                        ) : categories.length === 0 ? (
+                            <p className="text-sm text-muted-foreground">Chưa có dữ liệu danh mục.</p>
+                        ) : (
+                            <ResponsiveContainer width="100%" height={300}>
+                                <PieChart>
+                                    <Pie
+                                        data={[...categories]
+                                            .sort((a, b) => Number(b.quantity || 0) - Number(a.quantity || 0))
+                                            .slice(0, 6)
+                                            .map((cat) => ({ name: cat.categoryName, value: cat.quantity }))}
+                                        cx="50%"
+                                        cy="50%"
+                                        innerRadius={70}
+                                        outerRadius={110}
+                                        paddingAngle={3}
+                                        dataKey="value"
+                                        label={({ percent }: { percent?: number }) => `${((percent ?? 0) * 100).toFixed(1)}%`}
+                                        labelLine={false}
+                                    >
+                                        {[...categories]
+                                            .sort((a, b) => Number(b.quantity || 0) - Number(a.quantity || 0))
+                                            .slice(0, 6)
+                                            .map((_, i) => {
+                                                const colors = ["#6366f1", "#f59e0b", "#10b981", "#fb7185", "#06b6d4", "#8b5cf6"];
+                                                return <Cell key={i} fill={colors[i] ?? "#6366f1"} />;
+                                            })}
+                                    </Pie>
+                                    <Tooltip
+                                        content={({ active, payload }) => {
+                                            if (!active || !payload?.length) return null;
+                                            return (
+                                                <div className="rounded-lg border bg-background p-2 text-xs shadow-md">
+                                                    <p className="mb-1 font-medium">{payload[0]?.name}</p>
+                                                    <p>Đã bán: {Helper.formatNumber(Number(payload[0]?.value ?? 0))}</p>
+                                                    <p>Tăng trưởng: {Helper.formatPercent([...categories].find((c) => c.categoryName === payload[0]?.name)?.percentChange ?? 0)}</p>
+                                                </div>
+                                            );
+                                        }}
+                                    />
+                                    <Legend iconType="circle" iconSize={10} />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        )}
+                    </CardContent>
+                </Card>
+                </div>
+
+                <div className="col-span-1">
+                    <TopCustomersCard customers={topCustomers} loading={loading} sort={customerSort} onSortChange={setCustomerSort} />
+                </div>
+            </div>
         </AdminPageShell>
     );
 }

@@ -183,6 +183,68 @@ class StatisticalService
         ];
     }
 
+    /**
+     * Thống kê top khách hàng theo tổng mức mua trong kỳ
+     */
+    public function getTopCustomers(int $periodInMonths, int $topN = 5)
+    {
+        $now = Carbon::now();
+        $startCurrent = $now->copy()->subMonths($periodInMonths);
+
+        $orders = Order::with(['user:id,full_name,email,phone'])
+            ->whereBetween('created_at', [$startCurrent, $now])
+            ->where('order_status', '!=', 'CANCELLED')
+            ->orderByDesc('created_at')
+            ->get(['id', 'user_id', 'customer_name', 'customer_phone', 'total_amount', 'order_status', 'created_at']);
+
+        $grouped = $orders->groupBy(function ($order) {
+            if ($order->user_id) {
+                return 'user_' . $order->user_id;
+            }
+
+            $guestKey = $order->customer_phone ?: strtolower(trim((string)$order->customer_name));
+            return 'guest_' . ($guestKey ?: ('order_' . $order->id));
+        });
+
+        return $grouped
+            ->map(function ($customerOrders) {
+                $firstOrder = $customerOrders->first();
+                $user = $firstOrder?->user;
+
+                $totalPurchase = $customerOrders->sum(function ($order) {
+                    return (float)$order->total_amount;
+                });
+
+                $orders = $customerOrders
+                    ->sortByDesc('created_at')
+                    ->map(function ($order) {
+                        $status = $order->order_status;
+                        $statusValue = $status instanceof \BackedEnum ? $status->value : (string)$status;
+
+                        return [
+                            'orderId' => (int)$order->id,
+                            'totalAmount' => (float)$order->total_amount,
+                            'orderStatus' => $statusValue,
+                            'createdAt' => optional($order->created_at)->toISOString(),
+                        ];
+                    })
+                    ->values();
+
+                return [
+                    'userId' => $firstOrder?->user_id ? (int)$firstOrder->user_id : null,
+                    'customerName' => $user?->full_name ?: ($firstOrder?->customer_name ?? 'Khách lẻ'),
+                    'customerPhone' => $user?->phone ?: ($firstOrder?->customer_phone ?? null),
+                    'customerEmail' => $user?->email ?? null,
+                    'totalPurchase' => round($totalPurchase, 2),
+                    'orderCount' => $orders->count(),
+                    'orders' => $orders,
+                ];
+            })
+            ->sortByDesc('totalPurchase')
+            ->take(max(1, $topN))
+            ->values();
+    }
+
     // Helper tính toán %
     private function calculatePercentage($current, $previous)
     {

@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Loader2, UserPlus } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -74,7 +75,7 @@ export default function StoreRegisterPage() {
     return (
         <div className="mx-auto flex min-h-[calc(100vh-12rem)] max-w-6xl items-center px-4 py-10">
             <div className="grid w-full gap-8 lg:grid-cols-[420px_1fr]">
-                <Card className="border-gray-200 shadow-lg">
+                <Card className="border-gray-200 rounded-none shadow-lg">
                     <CardHeader className="space-y-4 text-center">
                         <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-red-50 text-red-600">
                             <UserPlus className="h-7 w-7" />
@@ -162,13 +163,8 @@ export default function StoreRegisterPage() {
                     </CardContent>
                 </Card>
 
-                <section className="rounded-none border border-gray-200 bg-gray-50 p-8 lg:p-12">
-                    <p className="text-sm font-semibold uppercase tracking-[0.3em] text-red-600">Storefront account</p>
-                    <h1 className="mt-4 text-4xl font-bold leading-tight text-gray-900">Tạo tài khoản để dùng xuyên suốt khu mua sắm.</h1>
-                    <div className="mt-6 space-y-4 text-sm leading-7 text-gray-600">
-                        <p>Luồng đăng ký này bám theo backend hiện có, sử dụng trực tiếp endpoint `auth/register` để tạo người dùng với role khách hàng.</p>
-                        <p>Sau khi đăng ký, bạn có thể đăng nhập để thêm sản phẩm vào giỏ, xem đơn hàng, quản lý địa chỉ và cập nhật thông tin cá nhân tại trang tài khoản.</p>
-                    </div>
+                <section className="relative hidden min-h-100 overflow-hidden rounded-none border border-gray-200 lg:block">
+                    <Image src="/reg_back.png" alt="Register Banner" fill className="object-cover object-center" />
                 </section>
             </div>
         </div>

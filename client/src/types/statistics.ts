@@ -35,3 +35,20 @@ export interface CategoryStats {
     previousQuantity: number;
     percentChange: number;
 }
+
+export interface TopCustomerOrder {
+    orderId: number;
+    totalAmount: number;
+    orderStatus: string;
+    createdAt: string;
+}
+
+export interface TopCustomerStats {
+    userId: number | null;
+    customerName: string;
+    customerPhone: string | null;
+    customerEmail: string | null;
+    totalPurchase: number;
+    orderCount: number;
+    orders: TopCustomerOrder[];
+}

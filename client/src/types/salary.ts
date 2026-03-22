@@ -2,24 +2,44 @@ import type { ApiResponse } from "@/types/api";
 
 export interface SalaryCalculation {
     user_id: number;
-    full_name: string;
+    employee: string;
+    month: string;
     position: string;
-    month: number;
-    year: number;
+    employment_type: string;
     base_salary: number;
-    total_hours: number;
-    total_days_worked: number;
-    overtime_hours: number;
-    late_deductions: number;
-    bonus: number;
-    total_salary: number;
-    details: Array<{
-        date: string;
-        hours_worked: number;
-        status: string;
+    total_holiday_bonus: number;
+    total_manual_bonus: number;
+    final_salary: number;
+    bonus_details: Array<{
+        name?: string;
+        amount?: number;
+        [key: string]: unknown;
+    }>;
+    manual_bonus_details?: Array<{
+        id: number;
         amount: number;
+        reason?: string;
+        type: string;
     }>;
     [key: string]: unknown;
 }
 
+/** Response từ server cho từng nhân viên trong bulk calculate */
+export interface SalaryBulkItem {
+    user_id: number;
+    employee: string;
+    month: string;
+    position: string;
+    employment_type: string | null;
+    base_salary: number;
+    total_holiday_bonus: number;
+    total_manual_bonus: number;
+    final_salary: number;
+    bonus_details: Array<{ date: string; hours: number; bonus: number }>;
+    manual_bonus_details?: Array<{ id: number; amount: number; reason?: string; type: string }>;
+    status: "ok" | "error";
+    error: string | null;
+}
+
 export type SalaryCalculationResponse = ApiResponse<SalaryCalculation>;
+export type SalaryBulkResponse = ApiResponse<SalaryBulkItem[]>;

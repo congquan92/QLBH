@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\Status;
 use App\Http\Requests\Product\ProductCreationRequest;
 use App\Http\Requests\Product\UpdateProductRequest;
 use App\Http\Responses\ApiResponse;
@@ -82,7 +81,25 @@ class ProductController extends Controller
      */
     public function addVariants($id, Request $request)
     {
+        $request->validate([
+            '*.price' => 'required|numeric|min:0',
+            '*.weight' => 'required|numeric|min:0',
+            '*.length' => 'required|numeric|min:0',
+            '*.width' => 'required|numeric|min:0',
+            '*.height' => 'required|numeric|min:0',
+            '*.variantAttributes' => 'required|array|min:1',
+            '*.variantAttributes.*.attributeId' => 'nullable|exists:attributes,id',
+            '*.variantAttributes.*.attribute' => 'nullable|string|max:255',
+            '*.variantAttributes.*.value' => 'required|string|max:255',
+            '*.variantAttributes.*.image' => 'nullable|string',
+        ]);
+
         $this->productService->addVariants((int) $id, $request->all());
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Thêm biến thể thành công!'
+        ], 200);
     }
 
     /**
@@ -154,18 +171,21 @@ class ProductController extends Controller
 
     public function updateVariants($productId, Request $request)
     {
-        // 1. Validation dữ liệu đầu vào
         $request->validate([
             'variantId' => 'required|exists:product_variants,id',
             'sku'       => 'nullable|string|max:50',
             'price'     => 'required|numeric|min:0',
             'weight'    => 'required|numeric|min:0',
+            'length'    => 'required|numeric|min:0',
+            'width'     => 'required|numeric|min:0',
+            'height'    => 'required|numeric|min:0',
             'variantAttributes' => 'required|array',
-            'variantAttributes.*.attributeId' => 'required|exists:attributes,id',
+            'variantAttributes.*.attributeId' => 'nullable|exists:attributes,id',
+            'variantAttributes.*.attribute' => 'nullable|string|max:255',
             'variantAttributes.*.value' => 'required|string',
+            'variantAttributes.*.image' => 'nullable|string',
         ]);
 
-        // 2. Gọi Service xử lý logic cập nhật
         try {
             $this->productService->updateVariants((int)$productId, (int)$request->variantId, $request->all());
             

@@ -3,6 +3,7 @@ namespace App\Http\Mapper;
 
 use App\Enums\Status;
 use App\Http\Responses\Address\AddressResponse;
+use App\Http\Responses\Position\PositionResponse;
 use App\Http\Responses\User\UserResponse;
 use App\Models\User;
 
@@ -27,6 +28,21 @@ class UserMapper
                 $address->is_default,
             );
         })->toArray();
+
+        // Employment type từ job history hiện tại
+        $employmentType = $user->employmentType?->value ?? ($user->employmentType instanceof \BackedEnum ? $user->employmentType->value : $user->employmentType);
+
+        // Position response
+        $positionResponse = null;
+        if ($user->position) {
+            $positionResponse = new PositionResponse(
+                $user->position->id,
+                $user->position->name,
+                $user->position->base_salary,
+                $user->position->salary_type?->value ?? $user->position->salary_type,
+            );
+        }
+
         return new UserResponse(
             $user->id,
             $user->username,
@@ -52,7 +68,8 @@ class UserMapper
                 ? RoleMapper::toRoleResponse($user->role)
                 : null
             ),
-            
+            $employmentType,
+            $positionResponse,
         );
     }
 }

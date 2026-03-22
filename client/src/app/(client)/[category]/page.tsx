@@ -1,7 +1,7 @@
 import { CategoryApi } from "@/api/category.api";
 import { ProductApi } from "@/api/product.api";
 import ListProduct from "@/app/(client)/san-pham/_components/listProduct";
-import StaticContentPage from "@/components/feature/static-content-page";
+import PageComingSoon from "@/components/feature/page/PageComingSoon";
 import { PUBLIC_PAGES } from "@/data/public-pages";
 import { Helper } from "@/lib/helper";
 import { findRootCategoryBySlug } from "@/lib/public-catalog";
@@ -15,10 +15,10 @@ interface CategoryPageProps {
 
 export default async function CategoryPage({ params, searchParams }: CategoryPageProps) {
     const { category } = await params;
-    const content = PUBLIC_PAGES[category];
+    const content = PUBLIC_PAGES.find((page) => page === category);
 
     if (content) {
-        return <StaticContentPage content={content} />;
+        return <PageComingSoon />;
     }
 
     const query = await searchParams;
@@ -59,7 +59,6 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
                 <div className="mx-auto px-4 py-8">
                     <p className="text-sm font-semibold uppercase tracking-[0.2em] text-red-600">Danh mục</p>
                     <h1 className="mt-2 text-3xl font-bold text-gray-900">{resolvedCategory.name}</h1>
-                    <p className="mt-3 max-w-3xl text-sm leading-6 text-gray-600">Duyệt toàn bộ sản phẩm thuộc nhóm {resolvedCategory.name.toLowerCase()} và chuyển nhanh tới các phân nhóm con ngay bên dưới.</p>
 
                     {resolvedCategory.childCategory.length > 0 && (
                         <div className="mt-6 flex flex-wrap gap-2">

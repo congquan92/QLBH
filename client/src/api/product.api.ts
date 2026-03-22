@@ -148,7 +148,7 @@ export const ProductApi = {
     },
 
     /** POST /product/{id}/variants/add — Add variants to product */
-    addVariants: async (productId: number, payload: Record<string, unknown>) => {
+    addVariants: async (productId: number, payload: Record<string, unknown> | Array<Record<string, unknown>>) => {
         try {
             const res = await axiosInstance.post(`/product/${productId}/variants/add`, payload);
             return res.data;

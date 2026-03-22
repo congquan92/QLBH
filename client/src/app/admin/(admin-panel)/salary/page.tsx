@@ -1,30 +1,25 @@
 "use client";
 
 import { AdminCrudApi } from "@/api/admin/admin-crud.api";
+import { SalaryApi } from "@/api/admin/salary.api";
 import { AdminPageShell } from "@/components/feature/admin-page-shell";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Landmark, Loader2, Pencil, Plus, Scale, Trash2 } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
+import type { SalaryConfig, SalaryScale } from "@/types/admin-crud";
+import type { SalaryBulkItem } from "@/types/salary";
+import { Calculator, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import type { SalaryConfig, SalaryScale } from "@/types/admin-crud";
+import { SalaryConfigDialog, type SalaryConfigForm } from "./_components/SalaryConfigDialog";
+import { SalaryConfigTable } from "./_components/SalaryConfigTable";
+import { SalaryOverviewTable } from "./_components/SalaryOverviewTable";
+import { SalaryScaleDialog, type SalaryScaleForm } from "./_components/SalaryScaleDialog";
+import { SalaryScaleTable } from "./_components/SalaryScaleTable";
+import { HolidayManagerDialog } from "./_components/HolidayManagerDialog";
 
-type SalaryConfigForm = {
-    id?: number;
-    rule_name: string;
-    employee_type: string;
-    multiplier: string;
-    is_holiday: boolean;
-};
-
-type SalaryScaleForm = {
-    id?: number;
-    name: string;
-    years_of_experience: string;
-    coefficient: string;
-};
 
 const emptyConfigForm: SalaryConfigForm = {
     rule_name: "",
@@ -44,12 +39,30 @@ export default function SalaryPage() {
     const [scales, setScales] = useState<SalaryScale[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
+
+    // Config dialog
+    const [configDialogOpen, setConfigDialogOpen] = useState(false);
     const [configForm, setConfigForm] = useState<SalaryConfigForm>(emptyConfigForm);
+
+    // Scale dialog
+    const [scaleDialogOpen, setScaleDialogOpen] = useState(false);
     const [scaleForm, setScaleForm] = useState<SalaryScaleForm>(emptyScaleForm);
+
+    // Holiday Manager dialog
+    const [holidayManagerOpen, setHolidayManagerOpen] = useState(false);
+
+    // Bảng lương tổng hợp
+    const [overviewMonth, setOverviewMonth] = useState(String(new Date().getMonth() + 1));
+    const [overviewYear, setOverviewYear] = useState(String(new Date().getFullYear()));
+    const [overviewData, setOverviewData] = useState<SalaryBulkItem[]>([]);
+    const [isCalculating, setIsCalculating] = useState(false);
 
     async function fetchData() {
         setIsLoading(true);
-        const [configRes, scaleRes] = await Promise.all([AdminCrudApi.getSalaryConfigs({ page: 1, size: 100, sort: "id:desc" }), AdminCrudApi.getSalaryScales({ page: 1, size: 100, sort: "years_of_experience:asc" })]);
+        const [configRes, scaleRes] = await Promise.all([
+            AdminCrudApi.getSalaryConfigs({ page: 1, size: 100, sort: "id:desc" }),
+            AdminCrudApi.getSalaryScales({ page: 1, size: 100, sort: "years_of_experience:asc" }),
+        ]);
         setConfigs(configRes.data.data);
         setScales(scaleRes.data.data);
         setIsLoading(false);
@@ -59,15 +72,13 @@ export default function SalaryPage() {
         void fetchData();
     }, []);
 
-    function resetConfigForm() {
+    // ─── Config handlers ─────────────────────────────────────────
+    function openAddConfig() {
         setConfigForm(emptyConfigForm);
+        setConfigDialogOpen(true);
     }
 
-    function resetScaleForm() {
-        setScaleForm(emptyScaleForm);
-    }
-
-    function startEditConfig(item: SalaryConfig) {
+    function openEditConfig(item: SalaryConfig) {
         setConfigForm({
             id: item.id,
             rule_name: String(item.rule_name ?? ""),
@@ -75,23 +86,14 @@ export default function SalaryPage() {
             multiplier: String(item.multiplier ?? "1"),
             is_holiday: Boolean(item.is_holiday),
         });
+        setConfigDialogOpen(true);
     }
 
-    function startEditScale(item: SalaryScale) {
-        setScaleForm({
-            id: item.id,
-            name: String(item.name ?? ""),
-            years_of_experience: String(item.years_of_experience ?? 0),
-            coefficient: String(item.coefficient ?? 1),
-        });
-    }
-
-    async function submitConfig() {
+    async function handleSubmitConfig() {
         if (!configForm.rule_name.trim()) {
             toast.error("Vui lòng nhập tên rule salary config.");
             return;
         }
-
         setIsSaving(true);
         try {
             const payload = {
@@ -100,7 +102,6 @@ export default function SalaryPage() {
                 multiplier: Number(configForm.multiplier),
                 is_holiday: configForm.is_holiday,
             };
-
             if (configForm.id) {
                 await AdminCrudApi.updateSalaryConfig(configForm.id, payload);
                 toast.success("Cập nhật salary config thành công.");
@@ -108,30 +109,56 @@ export default function SalaryPage() {
                 await AdminCrudApi.createSalaryConfig({ configs: [payload] });
                 toast.success("Tạo salary config thành công.");
             }
-
-            resetConfigForm();
+            setConfigDialogOpen(false);
             await fetchData();
         } catch (error) {
-            toast.error(AdminCrudApi.toErrorMessage(error));
+            toast.error(error instanceof Error ? error.message : "Có lỗi xảy ra.");
         } finally {
             setIsSaving(false);
         }
     }
 
-    async function submitScale() {
+    async function handleDeleteConfig(id: number) {
+        setIsSaving(true);
+        try {
+            await AdminCrudApi.deleteSalaryConfig(id);
+            toast.success("Đã xóa salary config.");
+            await fetchData();
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : "Có lỗi xảy ra.");
+        } finally {
+            setIsSaving(false);
+        }
+    }
+
+    // ─── Scale handlers ───────────────────────────────────────────
+    function openAddScale() {
+        setScaleForm(emptyScaleForm);
+        setScaleDialogOpen(true);
+    }
+
+    function openEditScale(item: SalaryScale) {
+        setScaleForm({
+            id: item.id,
+            name: String(item.name ?? ""),
+            years_of_experience: String(item.years_of_experience ?? 0),
+            coefficient: String(item.coefficient ?? 1),
+        });
+        setScaleDialogOpen(true);
+    }
+
+    async function handleSubmitScale() {
         if (!scaleForm.name.trim()) {
             toast.error("Vui lòng nhập tên thang lương.");
             return;
         }
-
-        const payload = {
-            name: scaleForm.name.trim(),
-            years_of_experience: Number(scaleForm.years_of_experience),
-            coefficient: Number(scaleForm.coefficient),
-        };
-
         setIsSaving(true);
         try {
+            const payload = {
+                name: scaleForm.name.trim(),
+                years_of_experience: Number(scaleForm.years_of_experience),
+                coefficient: Number(scaleForm.coefficient),
+            };
             if (scaleForm.id) {
                 await AdminCrudApi.updateSalaryScale(scaleForm.id, payload);
                 toast.success("Cập nhật thang lương thành công.");
@@ -139,181 +166,158 @@ export default function SalaryPage() {
                 await AdminCrudApi.createSalaryScale(payload);
                 toast.success("Tạo thang lương thành công.");
             }
-
-            resetScaleForm();
+            setScaleDialogOpen(false);
             await fetchData();
         } catch (error) {
-            toast.error(AdminCrudApi.toErrorMessage(error));
+            toast.error(error instanceof Error ? error.message : "Có lỗi xảy ra.");
         } finally {
             setIsSaving(false);
         }
     }
 
-    async function removeConfig(id: number) {
-        setIsSaving(true);
-        try {
-            await AdminCrudApi.deleteSalaryConfig(id);
-            toast.success("Đã xóa salary config.");
-            if (configForm.id === id) {
-                resetConfigForm();
-            }
-            await fetchData();
-        } catch (error) {
-            toast.error(AdminCrudApi.toErrorMessage(error));
-        } finally {
-            setIsSaving(false);
-        }
-    }
-
-    async function removeScale(id: number) {
+    async function handleDeleteScale(id: number) {
         setIsSaving(true);
         try {
             await AdminCrudApi.deleteSalaryScale(id);
             toast.success("Đã xóa thang lương.");
-            if (scaleForm.id === id) {
-                resetScaleForm();
-            }
             await fetchData();
         } catch (error) {
-            toast.error(AdminCrudApi.toErrorMessage(error));
+            toast.error(error instanceof Error ? error.message : "Có lỗi xảy ra.");
         } finally {
             setIsSaving(false);
         }
     }
 
-    return (
-        <AdminPageShell title="Lương" description="CRUD Salary Config và Salary Scale">
-            <div className="grid gap-4 lg:grid-cols-2">
-                <Card>
-                    <CardHeader>
-                        <CardTitle>{configForm.id ? "Cập nhật Salary Config" : "Tạo Salary Config"}</CardTitle>
-                        <CardDescription>Endpoint `/salary-configs/*`</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                        <div className="space-y-2">
-                            <Label>Rule name</Label>
-                            <Input value={configForm.rule_name} onChange={(e) => setConfigForm((prev) => ({ ...prev, rule_name: e.target.value }))} />
-                        </div>
-                        <div className="space-y-2">
-                            <Label>Employee type</Label>
-                            <Input value={configForm.employee_type} onChange={(e) => setConfigForm((prev) => ({ ...prev, employee_type: e.target.value }))} />
-                        </div>
-                        <div className="space-y-2">
-                            <Label>Multiplier</Label>
-                            <Input value={configForm.multiplier} onChange={(e) => setConfigForm((prev) => ({ ...prev, multiplier: e.target.value }))} />
-                        </div>
-                        <label className="flex items-center gap-2 text-sm">
-                            <input type="checkbox" checked={configForm.is_holiday} onChange={(e) => setConfigForm((prev) => ({ ...prev, is_holiday: e.target.checked }))} />
-                            Is holiday
-                        </label>
-                        <div className="flex gap-2">
-                            <Button onClick={() => void submitConfig()} disabled={isSaving}>
-                                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
-                                {configForm.id ? "Lưu" : "Tạo"}
-                            </Button>
-                            {configForm.id && (
-                                <Button variant="outline" onClick={resetConfigForm}>
-                                    Hủy
-                                </Button>
-                            )}
-                        </div>
-                        <div className="space-y-2 border-t pt-3">
-                            {isLoading ? (
-                                <p className="text-sm text-muted-foreground">Đang tải...</p>
-                            ) : (
-                                configs.map((item) => (
-                                    <div key={item.id} className="rounded-md border p-2">
-                                        <div className="flex items-start justify-between gap-2">
-                                            <div>
-                                                <p className="font-medium flex items-center gap-2">
-                                                    <Landmark className="h-4 w-4" />
-                                                    {String(item.rule_name ?? `Config #${item.id}`)}
-                                                </p>
-                                                <p className="text-xs text-muted-foreground">
-                                                    {String(item.employee_type ?? "-")} | x{String(item.multiplier ?? "-")} | holiday: {String(item.is_holiday ?? false)}
-                                                </p>
-                                            </div>
-                                            <div className="flex gap-2">
-                                                <Button variant="outline" size="sm" onClick={() => startEditConfig(item)}>
-                                                    <Pencil className="h-4 w-4" />
-                                                </Button>
-                                                <Button variant="outline" size="sm" onClick={() => void removeConfig(item.id)} disabled={isSaving}>
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))
-                            )}
-                            {!isLoading && configs.length === 0 && <p className="text-sm text-muted-foreground">Không có salary config.</p>}
-                        </div>
-                    </CardContent>
-                </Card>
+    // ─── Bulk salary calculate ────────────────────────────────────
+    async function handleCalculateAll() {
+        if (!overviewMonth || !overviewYear) {
+            toast.error("Vui lòng chọn tháng và năm.");
+            return;
+        }
+        setIsCalculating(true);
+        try {
+            const res = await SalaryApi.calculateAllSalaries(Number(overviewMonth), Number(overviewYear));
+            const items = Array.isArray(res.data) ? res.data : [];
+            setOverviewData(items);
+            const errCount = items.filter((i) => i.status === "error").length;
+            if (errCount > 0) {
+                toast.warning(`Đã tính xong. ${errCount} nhân viên thiếu dữ liệu job history.`);
+            } else {
+                toast.success(`Đã tính lương cho ${items.length} nhân viên.`);
+            }
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : "Không thể tính lương.");
+        } finally {
+            setIsCalculating(false);
+        }
+    }
 
-                <Card>
-                    <CardHeader>
-                        <CardTitle>{scaleForm.id ? "Cập nhật Salary Scale" : "Tạo Salary Scale"}</CardTitle>
-                        <CardDescription>Endpoint `/salary-scales/*`</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                        <div className="space-y-2">
-                            <Label>Tên thang lương</Label>
-                            <Input value={scaleForm.name} onChange={(e) => setScaleForm((prev) => ({ ...prev, name: e.target.value }))} />
-                        </div>
-                        <div className="grid grid-cols-2 gap-2">
-                            <div className="space-y-2">
-                                <Label>Năm kinh nghiệm</Label>
-                                <Input value={scaleForm.years_of_experience} onChange={(e) => setScaleForm((prev) => ({ ...prev, years_of_experience: e.target.value }))} />
-                            </div>
-                            <div className="space-y-2">
-                                <Label>Hệ số</Label>
-                                <Input value={scaleForm.coefficient} onChange={(e) => setScaleForm((prev) => ({ ...prev, coefficient: e.target.value }))} />
-                            </div>
-                        </div>
-                        <div className="flex gap-2">
-                            <Button onClick={() => void submitScale()} disabled={isSaving}>
-                                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
-                                {scaleForm.id ? "Lưu" : "Tạo"}
-                            </Button>
-                            {scaleForm.id && (
-                                <Button variant="outline" onClick={resetScaleForm}>
-                                    Hủy
-                                </Button>
-                            )}
-                        </div>
-                        <div className="space-y-2 border-t pt-3">
-                            {isLoading ? (
-                                <p className="text-sm text-muted-foreground">Đang tải...</p>
-                            ) : (
-                                scales.map((item) => (
-                                    <div key={item.id} className="rounded-md border p-2">
-                                        <div className="flex items-start justify-between gap-2">
-                                            <div>
-                                                <p className="font-medium flex items-center gap-2">
-                                                    <Scale className="h-4 w-4" />
-                                                    {String(item.name ?? `Scale #${item.id}`)}
-                                                </p>
-                                                <p className="text-xs text-muted-foreground">
-                                                    exp: {String(item.years_of_experience ?? "-")} | coefficient: {String(item.coefficient ?? "-")}
-                                                </p>
-                                            </div>
-                                            <div className="flex gap-2">
-                                                <Button variant="outline" size="sm" onClick={() => startEditScale(item)}>
-                                                    <Pencil className="h-4 w-4" />
-                                                </Button>
-                                                <Button variant="outline" size="sm" onClick={() => void removeScale(item.id)} disabled={isSaving}>
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))
-                            )}
-                            {!isLoading && scales.length === 0 && <p className="text-sm text-muted-foreground">Không có thang lương.</p>}
-                        </div>
-                    </CardContent>
-                </Card>
+    return (
+        <AdminPageShell
+            title="Quản lý Lương"
+            description="Cấu hình hệ số lương, thang lương và xem bảng lương tổng hợp theo tháng"
+        >
+            {/* CRUD Config + Scale */}
+            <div className="grid gap-6 lg:grid-cols-2">
+                <SalaryConfigTable
+                    configs={configs}
+                    isLoading={isLoading}
+                    isSaving={isSaving}
+                    onAdd={openAddConfig}
+                    onEdit={openEditConfig}
+                    onDelete={handleDeleteConfig}
+                    onOpenHolidayManager={() => setHolidayManagerOpen(true)}
+                />
+                <SalaryScaleTable
+                    scales={scales}
+                    isLoading={isLoading}
+                    isSaving={isSaving}
+                    onAdd={openAddScale}
+                    onEdit={openEditScale}
+                    onDelete={handleDeleteScale}
+                />
             </div>
+
+            <Separator className="my-6" />
+
+            {/* Bảng lương tổng hợp */}
+            <div>
+                <h2 className="text-lg font-semibold mb-1">Bảng Lương Tổng Hợp</h2>
+                <p className="text-sm text-muted-foreground mb-4">Chọn tháng và năm để tính lương cho tất cả nhân viên cùng lúc.</p>
+
+                <div className="flex flex-wrap items-end gap-3">
+                    <div className="space-y-1.5">
+                        <Label>Tháng</Label>
+                        <Select value={overviewMonth} onValueChange={setOverviewMonth}>
+                            <SelectTrigger className="w-32">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                                    <SelectItem key={m} value={String(m)}>
+                                        Tháng {m}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                        <Label>Năm</Label>
+                        <Input
+                            type="number"
+                            className="w-28"
+                            min={2020}
+                            max={2100}
+                            value={overviewYear}
+                            onChange={(e) => setOverviewYear(e.target.value)}
+                        />
+                    </div>
+
+                    <Button onClick={() => void handleCalculateAll()} disabled={isCalculating}>
+                        {isCalculating ? (
+                            <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Đang tính...
+                            </>
+                        ) : (
+                            <>
+                                <Calculator className="mr-2 h-4 w-4" />
+                                Tính lương tất cả
+                            </>
+                        )}
+                    </Button>
+                </div>
+
+                <SalaryOverviewTable
+                    data={overviewData}
+                    isLoading={isCalculating}
+                    month={Number(overviewMonth)}
+                    year={Number(overviewYear)}
+                />
+            </div>
+
+            {/* Dialogs */}
+            <SalaryConfigDialog
+                open={configDialogOpen}
+                form={configForm}
+                isSaving={isSaving}
+                onChange={setConfigForm}
+                onSubmit={() => void handleSubmitConfig()}
+                onClose={() => setConfigDialogOpen(false)}
+            />
+            <SalaryScaleDialog
+                open={scaleDialogOpen}
+                form={scaleForm}
+                isSaving={isSaving}
+                onChange={setScaleForm}
+                onSubmit={() => void handleSubmitScale()}
+                onClose={() => setScaleDialogOpen(false)}
+            />
+            <HolidayManagerDialog
+                open={holidayManagerOpen}
+                onClose={() => setHolidayManagerOpen(false)}
+            />
         </AdminPageShell>
     );
 }

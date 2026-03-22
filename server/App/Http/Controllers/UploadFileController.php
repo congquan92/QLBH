@@ -57,7 +57,12 @@ class UploadFileController extends Controller
         }
 
         if (empty($result)) {
-            return response()->json(['message' => 'Upload thất bại. Kiểm tra cấu hình Cloudinary!'], 500);
+            $cloudinaryError = $this->cloudinaryService->getLastError();
+
+            return response()->json([
+                'message' => 'Upload thất bại. Kiểm tra cấu hình Cloudinary!',
+                'error' => $cloudinaryError,
+            ], 500);
         }
 
         return $this->success($result, 'Upload File thành công');

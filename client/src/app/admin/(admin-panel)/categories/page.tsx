@@ -2,71 +2,74 @@
 
 import { CategoryApi } from "@/api/category.api";
 import { AdminPageShell } from "@/components/feature/admin-page-shell";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Helper } from "@/lib/helper";
 import type { Category, CategoryChild } from "@/types/navbar";
-import { ChevronDown, ChevronRight, FolderTree, Loader2, Pencil, Plus, RotateCcw, Trash2 } from "lucide-react";
+import { Plus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Helper } from "@/lib/helper";
-
-type CategoryForm = {
-    id?: number;
-    name: string;
-    parentId: string; // "none" = danh mục gốc
-    status: string;
-};
-
-const emptyForm: CategoryForm = { name: "", parentId: "none", status: "ACTIVE" };
+import { CategoryDialog, emptyForm, type CategoryForm } from "./_components/category-dialog";
+import { CategoryTree } from "./_components/category-tree";
+import { DeleteConfirmDialog } from "./_components/delete-confirm-dialog";
 
 type AnyCategory = Category | CategoryChild;
+
+type DeleteTarget = {
+    id: number;
+    name: string;
+};
 
 export default function CategoriesPage() {
     const [categories, setCategories] = useState<Category[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
-    const [form, setForm] = useState<CategoryForm>(emptyForm);
-    const [expanded, setExpanded] = useState<Record<number, boolean>>({});
 
+    // Dialog state
+    const [dialogOpen, setDialogOpen] = useState(false);
+    const [form, setForm] = useState<CategoryForm>(emptyForm);
+    const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
+
+    // ──────────────────────────────────────────────
     async function fetchData() {
         setIsLoading(true);
-        const response = await CategoryApi.getAdminCategories({ page: 1, size: 200 });
-        setCategories(response.data);
-        console.log("Fetched categories:", response.data);
-        const initExpanded: Record<number, boolean> = {};
-        for (const cat of response.data) {
-            if ((cat.childCategory?.length ?? 0) > 0) initExpanded[cat.id] = true;
+        try {
+            const response = await CategoryApi.getAdminCategories({ page: 1, size: 200 });
+            setCategories(response.data);
+        } catch (error) {
+            toast.error(Helper.errorMessage(error));
+        } finally {
+            setIsLoading(false);
         }
-        setExpanded(initExpanded);
-        setIsLoading(false);
     }
 
     useEffect(() => {
         void fetchData();
     }, []);
 
-    function resetForm() {
+    // ── Open dialog for create ──
+    function openCreateDialog() {
         setForm(emptyForm);
+        setDialogOpen(true);
     }
 
-    function startEdit(item: AnyCategory, parentId?: number) {
+    // ── Open dialog for edit ──
+    function openEditDialog(item: AnyCategory, parentId?: number) {
         setForm({
             id: item.id,
             name: String(item.name ?? ""),
             parentId: parentId != null ? String(parentId) : "none",
             status: String(item.status ?? "ACTIVE"),
         });
-        window.scrollTo({ top: 0, behavior: "smooth" });
+        setDialogOpen(true);
     }
 
-    function toggleExpand(id: number) {
-        setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
+    // ── Close dialog ──
+    function closeDialog(open: boolean) {
+        setDialogOpen(open);
+        if (!open) setForm(emptyForm);
     }
 
+    // ── Submit create/edit ──
     async function submitCategory() {
         if (!form.name.trim()) {
             toast.error("Vui lòng nhập tên danh mục.");
@@ -97,7 +100,7 @@ export default function CategoriesPage() {
                 await CategoryApi.addCategory(payload);
                 toast.success("Tạo danh mục thành công.");
             }
-            resetForm();
+            closeDialog(false);
             await fetchData();
         } catch (error) {
             toast.error(Helper.errorMessage(error));
@@ -106,13 +109,19 @@ export default function CategoriesPage() {
         }
     }
 
-    async function removeCategory(id: number) {
-        if (!confirm("Bạn có chắc chắn muốn xóa danh mục này?")) return;
+    // ── Open delete dialog ──
+    function openDeleteDialog(item: AnyCategory) {
+        setDeleteTarget({ id: item.id, name: String(item.name) });
+    }
+
+    // ── Confirm delete ──
+    async function confirmDelete() {
+        if (!deleteTarget) return;
         setIsSaving(true);
         try {
-            await CategoryApi.deleteCategory(id);
+            await CategoryApi.deleteCategory(deleteTarget.id);
             toast.success("Đã xóa danh mục.");
-            if (form.id === id) resetForm();
+            setDeleteTarget(null);
             await fetchData();
         } catch (error) {
             toast.error(Helper.errorMessage(error));
@@ -121,6 +130,7 @@ export default function CategoriesPage() {
         }
     }
 
+    // ── Restore ──
     async function handleRestore(id: number) {
         setIsSaving(true);
         try {
@@ -134,166 +144,96 @@ export default function CategoriesPage() {
         }
     }
 
-    const totalCount = categories?.reduce((acc, cat) => acc + 1 + (cat.childCategory?.length ?? 0), 0);
+
+    // Nên ta so sánh trước/sau và chỉ gọi API cho những item đổi parent
+    async function handleReorder(newCategories: Category[]) {
+        // Xây map parentId hiện tại trên server (categories gốc chưa sửa)
+        const oldParentMap = new Map<number, number | null>();
+        for (const cat of categories) {
+            oldParentMap.set(cat.id, null); // cha gốc không có parent
+            for (const child of cat.childCategory ?? []) {
+                oldParentMap.set(child.id, cat.id);
+            }
+        }
+
+        // Tìm những item thay đổi parentId
+        const toMove: { categoryId: number; categoryParentId: number | null }[] = [];
+        for (const cat of newCategories) {
+            if (oldParentMap.get(cat.id) !== null) {
+                // Danh mục cha bị kéo thành con → gỡ parent
+                toMove.push({ categoryId: cat.id, categoryParentId: null });
+            }
+            for (const child of cat.childCategory ?? []) {
+                const oldParent = oldParentMap.get(child.id);
+                if (oldParent !== cat.id) {
+                    toMove.push({ categoryId: child.id, categoryParentId: cat.id });
+                }
+            }
+        }
+
+        if (toMove.length === 0) {
+            toast.info("Không có thay đổi nào để lưu.");
+            return;
+        }
+
+        try {
+            // Gọi API lần lượt cho từng item thay đổi
+            for (const payload of toMove) {
+                await CategoryApi.moveCategory(payload);
+            }
+            toast.success("Đã lưu thứ tự danh mục.");
+            await fetchData();
+        } catch (error) {
+            toast.error(Helper.errorMessage(error));
+            throw error; // báo cho tree biết để giữ dirty state
+        }
+    }
 
     return (
-        <AdminPageShell title="Danh mục" description="Quản lý cấu trúc danh mục và phân cấp sản phẩm">
-            <div className="grid gap-4 lg:grid-cols-3">
-                {/* ── Form ── */}
-                <Card className="lg:col-span-1 h-fit">
-                    <CardHeader>
-                        <CardTitle>{form.id ? "Cập nhật danh mục" : "Tạo danh mục"}</CardTitle>
-                        <CardDescription>Nhập thông tin danh mục sản phẩm</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <div className="space-y-2">
-                            <Label>Tên danh mục</Label>
-                            <Input value={form.name} onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))} placeholder="Nhập tên danh mục" />
-                        </div>
-                        <div className="space-y-2">
-                            <Label>Thuộc danh mục</Label>
-                            <Select value={form.parentId} onValueChange={(val) => setForm((prev) => ({ ...prev, parentId: val }))}>
-                                <SelectTrigger>
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="none">— Không có (tạo danh mục cha) —</SelectItem>
-                                    {categories?.map((cat) => (
-                                        <SelectItem key={cat.id} value={String(cat.id)}>
-                                            {cat.name}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                            <p className="text-xs text-muted-foreground">
-                                {form.parentId === "none" ? (
-                                    <span className="font-medium text-foreground">→ Danh mục GỐC (cha)</span>
-                                ) : (
-                                    <>
-                                        → Danh mục con của <span className="font-medium text-foreground">{categories.find((c) => String(c.id) === form.parentId)?.name}</span>
-                                    </>
-                                )}
-                            </p>
-                        </div>
-                        {form.id && (
-                            <div className="space-y-2">
-                                <Label>Trạng thái</Label>
-                                <Select value={form.status} onValueChange={(val) => setForm((prev) => ({ ...prev, status: val }))}>
-                                    <SelectTrigger>
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="ACTIVE">Kích hoạt</SelectItem>
-                                        <SelectItem value="INACTIVE">Vô hiệu hóa</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        )}
-                        <div className="flex gap-2">
-                            <Button onClick={() => void submitCategory()} disabled={isSaving}>
-                                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
-                                {form.id ? "Lưu thay đổi" : "Tạo mới"}
-                            </Button>
-                            {form.id && (
-                                <Button variant="outline" onClick={resetForm}>
-                                    Hủy
-                                </Button>
-                            )}
-                        </div>
-                    </CardContent>
-                </Card>
-
-                {/* ── Category tree ── */}
-                <Card className="lg:col-span-2">
-                    <CardHeader>
-                        <CardTitle>Tất cả danh mục</CardTitle>
-                        <CardDescription>
-                            {totalCount} danh mục ({categories?.length} danh mục gốc)
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        {isLoading ? (
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                                Đang tải danh mục...
-                            </div>
-                        ) : categories?.length === 0 ? (
-                            <p className="text-sm text-muted-foreground">Không có danh mục.</p>
-                        ) : (
-                            <div className="space-y-2">
-                                {categories?.map((category) => {
-                                    const hasChildren = (category.childCategory?.length ?? 0) > 0;
-                                    const isExpanded = !!expanded[category.id];
-                                    const isActive = category.status === "ACTIVE";
-
-                                    return (
-                                        <div key={category.id} className="rounded-md border">
-                                            {/* Parent row */}
-                                            <div className="flex items-center justify-between gap-3 p-3">
-                                                <div className="flex items-center gap-2 min-w-0">
-                                                    <button type="button" onClick={() => toggleExpand(category.id)} className="shrink-0 text-muted-foreground hover:text-foreground transition-colors" disabled={!hasChildren}>
-                                                        {hasChildren ? isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" /> : <FolderTree className="h-4 w-4 opacity-30" />}
-                                                    </button>
-                                                    <span className="font-medium truncate">{category.name}</span>
-                                                    {hasChildren && (
-                                                        <Badge variant="secondary" className="shrink-0 text-xs">
-                                                            {category.childCategory.length} con
-                                                        </Badge>
-                                                    )}
-                                                    <Badge variant={isActive ? "default" : "destructive"} className="shrink-0 text-xs">
-                                                        {isActive ? "Kích hoạt" : "Đã xóa"}
-                                                    </Badge>
-                                                </div>
-                                                <div className="flex shrink-0 gap-1">
-                                                    <Button variant="ghost" size="sm" onClick={() => startEdit(category)} title="Chỉnh sửa">
-                                                        <Pencil className="h-3.5 w-3.5" />
-                                                    </Button>
-                                                    <Button variant="ghost" size="sm" onClick={() => void removeCategory(category.id)} disabled={isSaving} title="Xóa">
-                                                        <Trash2 className="h-3.5 w-3.5" />
-                                                    </Button>
-                                                    <Button variant="ghost" size="sm" onClick={() => void handleRestore(category.id)} disabled={isSaving} title="Khôi phục">
-                                                        <RotateCcw className="h-3.5 w-3.5" />
-                                                    </Button>
-                                                </div>
-                                            </div>
-
-                                            {/* Children */}
-                                            {hasChildren && isExpanded && (
-                                                <div className="border-t bg-muted/30 px-3 pb-3 pt-2 space-y-1.5">
-                                                    {category.childCategory.map((child) => {
-                                                        const childActive = child.status === "ACTIVE";
-                                                        return (
-                                                            <div key={child.id} className="flex items-center justify-between gap-3 rounded-sm border bg-background px-3 py-2">
-                                                                <div className="flex items-center gap-2 min-w-0">
-                                                                    <span className="ml-4 text-sm truncate">{child.name}</span>
-                                                                    <Badge variant={childActive ? "outline" : "destructive"} className="shrink-0 text-xs">
-                                                                        {childActive ? "Kích hoạt" : "Đã xóa"}
-                                                                    </Badge>
-                                                                </div>
-                                                                <div className="flex shrink-0 gap-1">
-                                                                    <Button variant="ghost" size="sm" onClick={() => startEdit(child, category.id)} title="Chỉnh sửa">
-                                                                        <Pencil className="h-3.5 w-3.5" />
-                                                                    </Button>
-                                                                    <Button variant="ghost" size="sm" onClick={() => void removeCategory(child.id)} disabled={isSaving} title="Xóa">
-                                                                        <Trash2 className="h-3.5 w-3.5" />
-                                                                    </Button>
-                                                                    <Button variant="ghost" size="sm" onClick={() => void handleRestore(child.id)} disabled={isSaving} title="Khôi phục">
-                                                                        <RotateCcw className="h-3.5 w-3.5" />
-                                                                    </Button>
-                                                                </div>
-                                                            </div>
-                                                        );
-                                                    })}
-                                                </div>
-                                            )}
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
+        <AdminPageShell
+            title="Danh mục"
+            description="Quản lý cấu trúc danh mục và phân cấp sản phẩm"
+        >
+            {/* Top action bar */}
+            <div className="flex items-center justify-end mb-4">
+                <Button onClick={openCreateDialog}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Tạo danh mục
+                </Button>
             </div>
+
+            {/* Category tree */}
+            <CategoryTree
+                categories={categories}
+                isLoading={isLoading}
+                isSaving={isSaving}
+                onEdit={openEditDialog}
+                onDelete={openDeleteDialog}
+                onRestore={(id) => void handleRestore(id)}
+                onReorder={handleReorder}
+            />
+
+            {/* Create / Edit Dialog */}
+            <CategoryDialog
+                open={dialogOpen}
+                onOpenChange={closeDialog}
+                form={form}
+                onFormChange={setForm}
+                categories={categories}
+                isSaving={isSaving}
+                onSubmit={() => void submitCategory()}
+            />
+
+            {/* Delete Confirm Dialog */}
+            <DeleteConfirmDialog
+                open={!!deleteTarget}
+                onOpenChange={(open) => {
+                    if (!open) setDeleteTarget(null);
+                }}
+                categoryName={deleteTarget?.name ?? ""}
+                isSaving={isSaving}
+                onConfirm={() => void confirmDelete()}
+            />
         </AdminPageShell>
     );
 }
