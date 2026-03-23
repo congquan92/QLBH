@@ -20,6 +20,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { AdminNotificationBell } from "@/components/admin-notification-bell";
+import { AdminStockAlertBell } from "@/components/admin-stock-alert-bell";
 import {
     BadgeDollarSign,
     Briefcase,
@@ -169,7 +170,10 @@ export function AppSidebar() {
                         </Avatar>
                         <span className="text-lg font-semibold">Ares Club</span>
                     </Link>
-                    <AdminNotificationBell roleName={session?.roleName} userId={session?.userId} />
+                    <div className="flex items-center gap-1">
+                        <AdminStockAlertBell />
+                        <AdminNotificationBell roleName={session?.roleName} userId={session?.userId} />
+                    </div>
                 </div>
             </SidebarHeader>
 

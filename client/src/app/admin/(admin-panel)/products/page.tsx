@@ -82,6 +82,21 @@ function flattenCategories(categories: Category[]): CategoryOption[] {
     return result;
 }
 
+function normalizeCategoryList(payload: unknown): Category[] {
+    if (Array.isArray(payload)) {
+        return payload as Category[];
+    }
+
+    if (payload && typeof payload === "object") {
+        const nested = (payload as { data?: unknown }).data;
+        if (Array.isArray(nested)) {
+            return nested as Category[];
+        }
+    }
+
+    return [];
+}
+
 function normalizeSuppliers(items: Supplier[]): SupplierOption[] {
     return items
         .filter((supplier) => String(supplier.status ?? "ACTIVE") !== "DISABLED")
@@ -323,7 +338,7 @@ export default function ProductsPage() {
             try {
                 const [categoryRes, supplierRes, productRes] = await Promise.all([CategoryApi.getAdminCategories({ page: 1, size: 300 }), AdminCrudApi.getSuppliers({ page: 1, size: 200, sort: "id:desc" }), ProductApi.getAdminProducts(1, 200)]);
 
-                setCategories(flattenCategories(categoryRes.data));
+                setCategories(flattenCategories(normalizeCategoryList(categoryRes.data)));
                 setSuppliers(normalizeSuppliers(supplierRes.data.data));
                 setProducts(productRes.data.data ?? []);
             } catch (error) {
