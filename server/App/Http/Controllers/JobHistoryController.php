@@ -2,7 +2,6 @@
 namespace App\Http\Controllers;
 use App\Http\Responses\ApiResponse;
 use App\Http\Service\JobHistoryService;
-use App\Models\User;
 use Illuminate\Http\Request;
 
 class JobHistoryController extends Controller
@@ -19,7 +18,7 @@ class JobHistoryController extends Controller
     {
         $request->validate([
             'position_id' => 'required|exists:positions,id',
-            'employment_type' => 'required',
+            'employment_type' => 'required|in:FULL_TIME,PART_TIME',
             'effective_date' => 'required|date|after:today'
         ], [
             'effective_date.after' => 'Ngày hiệu lực phải từ ngày mai trở đi.'

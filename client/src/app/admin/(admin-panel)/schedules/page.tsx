@@ -2,10 +2,12 @@
 
 import { ScheduleApi } from "@/api/admin/schedule.api";
 import { AdminCrudApi } from "@/api/admin/admin-crud.api";
+import { AttendanceApi } from "@/api/admin/attendance.api";
+import { ExportApi } from "@/api/admin/export.api";
 import { UserApi } from "@/api/user.api";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
-import type { Shift } from "@/types/admin-crud";
+import type { Position, Shift } from "@/types/admin-crud";
 import type {
     WeeklyReportDay,
     DailyStaffEmployee,
@@ -17,9 +19,24 @@ import { WeeklyCalendarGrid } from "./_components/weekly-calendar-grid";
 import { DailyStaffView } from "./_components/daily-staff-view";
 import { DayDetailPanel } from "./_components/day-detail-panel";
 import { AssignShiftForm } from "./_components/assign-shift-form";
+import { LateArrivalsView } from "./_components/late-arrivals-view";
+import { PositionDefaultScheduleForm } from "./_components/position-default-schedule-form";
 import { CalendarSkeleton, DailyStaffSkeleton } from "./_components/schedule-skeletons";
 
-type ViewMode = "weekly-report" | "daily-staff" | "assign";
+type ViewMode = "weekly-report" | "daily-staff" | "assign" | "position-default" | "late-arrivals";
+
+type LateArrivalItem = {
+    date: string;
+    user_id: number;
+    full_name: string;
+    position: string;
+    shift_name: string;
+    shift_time: string;
+    check_in: string;
+    late_minutes: string;
+};
+
+type LateRange = "THIS_WEEK" | "LAST_WEEK" | "THIS_MONTH" | "LAST_MONTH";
 
 type AssignForm = {
     user_id: string;
@@ -32,6 +49,18 @@ const emptyAssignForm: AssignForm = {
     shift_id: "",
     date: new Date().toISOString().split("T")[0],
 };
+
+function createEmptyDayShiftMap(): Record<number, string> {
+    return {
+        0: "",
+        1: "",
+        2: "",
+        3: "",
+        4: "",
+        5: "",
+        6: "",
+    };
+}
 
 /** Helpers để tính tuần */
 function getMonday(d: Date) {
@@ -57,6 +86,7 @@ export default function SchedulePage() {
     const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0]);
     const [isLoading, setIsLoading] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
+    const [isRecordingAttendance, setIsRecordingAttendance] = useState(false);
 
     // Data states
     const [weeklySchedule, setWeeklySchedule] = useState<WeeklyReportDay[]>([]);
@@ -68,6 +98,19 @@ export default function SchedulePage() {
     const [assignForm, setAssignForm] = useState<AssignForm>(emptyAssignForm);
     const [shifts, setShifts] = useState<Shift[]>([]);
     const [employees, setEmployees] = useState<UserProfile[]>([]);
+    const [positions, setPositions] = useState<Position[]>([]);
+    const [positionDefaultForm, setPositionDefaultForm] = useState<{
+        position_id: string;
+        dayShiftMap: Record<number, string>;
+    }>({
+        position_id: "",
+        dayShiftMap: createEmptyDayShiftMap(),
+    });
+    const [isLoadingPositionSchedule, setIsLoadingPositionSchedule] = useState(false);
+    const [lateRange, setLateRange] = useState<LateRange>("THIS_WEEK");
+    const [lateRangeLabel, setLateRangeLabel] = useState("");
+    const [lateArrivals, setLateArrivals] = useState<LateArrivalItem[]>([]);
+    const [isExportingLateArrivals, setIsExportingLateArrivals] = useState(false);
 
     const dateStr = currentDate.toISOString().split("T")[0];
 
@@ -102,6 +145,25 @@ export default function SchedulePage() {
                 const usersRaw = usersRes as unknown as { data?: { data?: UserProfile[] } };
                 setShifts(Array.isArray(shiftsRaw?.data?.data) ? shiftsRaw.data.data : []);
                 setEmployees(Array.isArray(usersRaw?.data?.data) ? usersRaw.data.data : []);
+            } else if (viewMode === "position-default") {
+                const [shiftsRes, positionsRes] = await Promise.all([
+                    AdminCrudApi.getShifts({ page: 1, size: 100, sort: "id:asc" }),
+                    AdminCrudApi.getPositions({ page: 1, size: 100, sort: "id:asc" }),
+                ]);
+                const shiftsRaw = shiftsRes as unknown as { data?: { data?: Shift[] } };
+                const positionsRaw = positionsRes as unknown as { data?: { data?: Position[] } };
+                setShifts(Array.isArray(shiftsRaw?.data?.data) ? shiftsRaw.data.data : []);
+                setPositions(Array.isArray(positionsRaw?.data?.data) ? positionsRaw.data.data : []);
+            } else if (viewMode === "late-arrivals") {
+                const res = await ExportApi.getLateArrivalsPreview({ time_range: lateRange });
+                const raw = res as unknown as {
+                    data?: {
+                        time_range_label?: string;
+                        data?: LateArrivalItem[];
+                    };
+                };
+                setLateRangeLabel(String(raw?.data?.time_range_label ?? ""));
+                setLateArrivals(Array.isArray(raw?.data?.data) ? raw.data.data : []);
             }
         } catch (error) {
             toast.error(
@@ -110,7 +172,7 @@ export default function SchedulePage() {
         } finally {
             setIsLoading(false);
         }
-    }, [dateStr, viewMode, currentDate]);
+    }, [dateStr, viewMode, currentDate, lateRange]);
 
     useEffect(() => {
         void fetchData();
@@ -156,6 +218,95 @@ export default function SchedulePage() {
         }
     }
 
+    async function loadPositionDefaultSchedule(positionId: string) {
+        if (!positionId) return;
+
+        setIsLoadingPositionSchedule(true);
+        try {
+            const res = await ScheduleApi.getPositionSchedule(Number(positionId));
+            const raw = res as unknown as {
+                data?: {
+                    default_schedules?: Array<{ day_of_week?: number; shift_id?: number }>;
+                };
+            };
+
+            const nextMap = createEmptyDayShiftMap();
+            const schedules = raw?.data?.default_schedules ?? [];
+            schedules.forEach((item) => {
+                const day = Number(item.day_of_week);
+                if (day >= 0 && day <= 6 && item.shift_id) {
+                    nextMap[day] = String(item.shift_id);
+                }
+            });
+
+            setPositionDefaultForm((current) => ({
+                ...current,
+                dayShiftMap: nextMap,
+            }));
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : "Không thể tải lịch mặc định của chức vụ");
+        } finally {
+            setIsLoadingPositionSchedule(false);
+        }
+    }
+
+    async function submitPositionDefaultSchedule() {
+        if (!positionDefaultForm.position_id) {
+            toast.error("Vui lòng chọn chức vụ cần cấu hình.");
+            return;
+        }
+
+        const schedules = Object.entries(positionDefaultForm.dayShiftMap)
+            .filter(([, shiftId]) => Boolean(shiftId))
+            .map(([day, shiftId]) => ({
+                day_of_week: Number(day),
+                shift_id: Number(shiftId),
+            }));
+
+        if (schedules.length === 0) {
+            toast.error("Vui lòng chọn ít nhất một ngày làm việc.");
+            return;
+        }
+
+        setIsSaving(true);
+        try {
+            await ScheduleApi.setPositionDefaultSchedule(Number(positionDefaultForm.position_id), {
+                schedules,
+            });
+            toast.success("Cập nhật lịch mặc định theo chức vụ thành công.");
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : "Không thể cập nhật lịch mặc định.");
+        } finally {
+            setIsSaving(false);
+        }
+    }
+
+    async function exportLateArrivals() {
+        setIsExportingLateArrivals(true);
+        try {
+            const blob = await ExportApi.exportLateArrivals({ time_range: lateRange });
+            ExportApi.downloadBlob(blob, `danh-sach-di-tre-${lateRange.toLowerCase()}.xlsx`);
+            toast.success("Xuất file đi trễ thành công.");
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : "Không thể xuất file đi trễ.");
+        } finally {
+            setIsExportingLateArrivals(false);
+        }
+    }
+
+    async function handleAttendanceRecord() {
+        setIsRecordingAttendance(true);
+        try {
+            const res = await AttendanceApi.record();
+            const raw = res as { message?: string };
+            toast.success(raw?.message ?? "Điểm danh thành công.");
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : "Không thể điểm danh.");
+        } finally {
+            setIsRecordingAttendance(false);
+        }
+    }
+
     return (
         <div className="space-y-5">
             {/* Header */}
@@ -165,6 +316,8 @@ export default function SchedulePage() {
                 weekRange={weekRange || formatWeekRange(currentDate)}
                 onViewModeChange={setViewMode}
                 onNavigate={navigate}
+                isRecordingAttendance={isRecordingAttendance}
+                onAttendanceRecord={() => void handleAttendanceRecord()}
             />
 
             {/* Main Content */}
@@ -173,6 +326,8 @@ export default function SchedulePage() {
                     {viewMode === "weekly-report" && <CalendarSkeleton />}
                     {viewMode === "daily-staff" && <DailyStaffSkeleton />}
                     {viewMode === "assign" && <CalendarSkeleton />}
+                    {viewMode === "position-default" && <CalendarSkeleton />}
+                    {viewMode === "late-arrivals" && <DailyStaffSkeleton />}
                 </>
             ) : (
                 <>
@@ -207,6 +362,49 @@ export default function SchedulePage() {
                             isSaving={isSaving}
                             onFormChange={setAssignForm}
                             onSubmit={() => void submitAssignment()}
+                        />
+                    )}
+
+                    {viewMode === "position-default" && (
+                        <PositionDefaultScheduleForm
+                            positions={positions}
+                            shifts={shifts}
+                            selectedPositionId={positionDefaultForm.position_id}
+                            dayShiftMap={positionDefaultForm.dayShiftMap}
+                            isLoadingPositionSchedule={isLoadingPositionSchedule}
+                            isSaving={isSaving}
+                            onPositionChange={(positionId) => {
+                                setPositionDefaultForm({
+                                    position_id: positionId,
+                                    dayShiftMap: createEmptyDayShiftMap(),
+                                });
+                                if (positionId) {
+                                    void loadPositionDefaultSchedule(positionId);
+                                }
+                            }}
+                            onDayShiftChange={(dayOfWeek, shiftId) => {
+                                setPositionDefaultForm((current) => ({
+                                    ...current,
+                                    dayShiftMap: {
+                                        ...current.dayShiftMap,
+                                        [dayOfWeek]: shiftId,
+                                    },
+                                }));
+                            }}
+                            onLoadCurrentSchedule={() => void loadPositionDefaultSchedule(positionDefaultForm.position_id)}
+                            onSubmit={() => void submitPositionDefaultSchedule()}
+                        />
+                    )}
+
+                    {viewMode === "late-arrivals" && (
+                        <LateArrivalsView
+                            timeRange={lateRange}
+                            label={lateRangeLabel}
+                            records={lateArrivals}
+                            isLoading={isLoading}
+                            isExporting={isExportingLateArrivals}
+                            onTimeRangeChange={setLateRange}
+                            onExport={() => void exportLateArrivals()}
                         />
                     )}
                 </>

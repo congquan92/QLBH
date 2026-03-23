@@ -6,6 +6,13 @@ import { ChevronDown, ChevronUp, Loader2, Receipt, TicketPercent, Truck } from "
 import Image from "next/image";
 import { formatDateTime, getDeliveryStatusMeta, getPaymentStatusMeta, parseVariantSnapshot } from "./account-utils";
 
+function getPaymentTypeLabel(value?: string) {
+    const raw = String(value ?? "").toUpperCase();
+    if (raw === "COD") return "COD";
+    if (raw === "BANK_TRANSFER" || raw === "BANK_TRANFER") return "Thanh toán ngân hàng";
+    return value || "-";
+}
+
 interface OrdersSectionProps {
     orders: OrderSummary[];
     orderDetails: Record<number, OrderSummary>;
@@ -159,8 +166,11 @@ export function OrdersSection({ orders, orderDetails, expandedOrderId, loadingOr
                                                                     <span className="font-semibold text-gray-900">Đã xác nhận hoàn tất:</span> {mergedOrder.isConfirmed ? "Có" : "Chưa"}
                                                                 </p>
                                                                 <p>
-                                                                    <span className="font-semibold text-gray-900">Phương thức thanh toán:</span> {mergedOrder.paymentType || "-"}
+                                                                    <span className="font-semibold text-gray-900">Phương thức thanh toán:</span> {getPaymentTypeLabel(mergedOrder.paymentType)}
                                                                 </p>
+                                                                {String(mergedOrder.paymentStatus ?? "").toUpperCase() === "UNPAID" && ["BANK_TRANSFER", "BANK_TRANFER"].includes(String(mergedOrder.paymentType ?? "").toUpperCase()) ? (
+                                                                    <p className="text-amber-700 font-medium">Đơn thanh toán ngân hàng đang ở trạng thái chưa thanh toán.</p>
+                                                                ) : null}
                                                             </div>
                                                         </div>
                                                     </div>

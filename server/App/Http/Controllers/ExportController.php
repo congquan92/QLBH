@@ -79,4 +79,19 @@ class ExportController extends Controller
             $fileName
         );
     }
+
+    public function previewLateArrivals(Request $request)
+    {
+        $request->validate([
+            'time_range' => 'required|in:THIS_WEEK,LAST_WEEK,THIS_MONTH,LAST_MONTH',
+        ]);
+
+        $result = $this->exportService->getLateArrivalsData($request->time_range);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Lấy danh sách đi trễ thành công.',
+            'data' => $result,
+        ]);
+    }
 }

@@ -243,9 +243,11 @@ export function AppSidebar() {
                                 </SidebarMenuButton>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-lg" side="bottom" align="end" sideOffset={4}>
-                                <DropdownMenuItem className="cursor-pointer">
-                                    <User2 className="mr-2 h-4 w-4" />
-                                    <span>Thông tin cá nhân</span>
+                                <DropdownMenuItem asChild className="cursor-pointer">
+                                    <Link href="/admin/profile">
+                                        <User2 className="mr-2 h-4 w-4" />
+                                        <span>Thông tin cá nhân</span>
+                                    </Link>
                                 </DropdownMenuItem>
                                 {/* {canAccessPath("/admin/settings") && (
                                     <DropdownMenuItem asChild className="cursor-pointer">

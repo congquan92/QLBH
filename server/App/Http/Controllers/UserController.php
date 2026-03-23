@@ -118,7 +118,8 @@ class UserController extends Controller
 
     public function getUserByEmail(Request $request){
         $email = $request->input('email');
-        $result = $this->userService->getAllUserByEmail($email);
+        $emailVerified = filter_var($request->query('email_verified', true), FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+        $result = $this->userService->getAllUserByEmail($email, $emailVerified ?? true);
          return $this->success($result, 'Get all user by email');
     }
 

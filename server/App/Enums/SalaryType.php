@@ -7,3 +7,4 @@ enum SalaryType: string
     case MONTHLY = 'MONTHLY';
     case HOURLY = 'HOURLY';
 }
+    

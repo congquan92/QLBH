@@ -3,6 +3,7 @@ import { AdminAuthUtil, ADMIN_STORAGE_PREFIX, ADMIN_LOGIN_PATH } from "@/lib/Adm
 import type { AdminSession } from "@/lib/AdminAuth-util";
 import { useCallback, useEffect, useMemo } from "react";
 import { create } from "zustand";
+import type { LoginResponse, LoginRole } from "@/types/auth";
 
 export type { AdminSession } from "@/lib/AdminAuth-util";
 export { AdminAuthUtil } from "@/lib/AdminAuth-util";
@@ -55,6 +56,36 @@ function extractRoleNames(value: unknown): string[] {
     return [];
 }
 
+function resolveRoleFromIntrospect(value: unknown): LoginRole | null {
+    if (Array.isArray(value)) {
+        const firstRole = value.find((item) => item && typeof item === "object");
+        return firstRole ? (firstRole as LoginRole) : null;
+    }
+
+    if (value && typeof value === "object") {
+        return value as LoginRole;
+    }
+
+    return null;
+}
+
+function enrichSessionWithIntrospect(current: AdminSession, introspect: { id?: number; email?: string; roles?: unknown }): AdminSession {
+    const nextRole = resolveRoleFromIntrospect(introspect.roles) ?? current.role;
+    const rebuilt = AdminAuthUtil.buildSession({
+        token: current.token,
+        authenticated: true,
+        role: nextRole,
+        expiredAt: current.expiredAt,
+    } satisfies LoginResponse);
+
+    return {
+        ...rebuilt,
+        userId: introspect.id ?? current.userId,
+        email: introspect.email ?? current.email,
+        roles: extractRoleNames(introspect.roles),
+    };
+}
+
 function clearStorageByPrefix(storage: Storage) {
     const keysToRemove: string[] = [];
 
@@ -103,12 +134,7 @@ const useAdminAuthStore = create<AdminAuthState>((set, get) => ({
 
         try {
             const profile = await AuthApi.introspect();
-            const nextSession: AdminSession = {
-                ...localSession,
-                userId: profile.id,
-                email: profile.email,
-                roles: extractRoleNames(profile.roles),
-            };
+            const nextSession = enrichSessionWithIntrospect(localSession, profile);
 
             AdminAuthUtil.persistSession(nextSession);
             set({ session: nextSession, isLoading: false, hasHydrated: true });
@@ -136,12 +162,7 @@ const useAdminAuthStore = create<AdminAuthState>((set, get) => ({
         if (!currentSession) return;
 
         const profile = await AuthApi.introspect();
-        const nextSession: AdminSession = {
-            ...currentSession,
-            userId: profile.id,
-            email: profile.email,
-            roles: extractRoleNames(profile.roles),
-        };
+        const nextSession = enrichSessionWithIntrospect(currentSession, profile);
 
         AdminAuthUtil.persistSession(nextSession);
         set({ session: nextSession });
@@ -162,12 +183,7 @@ const useAdminAuthStore = create<AdminAuthState>((set, get) => ({
 
         try {
             const profile = await AuthApi.introspect();
-            const enrichedSession: AdminSession = {
-                ...nextSession,
-                userId: profile.id,
-                email: profile.email,
-                roles: extractRoleNames(profile.roles),
-            };
+            const enrichedSession = enrichSessionWithIntrospect(nextSession, profile);
 
             AdminAuthUtil.persistSession(enrichedSession);
             set({ session: enrichedSession, isLoading: false, hasHydrated: true });
@@ -211,6 +227,42 @@ export function useAdminAuth() {
     useEffect(() => {
         void useAdminAuthStore.getState().ensureHydrated();
     }, []);
+
+    useEffect(() => {
+        if (!session) return;
+
+        let lastSyncAt = 0;
+        const COOLDOWN_MS = 60000;
+
+        const syncProfile = async () => {
+            const now = Date.now();
+            if (now - lastSyncAt < COOLDOWN_MS) {
+                return;
+            }
+
+            try {
+                await useAdminAuthStore.getState().refreshProfile();
+                lastSyncAt = now;
+            } catch {
+                // Ignore intermittent errors. Auth failure is handled by axios interceptor.
+            }
+        };
+
+        const onVisibilityChange = () => {
+            if (document.visibilityState === "visible") {
+                void syncProfile();
+            }
+        };
+
+        window.addEventListener("focus", onVisibilityChange);
+        document.addEventListener("visibilitychange", onVisibilityChange);
+        void syncProfile();
+
+        return () => {
+            window.removeEventListener("focus", onVisibilityChange);
+            document.removeEventListener("visibilitychange", onVisibilityChange);
+        };
+    }, [session]);
 
     const canAccessPath = useCallback((path: string) => AdminAuthUtil.canAccessUrl(session, path), [session]);
 

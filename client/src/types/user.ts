@@ -79,5 +79,17 @@ export interface ChangePasswordPayload {
     confirmPassword: string;
 }
 
+export interface UserEmailAccount {
+    id: number;
+    full_name?: string;
+    email?: string;
+    phone?: string;
+    username?: string;
+    avatar?: string | null;
+    status?: string;
+    email_verified?: boolean;
+    phone_verified?: boolean;
+}
+
 export type UserListResponse = ApiResponse<PageResponse<UserProfile>>;
 export type AddressListResponse = ApiResponse<PageResponse<UserAddress>>;

@@ -1,5 +1,11 @@
 import { adminAxiosInstance as axiosInstance } from "@/lib/axios";
 
+function getApiErrorMessage(error: unknown, fallback: string) {
+    const responseData = (error as { response?: { data?: { message?: string } } })?.response?.data;
+    const message = responseData?.message;
+    return typeof message === "string" && message.trim() ? message : fallback;
+}
+
 export const AttendanceApi = {
     /**
      * Record attendance (check-in/check-out)
@@ -11,7 +17,7 @@ export const AttendanceApi = {
             return res.data;
         } catch (error) {
             console.warn("[AttendanceApi] /attendance/record failed", error);
-            throw error;
+            throw new Error(getApiErrorMessage(error, "Không thể điểm danh"));
         }
     },
 
@@ -25,7 +31,7 @@ export const AttendanceApi = {
             return res.data;
         } catch (error) {
             console.warn("[AttendanceApi] /attendance/my-history failed", error);
-            throw error;
+            throw new Error(getApiErrorMessage(error, "Không thể tải lịch sử điểm danh"));
         }
     },
 };

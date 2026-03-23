@@ -178,6 +178,8 @@ Route::middleware('auth')->group(function () {
     Route::prefix('export')->group(function () {
         Route::get('/schedule', [ExportController::class, 'exportSchedule'])->middleware('can:EXPORT_DATA');
         Route::get('/my-schedule', [ExportController::class, 'exportMySchedule']);
+        Route::get('/late-arrivals/preview', [ExportController::class, 'previewLateArrivals'])
+            ->middleware('can:VIEW_STATISTICAL');
         Route::get('/late-arrivals', [ExportController::class, 'exportLateArrivals'])
             ->middleware('can:VIEW_STATISTICAL');
     });
