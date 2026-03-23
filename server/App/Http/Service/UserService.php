@@ -1,6 +1,7 @@
 <?php
 namespace App\Http\Service;
 
+use App\Events\AdminPermissionSyncRequested;
 use App\Enums\OTPType;
 use App\Enums\Rank;
 use App\Enums\SalaryType;
@@ -353,6 +354,8 @@ class UserService
             ->firstOrFail();
         $user->role_id = $role->id;
         $user->save();
+
+        AdminPermissionSyncRequested::dispatch((int) $role->id, (int) $user->id, 'user_role_updated');
     }
 
     public function updateStatus(int $userId, string $status): array

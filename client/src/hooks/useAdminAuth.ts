@@ -1,5 +1,6 @@
 import { AuthApi } from "@/api/auth";
 import { AdminAuthUtil, ADMIN_STORAGE_PREFIX, ADMIN_LOGIN_PATH } from "@/lib/AdminAuth-util";
+import { getAdminRealtimeClient } from "@/lib/realtime/admin-reverb";
 import type { AdminSession } from "@/lib/AdminAuth-util";
 import { useCallback, useEffect, useMemo } from "react";
 import { create } from "zustand";
@@ -116,6 +117,13 @@ function resolveRedirectTarget() {
     return ADMIN_LOGIN_PATH;
 }
 
+type AdminPermissionSyncPayload = {
+    role_id?: number | null;
+    user_id?: number | null;
+    reason?: string;
+    sent_at?: string;
+};
+
 const useAdminAuthStore = create<AdminAuthState>((set, get) => ({
     session: null,
     isLoading: true,
@@ -231,36 +239,47 @@ export function useAdminAuth() {
     useEffect(() => {
         if (!session) return;
 
-        let lastSyncAt = 0;
-        const COOLDOWN_MS = 60000;
+        const echo = getAdminRealtimeClient();
+        if (!echo) {
+            return;
+        }
 
-        const syncProfile = async () => {
-            const now = Date.now();
-            if (now - lastSyncAt < COOLDOWN_MS) {
+        const shouldRefresh = (payload: AdminPermissionSyncPayload) => {
+            const targetUserId = Number(payload.user_id ?? 0);
+            if (targetUserId > 0 && targetUserId === Number(session.userId ?? 0)) {
+                return true;
+            }
+
+            const targetRoleId = Number(payload.role_id ?? 0);
+            if (targetRoleId > 0 && targetRoleId === Number(session.role?.id ?? 0)) {
+                return true;
+            }
+
+            if (targetRoleId <= 0 && targetUserId <= 0) {
+                return true;
+            }
+
+            return false;
+        };
+
+        const onSyncRequested = async (payload: AdminPermissionSyncPayload) => {
+            if (!shouldRefresh(payload)) {
                 return;
             }
 
             try {
                 await useAdminAuthStore.getState().refreshProfile();
-                lastSyncAt = now;
             } catch {
-                // Ignore intermittent errors. Auth failure is handled by axios interceptor.
+                // Auth failures are handled by axios interceptor + redirect.
             }
         };
 
-        const onVisibilityChange = () => {
-            if (document.visibilityState === "visible") {
-                void syncProfile();
-            }
-        };
-
-        window.addEventListener("focus", onVisibilityChange);
-        document.addEventListener("visibilitychange", onVisibilityChange);
-        void syncProfile();
+        const channel = echo.channel("admin.permission-sync");
+        channel.listen(".admin.permission.sync", onSyncRequested);
 
         return () => {
-            window.removeEventListener("focus", onVisibilityChange);
-            document.removeEventListener("visibilitychange", onVisibilityChange);
+            channel.stopListening(".admin.permission.sync", onSyncRequested);
+            echo.leaveChannel("admin.permission-sync");
         };
     }, [session]);
 

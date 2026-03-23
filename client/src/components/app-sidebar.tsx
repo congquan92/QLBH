@@ -19,6 +19,7 @@ import {
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { AdminNotificationBell } from "@/components/admin-notification-bell";
 import {
     BadgeDollarSign,
     Briefcase,
@@ -160,13 +161,16 @@ export function AppSidebar() {
     return (
         <Sidebar collapsible="icon" suppressHydrationWarning>
             <SidebarHeader className="border-b border-sidebar-border">
-                <Link href={defaultAdminPath} className="flex items-center gap-1">
-                    <Avatar className="size-16 rounded-none">
-                        <AvatarImage src="/ARES_CLUB.png" alt="AresClub" className="object-contain" />
-                        <AvatarFallback className="bg-transparent font-bold">ARES</AvatarFallback>
-                    </Avatar>
-                    <span className="text-lg font-semibold">Ares Club</span>
-                </Link>
+                <div className="flex items-center justify-between gap-2">
+                    <Link href={defaultAdminPath} className="flex items-center gap-1">
+                        <Avatar className="size-16 rounded-none">
+                            <AvatarImage src="/ARES_CLUB.png" alt="AresClub" className="object-contain" />
+                            <AvatarFallback className="bg-transparent font-bold">ARES</AvatarFallback>
+                        </Avatar>
+                        <span className="text-lg font-semibold">Ares Club</span>
+                    </Link>
+                    <AdminNotificationBell roleName={session?.roleName} userId={session?.userId} />
+                </div>
             </SidebarHeader>
 
             <SidebarContent>

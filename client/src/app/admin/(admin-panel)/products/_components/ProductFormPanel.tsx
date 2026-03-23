@@ -116,33 +116,70 @@ function AttributeValueChip({
 }: {
     item: ProductAttributeValueInput;
     onValueChange: (v: string) => void;
-    onImageChange: (payload: { image: string; imageFile?: File; imagePreviewUrl?: string }) => void;
+    onImageChange: (payload: { image: string; imageDeleted?: boolean; imageFile?: File; imagePreviewUrl?: string }) => void;
     onRemove: () => void;
 }) {
     const fileRef = useRef<HTMLInputElement>(null);
+    const [isImageLoading, setIsImageLoading] = useState(false);
 
-    function handleFile(file: File | undefined) {
+    async function handleFile(file: File | undefined) {
         if (!file) {
             return;
         }
 
-        const previewUrl = URL.createObjectURL(file);
-        onImageChange({ image: "", imageFile: file, imagePreviewUrl: previewUrl });
+        setIsImageLoading(true);
+
+        try {
+            const oldImageUrl = String(item.image ?? "").trim();
+            if (oldImageUrl) {
+                await FileUploadApi.deleteFile(oldImageUrl);
+            }
+
+            if (item.imagePreviewUrl?.startsWith("blob:")) {
+                URL.revokeObjectURL(item.imagePreviewUrl);
+            }
+
+            const response = await FileUploadApi.upload(file);
+            const uploadedUrl = String(response.url ?? "").trim();
+
+            if (!uploadedUrl) {
+                throw new Error("Upload ảnh phân loại thất bại.");
+            }
+
+            onImageChange({ image: uploadedUrl, imageDeleted: false, imageFile: undefined, imagePreviewUrl: undefined });
+        } catch {
+            toast.error("Không thể cập nhật ảnh phân loại. Vui lòng thử lại.");
+        } finally {
+            setIsImageLoading(false);
+        }
     }
 
-    function clearImage() {
-        if (item.imagePreviewUrl?.startsWith("blob:")) {
-            URL.revokeObjectURL(item.imagePreviewUrl);
-        }
+    async function clearImage() {
+        setIsImageLoading(true);
 
-        onImageChange({ image: "", imageFile: undefined, imagePreviewUrl: undefined });
+        try {
+            const oldImageUrl = String(item.image ?? "").trim();
+            if (oldImageUrl) {
+                await FileUploadApi.deleteFile(oldImageUrl);
+            }
+
+            if (item.imagePreviewUrl?.startsWith("blob:")) {
+                URL.revokeObjectURL(item.imagePreviewUrl);
+            }
+
+            onImageChange({ image: "", imageDeleted: true, imageFile: undefined, imagePreviewUrl: undefined });
+        } catch {
+            toast.error("Không thể xoá ảnh phân loại. Vui lòng thử lại.");
+        } finally {
+            setIsImageLoading(false);
+        }
     }
 
     const displayImage = item.imagePreviewUrl || item.image;
 
     return (
         <div className="group relative flex w-24 shrink-0 flex-col overflow-hidden rounded-lg border bg-background shadow-sm transition-shadow hover:shadow-md">
-            <div className="relative flex h-14 items-center justify-center bg-muted/40 cursor-pointer" onClick={() => fileRef.current?.click()} title="Click để chọn ảnh">
+            <div className="relative flex h-14 items-center justify-center bg-muted/40 cursor-pointer" onClick={() => !isImageLoading && fileRef.current?.click()} title="Click để chọn ảnh">
                 {displayImage ? (
                     <img
                         src={displayImage}
@@ -159,20 +196,26 @@ function AttributeValueChip({
                 <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
                     <Upload className="h-4 w-4 text-white" />
                 </div>
+                {isImageLoading ? (
+                    <div className="absolute inset-0 flex items-center justify-center bg-background/70">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                    </div>
+                ) : null}
                 {displayImage ? (
                     <button
                         type="button"
                         onClick={(event) => {
                             event.stopPropagation();
-                            clearImage();
+                            void clearImage();
                         }}
+                        disabled={isImageLoading}
                         className="absolute left-0.5 top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-background/90 text-muted-foreground opacity-0 shadow-sm transition-opacity group-hover:opacity-100 hover:bg-red-50 hover:text-red-500"
                         title="Xoá ảnh"
                     >
                         <Trash2 className="h-3 w-3" />
                     </button>
                 ) : null}
-                <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => handleFile(e.target.files?.[0])} />
+                <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => void handleFile(e.target.files?.[0])} />
             </div>
 
             <div className="flex-1 px-1.5 py-1.5">
@@ -232,7 +275,7 @@ export function ProductFormPanel({
             {
                 key: createKey(),
                 name: "",
-                values: [{ key: createKey(), value: "", image: "" }],
+                values: [{ key: createKey(), value: "", image: "", imageDeleted: false }],
             },
         ]);
     }
@@ -251,7 +294,7 @@ export function ProductFormPanel({
                 attribute.key === attributeKey
                     ? {
                           ...attribute,
-                          values: [...attribute.values, { key: createKey(), value: "", image: "" }],
+                          values: [...attribute.values, { key: createKey(), value: "", image: "", imageDeleted: false }],
                       }
                     : attribute,
             ),

@@ -30,11 +30,26 @@ export default function CategoriesPage() {
     const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
 
     // ──────────────────────────────────────────────
+    function normalizeCategoryList(payload: unknown): Category[] {
+        if (Array.isArray(payload)) {
+            return payload as Category[];
+        }
+
+        if (payload && typeof payload === "object") {
+            const nested = (payload as { data?: unknown }).data;
+            if (Array.isArray(nested)) {
+                return nested as Category[];
+            }
+        }
+
+        return [];
+    }
+
     async function fetchData() {
         setIsLoading(true);
         try {
             const response = await CategoryApi.getAdminCategories({ page: 1, size: 200 });
-            setCategories(response.data);
+            setCategories(normalizeCategoryList(response.data));
         } catch (error) {
             toast.error(Helper.errorMessage(error));
         } finally {

@@ -54,7 +54,8 @@ export function CategoryDialog({
     onSubmit,
 }: CategoryDialogProps) {
     const isEdit = !!form.id;
-    const parentName = categories.find((c) => String(c.id) === form.parentId)?.name;
+    const safeCategories = Array.isArray(categories) ? categories : [];
+    const parentName = safeCategories.find((c) => String(c.id) === form.parentId)?.name;
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -104,7 +105,7 @@ export function CategoryDialog({
                                 <SelectItem value="none">
                                     — Không có (tạo danh mục cha) —
                                 </SelectItem>
-                                {categories
+                                {safeCategories
                                     .filter((c) => c.id !== form.id)
                                     .map((cat) => (
                                         <SelectItem

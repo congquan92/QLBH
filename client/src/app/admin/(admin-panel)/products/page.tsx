@@ -102,6 +102,7 @@ function createFormFromDetail(detail: ProductDetail): ProductFormValues {
             id: item.id,
             value: String(item.value ?? ""),
             image: String(item.image ?? item.urlImage ?? item.url_image ?? ""),
+            imageDeleted: false,
         })),
     }));
 
@@ -198,7 +199,7 @@ function buildAttributesPayloadForUpdate(attributes: ProductAttributeInput[]) {
                 .map((item) => ({
                     ...(item.id ? { id: item.id } : {}),
                     value: item.value.trim(),
-                    ...(item.image.trim() ? { image: item.image.trim() } : {}),
+                    image: item.image.trim() || null,
                 }))
                 .filter((item) => item.value),
         }))
