@@ -205,6 +205,10 @@ export const AdminAuthUtil = {
             return true;
         }
 
+        if (normalized === "/admin/profile" || normalized.startsWith("/admin/profile/")) {
+            return true;
+        }
+
         if (!normalized) {
             return false;
         }

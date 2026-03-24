@@ -8,11 +8,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import type { SalaryConfig, SalaryScale } from "@/types/admin-crud";
+import type { Position, SalaryConfig, SalaryScale } from "@/types/admin-crud";
 import type { SalaryBulkItem } from "@/types/salary";
 import { Calculator, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { PositionDialog, type PositionForm } from "./_components/PositionDialog";
+import { PositionTable } from "./_components/PositionTable";
 import { SalaryConfigDialog, type SalaryConfigForm } from "./_components/SalaryConfigDialog";
 import { SalaryConfigTable } from "./_components/SalaryConfigTable";
 import { SalaryOverviewTable } from "./_components/SalaryOverviewTable";
@@ -34,9 +36,16 @@ const emptyScaleForm: SalaryScaleForm = {
     coefficient: "1",
 };
 
+const emptyPositionForm: PositionForm = {
+    name: "",
+    base_salary: "",
+    salary_type: "MONTHLY",
+};
+
 export default function SalaryPage() {
     const [configs, setConfigs] = useState<SalaryConfig[]>([]);
     const [scales, setScales] = useState<SalaryScale[]>([]);
+    const [positions, setPositions] = useState<Position[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
 
@@ -47,6 +56,10 @@ export default function SalaryPage() {
     // Scale dialog
     const [scaleDialogOpen, setScaleDialogOpen] = useState(false);
     const [scaleForm, setScaleForm] = useState<SalaryScaleForm>(emptyScaleForm);
+
+    // Position dialog
+    const [positionDialogOpen, setPositionDialogOpen] = useState(false);
+    const [positionForm, setPositionForm] = useState<PositionForm>(emptyPositionForm);
 
     // Holiday Manager dialog
     const [holidayManagerOpen, setHolidayManagerOpen] = useState(false);
@@ -59,12 +72,14 @@ export default function SalaryPage() {
 
     async function fetchData() {
         setIsLoading(true);
-        const [configRes, scaleRes] = await Promise.all([
+        const [configRes, scaleRes, positionRes] = await Promise.all([
             AdminCrudApi.getSalaryConfigs({ page: 1, size: 100, sort: "id:desc" }),
             AdminCrudApi.getSalaryScales({ page: 1, size: 100, sort: "years_of_experience:asc" }),
+            AdminCrudApi.getPositions({ page: 1, size: 100, sort: "id:asc" }),
         ]);
         setConfigs(configRes.data.data);
         setScales(scaleRes.data.data);
+        setPositions(positionRes.data.data);
         setIsLoading(false);
     }
 
@@ -188,6 +203,72 @@ export default function SalaryPage() {
         }
     }
 
+    // ─── Position handlers ────────────────────────────────────────
+    function openAddPosition() {
+        setPositionForm(emptyPositionForm);
+        setPositionDialogOpen(true);
+    }
+
+    function openEditPosition(item: Position) {
+        setPositionForm({
+            id: item.id,
+            name: String(item.name ?? ""),
+            base_salary: String(item.base_salary ?? ""),
+            salary_type: String(item.salary_type ?? "MONTHLY") as "HOURLY" | "MONTHLY",
+        });
+        setPositionDialogOpen(true);
+    }
+
+    async function handleSubmitPosition() {
+        if (!positionForm.name.trim()) {
+            toast.error("Vui lòng nhập tên chức vụ.");
+            return;
+        }
+
+        const baseSalary = Number(positionForm.base_salary);
+        if (!Number.isFinite(baseSalary) || baseSalary <= 0) {
+            toast.error("Lương cơ bản phải lớn hơn 0.");
+            return;
+        }
+
+        setIsSaving(true);
+        try {
+            const payload = {
+                name: positionForm.name.trim(),
+                base_salary: baseSalary,
+                salary_type: positionForm.salary_type,
+            };
+
+            if (positionForm.id) {
+                await AdminCrudApi.updatePosition(positionForm.id, payload);
+                toast.success("Cập nhật chức vụ thành công.");
+            } else {
+                await AdminCrudApi.createPosition(payload);
+                toast.success("Tạo chức vụ thành công.");
+            }
+
+            setPositionDialogOpen(false);
+            await fetchData();
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : "Có lỗi xảy ra.");
+        } finally {
+            setIsSaving(false);
+        }
+    }
+
+    async function handleDeletePosition(id: number) {
+        setIsSaving(true);
+        try {
+            await AdminCrudApi.deletePosition(id);
+            toast.success("Đã xóa chức vụ.");
+            await fetchData();
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : "Có lỗi xảy ra.");
+        } finally {
+            setIsSaving(false);
+        }
+    }
+
     // ─── Bulk salary calculate ────────────────────────────────────
     async function handleCalculateAll() {
         if (!overviewMonth || !overviewYear) {
@@ -235,6 +316,17 @@ export default function SalaryPage() {
                     onAdd={openAddScale}
                     onEdit={openEditScale}
                     onDelete={handleDeleteScale}
+                />
+            </div>
+
+            <div className="mt-6">
+                <PositionTable
+                    positions={positions}
+                    isLoading={isLoading}
+                    isSaving={isSaving}
+                    onAdd={openAddPosition}
+                    onEdit={openEditPosition}
+                    onDelete={handleDeletePosition}
                 />
             </div>
 
@@ -313,6 +405,14 @@ export default function SalaryPage() {
                 onChange={setScaleForm}
                 onSubmit={() => void handleSubmitScale()}
                 onClose={() => setScaleDialogOpen(false)}
+            />
+            <PositionDialog
+                open={positionDialogOpen}
+                form={positionForm}
+                isSaving={isSaving}
+                onChange={setPositionForm}
+                onSubmit={() => void handleSubmitPosition()}
+                onClose={() => setPositionDialogOpen(false)}
             />
             <HolidayManagerDialog
                 open={holidayManagerOpen}

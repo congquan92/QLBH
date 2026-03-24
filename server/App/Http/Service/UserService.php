@@ -1,6 +1,7 @@
 <?php
 namespace App\Http\Service;
 
+use App\Events\AdminPermissionSyncRequested;
 use App\Enums\OTPType;
 use App\Enums\Rank;
 use App\Enums\SalaryType;
@@ -26,9 +27,18 @@ use App\Models\User;
 use App\Models\UserRank;
 use Hash;
 use Illuminate\Support\Facades\DB;
-use Log;
 class UserService
 {
+    private function inferEmploymentTypeByPositionName(string $positionName): string
+    {
+        $normalized = mb_strtolower($positionName);
+        if (str_contains($normalized, 'part time') || str_contains($normalized, 'part-time') || str_contains($normalized, 'bán thời gian')) {
+            return 'PART_TIME';
+        }
+
+        return 'FULL_TIME';
+    }
+
     protected BrevoService $brevoService;
 
     public function __construct(BrevoService $brevoService)
@@ -123,7 +133,7 @@ class UserService
                 'user_id' => $user->id,
                 'position_id' => $position->id,
                 'current_salary' =>$position->base_salary * $coefficient,
-                'employment_type' => $req['employmentType'],
+                'employment_type' => $this->inferEmploymentTypeByPositionName((string) $position->name),
                 'effective_date' => now(),
                 'end_date' => null,
             ]);
@@ -228,10 +238,16 @@ class UserService
         }
     }
 
-   public function getAllUserByEmail($email)
+   public function getAllUserByEmail($email, ?bool $emailVerified = true)
 {
     // Chỉ lấy các cột cần thiết từ DB để nhẹ memory
-    $users = User::where('email', $email)->get();
+    $query = User::where('email', $email);
+
+    if ($emailVerified !== null) {
+        $query->where('email_verified', $emailVerified);
+    }
+
+    $users = $query->get();
 
     if ($users->isEmpty()) {
         throw new BusinessException(ErrorCode::NOT_EXISTED, 'Không tìm thấy người dùng !');
@@ -243,6 +259,7 @@ class UserService
             "full_name"       => $user->full_name,
             "email"           => $user->email,
             "phone"           => $user->phone,
+            "username"        => $user->username,
             "avatar"          => $user->avatar,
             // Xử lý Enum: Lấy giá trị chuỗi (ACTIVE, INACTIVE...)
             "status"          => $user->status?->value ?? $user->status,
@@ -264,7 +281,9 @@ class UserService
         if (!$verifyOTP) {
             throw new BusinessException(ErrorCode::NOT_VERIFY, 'Xác thực thất bại!');
         }
-        $currentUser->emai = $newEmail;
+        $currentUser->email = $newEmail;
+        $currentUser->email_verified = true;
+        $currentUser->save();
     }
     public function changePhone(UpdatePhoneRequest $req)
     {
@@ -274,6 +293,8 @@ class UserService
             throw new BusinessException(ErrorCode::NOT_VERIFY, 'Xác thực thất bại!');
         }
         $currentUser->phone = $req['new_phone'];
+        $currentUser->phone_verified = true;
+        $currentUser->save();
     }
 
     public function updateRank($user)
@@ -333,6 +354,8 @@ class UserService
             ->firstOrFail();
         $user->role_id = $role->id;
         $user->save();
+
+        AdminPermissionSyncRequested::dispatch((int) $role->id, (int) $user->id, 'user_role_updated');
     }
 
     public function updateStatus(int $userId, string $status): array

@@ -1,15 +1,29 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, Calendar } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar, Download, Fingerprint, Loader2 } from "lucide-react";
 
 type Props = {
     currentDate: Date;
     weekRange: string;
     onNavigate: (direction: "prev" | "next" | "today") => void;
+    isRecordingAttendance: boolean;
+    isExporting: boolean;
+    attendanceActionLabel: string;
+    onAttendanceRecord: () => void;
+    onExportMySchedule: () => void;
 };
 
-export function UScheduleHeader({ currentDate, weekRange, onNavigate }: Props) {
+export function UScheduleHeader({
+    currentDate,
+    weekRange,
+    onNavigate,
+    isRecordingAttendance,
+    isExporting,
+    attendanceActionLabel,
+    onAttendanceRecord,
+    onExportMySchedule,
+}: Props) {
     const monthYear = currentDate.toLocaleDateString("vi-VN", { month: "long", year: "numeric" });
 
     return (
@@ -23,7 +37,7 @@ export function UScheduleHeader({ currentDate, weekRange, onNavigate }: Props) {
             </div>
 
             {/* Navigation */}
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
                 <Button
                     variant="outline"
                     size="sm"
@@ -53,6 +67,17 @@ export function UScheduleHeader({ currentDate, weekRange, onNavigate }: Props) {
                 <div className="flex flex-col">
                     <span className="text-lg font-semibold capitalize">{monthYear}</span>
                     <span className="text-xs text-muted-foreground">{weekRange}</span>
+                </div>
+
+                <div className="ml-auto flex items-center gap-2">
+                    <Button size="sm" variant="outline" onClick={onExportMySchedule} disabled={isExporting}>
+                        {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+                        Xuất lịch của tôi
+                    </Button>
+                    <Button size="sm" onClick={onAttendanceRecord} disabled={isRecordingAttendance}>
+                        {isRecordingAttendance ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Fingerprint className="mr-2 h-4 w-4" />}
+                        {attendanceActionLabel}
+                    </Button>
                 </div>
             </div>
         </div>

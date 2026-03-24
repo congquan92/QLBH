@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Helper } from "@/lib/helper";
 import type { OrderSummary } from "@/types/order";
-import { Eye, Loader2, XCircle } from "lucide-react";
+import { Eye } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { OrderDetailDialog } from "./order-detail-dialog";
@@ -19,10 +19,16 @@ type OrdersTableProps = {
     isLoading: boolean;
     updatingOrderId: number | null;
     onChangeStatus: (orderId: number, nextStatus: string) => Promise<void>;
-    onCancelOrder: (orderId: number) => Promise<void>;
 };
 
-export function OrdersTable({ orders, isLoading, updatingOrderId, onChangeStatus, onCancelOrder }: OrdersTableProps) {
+function getPaymentTypeLabel(value: unknown) {
+    const raw = String(value ?? "").toUpperCase();
+    if (raw === "COD") return "COD";
+    if (raw === "BANK_TRANSFER" || raw === "BANK_TRANFER") return "Thanh toán ngân hàng";
+    return String(value ?? "-");
+}
+
+export function OrdersTable({ orders, isLoading, updatingOrderId, onChangeStatus }: OrdersTableProps) {
     const [selectedOrder, setSelectedOrder] = useState<OrderSummary | null>(null);
 
     function handleSelectStatus(orderId: number, currentStatus: DeliveryStatusValue, selectedStatus: string) {
@@ -81,8 +87,9 @@ export function OrdersTable({ orders, isLoading, updatingOrderId, onChangeStatus
                             const currentStatus = getOrderStatus(rawStatus);
                             const currentIndex = getProgressIndex(currentStatus);
                             const isUpdating = updatingOrderId === order.id;
-                            const canCancel = currentStatus === "PENDING";
                             const itemCount = Array.isArray(order.orderItemResponses) ? order.orderItemResponses.length : Array.isArray(order.orderItem) ? order.orderItem.length : 0;
+                            const isBankTransfer = ["BANK_TRANSFER", "BANK_TRANFER"].includes(String(order.paymentType ?? "").toUpperCase());
+                            const isUnpaid = String(order.paymentStatus ?? "").toUpperCase() === "UNPAID";
 
                             return (
                                 <tr key={order.id} className="border-b align-top hover:bg-muted/40">
@@ -96,7 +103,11 @@ export function OrdersTable({ orders, isLoading, updatingOrderId, onChangeStatus
                                     <td className="px-6 py-4">{itemCount} sản phẩm</td>
                                     <td className="px-6 py-4 font-medium">{Helper.formatPrice(String(order.totalAmount ?? 0))}</td>
                                     <td className="px-6 py-4">
-                                        <span className={`rounded-full px-2 py-1 text-xs font-medium ${getStatusColorClass(currentStatus)}`}>{getStatusLabel(currentStatus)}</span>
+                                        <div className="space-y-1.5">
+                                            <span className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${getStatusColorClass(currentStatus)}`}>{getStatusLabel(currentStatus)}</span>
+                                            <div className="text-xs text-muted-foreground">{getPaymentTypeLabel(order.paymentType)}</div>
+                                            {isBankTransfer && isUnpaid ? <div className="text-xs font-medium text-amber-700">Chưa thanh toán</div> : null}
+                                        </div>
                                     </td>
                                     <td className="px-6 py-4">
                                         <div className="flex min-w-52 flex-wrap items-center gap-2">
@@ -123,13 +134,6 @@ export function OrdersTable({ orders, isLoading, updatingOrderId, onChangeStatus
                                                     })}
                                                 </SelectContent>
                                             </Select>
-
-                                            {canCancel && (
-                                                <Button variant="destructive" size="sm" onClick={() => void onCancelOrder(order.id)} disabled={isUpdating}>
-                                                    {isUpdating ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
-                                                    Hủy đơn
-                                                </Button>
-                                            )}
                                         </div>
                                     </td>
                                 </tr>

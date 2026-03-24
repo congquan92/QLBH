@@ -22,6 +22,9 @@ export type ProductAttributeValueInput = {
     id?: number;
     value: string;
     image: string;
+    imageDeleted?: boolean;
+    imageFile?: File;
+    imagePreviewUrl?: string;
 };
 
 export type ProductAttributeInput = {

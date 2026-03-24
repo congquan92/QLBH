@@ -5,7 +5,7 @@ type IntrospectResponse = {
     valid: boolean;
     id: number;
     email: string;
-    roles?: unknown;
+    roles?: LoginRole | LoginRole[] | unknown;
 };
 
 export const AuthApi = {

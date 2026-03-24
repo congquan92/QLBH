@@ -1,14 +1,15 @@
 import type { ApiResponse } from "@/types/api";
 
 export interface OtpSendPayload {
-    email: string;
-    type?: string;
+    userId: number;
+    otpType: string;
+    isEmail: boolean;
 }
 
 export interface OtpVerifyPayload {
-    email: string;
-    otp: string;
-    type?: string;
+    userId: number;
+    inputOtp: string;
+    otpType: string;
 }
 
 export interface OtpVerifyResult {

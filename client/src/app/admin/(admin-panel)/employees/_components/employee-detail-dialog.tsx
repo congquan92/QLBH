@@ -147,6 +147,7 @@ export function EmployeeDetailDialog({ open, onOpenChange, user, positions }: Pr
     const roleLabel = getRoleLabel(user);
     const positionLabel = user.positionResponse?.name ?? "-";
     const employmentLabel = getEmploymentType(user);
+    const addresses = Array.isArray(user.addressResponses) ? user.addressResponses : [];
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -238,6 +239,38 @@ export function EmployeeDetailDialog({ open, onOpenChange, user, positions }: Pr
                                 <InfoRow icon={Shield} label="Vai trò" value={roleLabel} />
                                 <InfoRow icon={Briefcase} label="Chức vụ" value={positionLabel} />
                                 <InfoRow icon={Clock} label="Loại hình" value={employmentLabel} />
+                            </div>
+
+                            <div className="rounded-xl border bg-muted/20 p-4 space-y-3">
+                                <h4 className="text-xs font-semibold uppercase text-muted-foreground tracking-wide">Địa chỉ</h4>
+                                {addresses.length > 0 ? (
+                                    addresses.map((address) => {
+                                        const customerName = String((address as { customer_name?: string; customerName?: string }).customer_name ?? (address as { customer_name?: string; customerName?: string }).customerName ?? "-");
+                                        const phone = String((address as { phone_number?: string; phoneNumber?: string }).phone_number ?? (address as { phone_number?: string; phoneNumber?: string }).phoneNumber ?? "-");
+                                        const text = [
+                                            String((address as { address?: string }).address ?? "").trim(),
+                                            String((address as { ward?: string; wardName?: string }).ward ?? (address as { ward?: string; wardName?: string }).wardName ?? "").trim(),
+                                            String((address as { district?: string; districtName?: string }).district ?? (address as { district?: string; districtName?: string }).districtName ?? "").trim(),
+                                            String((address as { province?: string; provinceName?: string }).province ?? (address as { province?: string; provinceName?: string }).provinceName ?? "").trim(),
+                                        ]
+                                            .filter(Boolean)
+                                            .join(", ");
+
+                                        const isDefault = Boolean((address as { is_default?: boolean; isDefault?: boolean }).is_default ?? (address as { is_default?: boolean; isDefault?: boolean }).isDefault);
+
+                                        return (
+                                            <div key={String((address as { id?: number }).id ?? `${customerName}-${phone}`)} className="rounded-lg border bg-background p-3">
+                                                <div className="flex items-center justify-between gap-2">
+                                                    <p className="text-sm font-medium">{customerName} - {phone}</p>
+                                                    {isDefault ? <Badge variant="outline">Mặc định</Badge> : null}
+                                                </div>
+                                                <p className="text-xs text-muted-foreground mt-1">{text || "-"}</p>
+                                            </div>
+                                        );
+                                    })
+                                ) : (
+                                    <p className="text-sm text-muted-foreground">Nhân viên chưa có địa chỉ.</p>
+                                )}
                             </div>
 
                         </div>

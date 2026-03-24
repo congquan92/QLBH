@@ -58,7 +58,7 @@ export function PromoteEmployeeDialog({
             <DialogContent className="sm:max-w-lg">
                 <DialogHeader className="border-b pb-4">
                     <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-purple-100 to-indigo-100">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-linear-to-br from-purple-100 to-indigo-100">
                             <TrendingUp className="h-5 w-5 text-purple-600" />
                         </div>
                         <div>
@@ -144,27 +144,12 @@ export function PromoteEmployeeDialog({
                             <Briefcase className="h-3.5 w-3.5 text-blue-500" />
                             Loại hình làm việc
                         </Label>
-                        <Select value={employmentType} onValueChange={onChangeEmploymentType}>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Chọn loại hình" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="FULL_TIME">
-                                    <div className="flex items-center gap-2">
-                                        <Badge className="bg-blue-100 text-blue-700 border-blue-200 text-xs px-1.5 py-0">
-                                            Full-time
-                                        </Badge>
-                                    </div>
-                                </SelectItem>
-                                <SelectItem value="PART_TIME">
-                                    <div className="flex items-center gap-2">
-                                        <Badge className="bg-orange-100 text-orange-700 border-orange-200 text-xs px-1.5 py-0">
-                                            Part-time
-                                        </Badge>
-                                    </div>
-                                </SelectItem>
-                            </SelectContent>
-                        </Select>
+                        <div className="h-10 rounded-md border border-input bg-muted/40 px-3 text-sm flex items-center font-medium">
+                            {employmentType === "PART_TIME" ? "Part-time (Bán thời gian)" : "Full-time (Toàn thời gian)"}
+                        </div>
+                        <p className="text-[11px] text-muted-foreground">
+                            Loại hình làm việc tự động theo chức vụ để tránh lệch dữ liệu lịch và bảng lương.
+                        </p>
                     </div>
 
                     {/* Ngày hiệu lực */}
@@ -192,7 +177,7 @@ export function PromoteEmployeeDialog({
                     <Button
                         onClick={onSave}
                         disabled={isSaving || !positionId || !employmentType || !effectiveDate}
-                        className="min-w-32 gap-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
+                        className="min-w-32 gap-1.5 bg-linear-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
                     >
                         {isSaving && <Loader2 className="h-4 w-4 animate-spin" />}
                         <TrendingUp className="h-4 w-4" />

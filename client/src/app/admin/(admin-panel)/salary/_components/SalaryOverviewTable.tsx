@@ -1,11 +1,13 @@
 "use client";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Helper } from "@/lib/helper";
 import type { SalaryBulkItem } from "@/types/salary";
-import { AlertCircle, CheckCircle2, Users } from "lucide-react";
+import { AlertCircle, CheckCircle2, ChevronLeft, ChevronRight, Users } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 
 type Props = {
     data: SalaryBulkItem[];
@@ -15,10 +17,27 @@ type Props = {
 };
 
 export function SalaryOverviewTable({ data, isLoading, month, year }: Props) {
+    const pageSize = 10;
+    const [page, setPage] = useState(1);
+
+    useEffect(() => {
+        setPage(1);
+    }, [data, month, year]);
+
     const maxSalary = data.length > 0 ? Math.max(...data.filter((d) => d.status === "ok").map((d) => d.final_salary)) : 0;
     const totalOk = data.filter((d) => d.status === "ok").length;
     const totalError = data.filter((d) => d.status === "error").length;
     const grandTotal = data.reduce((sum, d) => sum + d.final_salary, 0);
+
+    const totalPages = Math.max(1, Math.ceil(data.length / pageSize));
+    const currentPage = Math.min(page, totalPages);
+    const pagedData = useMemo(() => {
+        const start = (currentPage - 1) * pageSize;
+        return data.slice(start, start + pageSize);
+    }, [currentPage, data]);
+
+    const startRow = data.length === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+    const endRow = data.length === 0 ? 0 : Math.min(currentPage * pageSize, data.length);
 
     return (
         <Card className="mt-6">
@@ -87,7 +106,7 @@ export function SalaryOverviewTable({ data, isLoading, month, year }: Props) {
                                             </td>
                                         </tr>
                                     )
-                                    : data.map((item, idx) => {
+                                    : pagedData.map((item, idx) => {
                                         const isTop = item.status === "ok" && item.final_salary === maxSalary && maxSalary > 0;
                                         return (
                                             <tr
@@ -99,7 +118,7 @@ export function SalaryOverviewTable({ data, isLoading, month, year }: Props) {
                                                         : "hover:bg-muted/40"
                                                     }`}
                                             >
-                                                <td className="px-4 py-3 text-muted-foreground font-mono text-xs">{idx + 1}</td>
+                                                <td className="px-4 py-3 text-muted-foreground font-mono text-xs">{(currentPage - 1) * pageSize + idx + 1}</td>
                                                 <td className="px-4 py-3 font-medium">
                                                     {item.employee}
                                                 </td>
@@ -160,6 +179,39 @@ export function SalaryOverviewTable({ data, isLoading, month, year }: Props) {
                         )}
                     </table>
                 </div>
+
+                {!isLoading && data.length > 0 && (
+                    <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground">
+                        <span>
+                            Hiển thị {startRow}-{endRow} / {data.length} nhân viên
+                        </span>
+                        <div className="flex items-center gap-2">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+                                disabled={currentPage <= 1}
+                            >
+                                <ChevronLeft className="h-4 w-4" />
+                                Trước
+                            </Button>
+                            <span>
+                                Trang {currentPage}/{totalPages}
+                            </span>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+                                disabled={currentPage >= totalPages}
+                            >
+                                Sau
+                                <ChevronRight className="h-4 w-4" />
+                            </Button>
+                        </div>
+                    </div>
+                )}
             </CardContent>
         </Card>
     );

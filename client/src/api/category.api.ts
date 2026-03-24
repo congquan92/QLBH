@@ -21,10 +21,10 @@ export const CategoryApi = {
         const page = query?.page ?? 1;
         const size = query?.size ?? 10;
         try {
-            const res = await axiosInstance.get("/category/list", { params: { ...query, page, size } });
+            const res = await axiosInstance.get("/category/admin/list", { params: { ...query, page, size } });
             return res.data as ApiResponse<Category[]>;
         } catch (error) {
-            console.error(`${WARNING_PREFIX} /category/list failed.`, error);
+            console.error(`${WARNING_PREFIX} /category/admin/list failed.`, error);
             throw error;
         }
     },

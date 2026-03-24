@@ -82,6 +82,21 @@ function flattenCategories(categories: Category[]): CategoryOption[] {
     return result;
 }
 
+function normalizeCategoryList(payload: unknown): Category[] {
+    if (Array.isArray(payload)) {
+        return payload as Category[];
+    }
+
+    if (payload && typeof payload === "object") {
+        const nested = (payload as { data?: unknown }).data;
+        if (Array.isArray(nested)) {
+            return nested as Category[];
+        }
+    }
+
+    return [];
+}
+
 function normalizeSuppliers(items: Supplier[]): SupplierOption[] {
     return items
         .filter((supplier) => String(supplier.status ?? "ACTIVE") !== "DISABLED")
@@ -102,6 +117,7 @@ function createFormFromDetail(detail: ProductDetail): ProductFormValues {
             id: item.id,
             value: String(item.value ?? ""),
             image: String(item.image ?? item.urlImage ?? item.url_image ?? ""),
+            imageDeleted: false,
         })),
     }));
 
@@ -145,10 +161,10 @@ function createFormFromDetail(detail: ProductDetail): ProductFormValues {
     };
 }
 
-function buildAttributesPayloadForCreate(form: ProductFormValues) {
+function buildAttributesPayloadForCreate(attributes: ProductAttributeInput[], variants: ProductVariantInput[]) {
     const map = new Map<string, Map<string, string>>();
 
-    for (const attribute of form.attributes) {
+    for (const attribute of attributes) {
         const name = attribute.name.trim();
         if (!name) continue;
 
@@ -165,7 +181,7 @@ function buildAttributesPayloadForCreate(form: ProductFormValues) {
         }
     }
 
-    for (const variant of form.productVariant) {
+    for (const variant of variants) {
         for (const item of variant.variantAttributes) {
             const name = item.attribute.trim();
             const value = item.value.trim();
@@ -189,8 +205,8 @@ function buildAttributesPayloadForCreate(form: ProductFormValues) {
     }));
 }
 
-function buildAttributesPayloadForUpdate(form: ProductFormValues) {
-    return form.attributes
+function buildAttributesPayloadForUpdate(attributes: ProductAttributeInput[]) {
+    return attributes
         .map((attribute) => ({
             ...(attribute.id ? { id: attribute.id } : {}),
             name: attribute.name.trim(),
@@ -198,7 +214,7 @@ function buildAttributesPayloadForUpdate(form: ProductFormValues) {
                 .map((item) => ({
                     ...(item.id ? { id: item.id } : {}),
                     value: item.value.trim(),
-                    ...(item.image.trim() ? { image: item.image.trim() } : {}),
+                    image: item.image.trim() || null,
                 }))
                 .filter((item) => item.value),
         }))
@@ -276,6 +292,12 @@ function buildVariantsPayload(form: ProductFormValues) {
         );
 }
 
+function extractImageUrlsFromHtml(html: string): string[] {
+    const matches = Array.from(html.matchAll(/<img[^>]+src=["']([^"']+)["']/gi));
+    const urls = matches.map((match) => String(match[1] ?? "").trim()).filter(Boolean);
+    return Array.from(new Set(urls));
+}
+
 export default function ProductsPage() {
     const [products, setProducts] = useState<Product[]>([]);
     const [categories, setCategories] = useState<CategoryOption[]>([]);
@@ -292,6 +314,9 @@ export default function ProductsPage() {
     const [deleteTarget, setDeleteTarget] = useState<Product | null>(null);
     const [originalAttributeIds, setOriginalAttributeIds] = useState<number[]>([]);
     const [originalAttributeValuePairs, setOriginalAttributeValuePairs] = useState<Array<{ id: number; attributeId: number }>>([]);
+    const [initialAttributeImageUrls, setInitialAttributeImageUrls] = useState<string[]>([]);
+    const [initialDescriptionImageUrls, setInitialDescriptionImageUrls] = useState<string[]>([]);
+    const [uploadedDescriptionImageUrls, setUploadedDescriptionImageUrls] = useState<string[]>([]);
 
     useEffect(() => {
         return () => {
@@ -313,7 +338,7 @@ export default function ProductsPage() {
             try {
                 const [categoryRes, supplierRes, productRes] = await Promise.all([CategoryApi.getAdminCategories({ page: 1, size: 300 }), AdminCrudApi.getSuppliers({ page: 1, size: 200, sort: "id:desc" }), ProductApi.getAdminProducts(1, 200)]);
 
-                setCategories(flattenCategories(categoryRes.data));
+                setCategories(flattenCategories(normalizeCategoryList(categoryRes.data)));
                 setSuppliers(normalizeSuppliers(supplierRes.data.data));
                 setProducts(productRes.data.data ?? []);
             } catch (error) {
@@ -370,8 +395,22 @@ export default function ProductsPage() {
         setForm(emptyForm);
         setOriginalAttributeIds([]);
         setOriginalAttributeValuePairs([]);
+        setInitialAttributeImageUrls([]);
+        setInitialDescriptionImageUrls([]);
+        setUploadedDescriptionImageUrls([]);
         setShowForm(false);
         setIsLoadingDetail(false);
+    }
+
+    async function uploadDescriptionImage(file: File): Promise<string> {
+        const response = await FileUploadApi.upload(file);
+        const url = String(response.url ?? "").trim();
+        if (!url) {
+            throw new Error("Upload ảnh mô tả thất bại, vui lòng thử lại.");
+        }
+
+        setUploadedDescriptionImageUrls((current) => (current.includes(url) ? current : [...current, url]));
+        return url;
     }
 
     async function refreshProducts() {
@@ -534,6 +573,43 @@ export default function ProductsPage() {
         };
     }
 
+    async function resolveAttributeValueImages(attributes: ProductAttributeInput[]) {
+        const uploadedUrls: string[] = [];
+
+        const resolved = await Promise.all(
+            attributes.map(async (attribute) => {
+                const values = await Promise.all(
+                    attribute.values.map(async (item) => {
+                        if (!item.imageFile) {
+                            return item;
+                        }
+
+                        const response = await FileUploadApi.upload(item.imageFile);
+                        const uploadedUrl = String(response.url ?? "").trim();
+                        if (!uploadedUrl) {
+                            throw new Error("Upload ảnh phân loại thất bại. Vui lòng thử lại.");
+                        }
+
+                        uploadedUrls.push(uploadedUrl);
+                        return {
+                            ...item,
+                            image: uploadedUrl,
+                            imageFile: undefined,
+                            imagePreviewUrl: undefined,
+                        };
+                    }),
+                );
+
+                return {
+                    ...attribute,
+                    values,
+                };
+            }),
+        );
+
+        return { attributes: resolved, uploadedUrls };
+    }
+
     async function startEdit(product: Product) {
         setShowForm(true);
         setIsLoadingDetail(true);
@@ -550,6 +626,9 @@ export default function ProductsPage() {
             const loadedAttributes = nextForm.attributes;
             setOriginalAttributeIds(loadedAttributes.map((attribute) => Number(attribute.id)).filter((id) => Number.isFinite(id)));
             setOriginalAttributeValuePairs(loadedAttributes.flatMap((attribute) => attribute.values.filter((item) => Number.isFinite(Number(item.id))).map((item) => ({ id: Number(item.id), attributeId: Number(attribute.id) }))));
+            setInitialAttributeImageUrls(Array.from(new Set(loadedAttributes.flatMap((attribute) => attribute.values.map((item) => String(item.image ?? "").trim()).filter(Boolean)))));
+            setInitialDescriptionImageUrls(extractImageUrlsFromHtml(nextForm.description));
+            setUploadedDescriptionImageUrls([]);
             setCoverImage(detail.coverImage ? createImageItem(detail.coverImage, "cover-image") : null);
             setGalleryImages((detail.imageProduct.length > 0 ? detail.imageProduct : detail.coverImage ? [detail.coverImage] : []).map((url, index) => createImageItem(url, `image-${index + 1}`)));
         } catch (error) {
@@ -586,8 +665,7 @@ export default function ProductsPage() {
         const length = Number(form.length);
         const width = Number(form.width);
         const height = Number(form.height);
-        const attributesPayloadForCreate = buildAttributesPayloadForCreate(form);
-        const attributesPayloadForUpdate = buildAttributesPayloadForUpdate(form);
+        const attributesPayloadForUpdate = buildAttributesPayloadForUpdate(form.attributes);
         const hasClassificationAttributes = attributesPayloadForUpdate.length > 0;
         const variantsPayload = buildVariantsPayload(form);
 
@@ -617,8 +695,15 @@ export default function ProductsPage() {
         }
 
         setIsSaving(true);
+        let uploadedAttributeImageUrls: string[] = [];
+        let didPersistProduct = false;
         try {
+            const { attributes: resolvedAttributes, uploadedUrls } = await resolveAttributeValueImages(form.attributes);
+            uploadedAttributeImageUrls = uploadedUrls;
+            const resolvedAttributesPayloadForCreate = buildAttributesPayloadForCreate(resolvedAttributes, form.productVariant);
+            const resolvedAttributesPayloadForUpdate = buildAttributesPayloadForUpdate(resolvedAttributes);
             const uploadedMedia = await uploadPendingMedia();
+            const currentDescriptionImageUrls = extractImageUrlsFromHtml(form.description);
 
             if (!uploadedMedia.coverImage) {
                 toast.error("Upload ảnh bìa thất bại. Vui lòng kiểm tra lại.");
@@ -645,8 +730,8 @@ export default function ProductsPage() {
             }
 
             if (!form.id && hasClassificationAttributes) {
-                if (attributesPayloadForCreate.length > 0) {
-                    payload.attributes = attributesPayloadForCreate;
+                if (resolvedAttributesPayloadForCreate.length > 0) {
+                    payload.attributes = resolvedAttributesPayloadForCreate;
                 }
 
                 if (variantsPayload.length > 0) {
@@ -670,8 +755,31 @@ export default function ProductsPage() {
                     await ProductApi.deleteAttribute(form.id, { attributeIds: deletedAttributeIds });
                 }
 
-                payload.attributes = attributesPayloadForUpdate;
+                const currentAttributeImageUrls = Array.from(
+                    new Set(
+                        resolvedAttributes
+                            .flatMap((attribute) => attribute.values)
+                            .map((item) => String(item.image ?? "").trim())
+                            .filter(Boolean),
+                    ),
+                );
+
+                const removedAttributeImageUrls = initialAttributeImageUrls.filter((url) => !currentAttributeImageUrls.includes(url));
+                if (removedAttributeImageUrls.length > 0) {
+                    await Promise.allSettled(removedAttributeImageUrls.map((url) => FileUploadApi.deleteFile(url)));
+                }
+
+                const removedInitialDescriptionUrls = initialDescriptionImageUrls.filter((url) => !currentDescriptionImageUrls.includes(url));
+                const removedUploadedDescriptionUrls = uploadedDescriptionImageUrls.filter((url) => !currentDescriptionImageUrls.includes(url));
+                const removedDescriptionUrls = Array.from(new Set([...removedInitialDescriptionUrls, ...removedUploadedDescriptionUrls]));
+
+                if (removedDescriptionUrls.length > 0) {
+                    await Promise.allSettled(removedDescriptionUrls.map((url) => FileUploadApi.deleteFile(url)));
+                }
+
+                payload.attributes = resolvedAttributesPayloadForUpdate;
                 await ProductApi.updateProduct({ id: form.id, ...payload });
+                didPersistProduct = true;
 
                 if (hasClassificationAttributes) {
                     const updateRequests = form.productVariant
@@ -715,13 +823,22 @@ export default function ProductsPage() {
 
                 toast.success("Cập nhật sản phẩm thành công.");
             } else {
+                const removedUploadedDescriptionUrls = uploadedDescriptionImageUrls.filter((url) => !currentDescriptionImageUrls.includes(url));
+                if (removedUploadedDescriptionUrls.length > 0) {
+                    await Promise.allSettled(removedUploadedDescriptionUrls.map((url) => FileUploadApi.deleteFile(url)));
+                }
+
                 await ProductApi.addProduct(payload);
+                didPersistProduct = true;
                 toast.success("Tạo sản phẩm thành công.");
             }
 
             resetForm();
             await refreshProducts();
         } catch (error) {
+            if (!didPersistProduct && uploadedAttributeImageUrls.length > 0) {
+                await Promise.allSettled(uploadedAttributeImageUrls.map((url) => FileUploadApi.deleteFile(url)));
+            }
             toast.error(Helper.errorMessage(error));
         } finally {
             setIsSaving(false);
@@ -823,6 +940,7 @@ export default function ProductsPage() {
                     onVariantsChange={updateVariants}
                     onCancel={resetForm}
                     onSubmit={() => void submitProduct()}
+                    onUploadDescriptionImage={uploadDescriptionImage}
                 />
 
                 <ProductTable

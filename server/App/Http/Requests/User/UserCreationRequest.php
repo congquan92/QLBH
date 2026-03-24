@@ -4,7 +4,6 @@ namespace App\Http\Requests\User;
 
 use App\Exceptions\MessageError;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rules\Password;
 
 class UserCreationRequest extends FormRequest
 {
@@ -28,7 +27,7 @@ class UserCreationRequest extends FormRequest
                 'regex:/^(0[0-9]{9}|\+84[0-9]{9})$/',
             ],
             'positionId' => 'required|exists:positions,id',
-            'employmentType' => 'required|string',
+            'employmentType' => 'required|in:FULL_TIME,PART_TIME',
             'roleId' => 'required|int',
             'username' => 'required|string|max:100|unique:users,username',
             'password' => ['required', 'string', 'min:8'],
@@ -49,6 +48,7 @@ class UserCreationRequest extends FormRequest
             'email.unique' => 'Email already exists',
             'phone.required' => MessageError::PHONE_NOT_BLANK,
             'phone.regex' => 'Phone number is invalid',
+            'employmentType.in' => 'Loại hình làm việc phải là FULL_TIME hoặc PART_TIME.',
             'username.required' => MessageError::USERNAME_NOT_BLANK,
             'username.unique' => MessageError::USERNAME_EXISTED,
             'password.required' => MessageError::PASSWORD_NOT_BLANK,

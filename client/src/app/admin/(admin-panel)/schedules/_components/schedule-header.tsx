@@ -1,9 +1,9 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, Calendar, Users, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar, Users, Plus, BriefcaseBusiness, TriangleAlert, Fingerprint, Loader2 } from "lucide-react";
 
-type ViewMode = "weekly-report" | "daily-staff" | "assign";
+type ViewMode = "weekly-report" | "daily-staff" | "assign" | "position-default" | "late-arrivals";
 
 type Props = {
     viewMode: ViewMode;
@@ -11,15 +11,19 @@ type Props = {
     weekRange: string;
     onViewModeChange: (mode: ViewMode) => void;
     onNavigate: (direction: "prev" | "next" | "today") => void;
+    isRecordingAttendance: boolean;
+    onAttendanceRecord: () => void;
 };
 
 const VIEW_TABS: { key: ViewMode; label: string; icon: React.ReactNode }[] = [
     { key: "weekly-report", label: "Báo cáo tuần", icon: <Calendar className="h-4 w-4" /> },
     { key: "daily-staff", label: "Nhân viên hôm nay", icon: <Users className="h-4 w-4" /> },
     { key: "assign", label: "Phân ca", icon: <Plus className="h-4 w-4" /> },
+    { key: "position-default", label: "Lịch theo chức vụ", icon: <BriefcaseBusiness className="h-4 w-4" /> },
+    { key: "late-arrivals", label: "Danh sách đi trễ", icon: <TriangleAlert className="h-4 w-4" /> },
 ];
 
-export function ScheduleHeader({ viewMode, currentDate, weekRange, onViewModeChange, onNavigate }: Props) {
+export function ScheduleHeader({ viewMode, currentDate, weekRange, onViewModeChange, onNavigate, isRecordingAttendance, onAttendanceRecord }: Props) {
     const monthYear = currentDate.toLocaleDateString("vi-VN", { month: "long", year: "numeric" });
 
     return (
@@ -91,6 +95,11 @@ export function ScheduleHeader({ viewMode, currentDate, weekRange, onViewModeCha
                         </Button>
                     ))}
                 </div>
+
+                <Button size="sm" onClick={onAttendanceRecord} disabled={isRecordingAttendance}>
+                    {isRecordingAttendance ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Fingerprint className="mr-2 h-4 w-4" />}
+                    Điểm danh
+                </Button>
             </div>
         </div>
     );

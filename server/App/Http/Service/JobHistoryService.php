@@ -11,6 +11,16 @@ use Carbon\Carbon;
 
 class JobHistoryService
 {
+    private function inferEmploymentTypeByPositionName(string $positionName): string
+    {
+        $normalized = mb_strtolower($positionName);
+        if (str_contains($normalized, 'part time') || str_contains($normalized, 'part-time') || str_contains($normalized, 'bán thời gian')) {
+            return 'PART_TIME';
+        }
+
+        return 'FULL_TIME';
+    }
+
     public function promoteEmployee($userId, $data)
     {
         return DB::transaction(function () use ($userId, $data) {
@@ -38,7 +48,7 @@ class JobHistoryService
                 'user_id' => $userId,
                 'position_id' => $data['position_id'],
                 'current_salary' => $calculatedSalary,
-                'employment_type' => $data['employment_type'],
+                'employment_type' => $this->inferEmploymentTypeByPositionName((string) $position->name),
                 'effective_date' => $data['effective_date'],
                 'end_date' => null,
             ]);

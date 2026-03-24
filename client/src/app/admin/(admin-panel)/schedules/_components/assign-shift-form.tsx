@@ -5,7 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { Shift } from "@/types/admin-crud";
 import type { UserProfile } from "@/types/user";
-import { Plus, Loader2, CalendarPlus, User, Clock } from "lucide-react";
+import { Plus, Loader2, CalendarPlus, User, Clock, Search } from "lucide-react";
+import { useMemo, useState } from "react";
 
 type AssignForm = {
     user_id: string;
@@ -23,10 +24,28 @@ type Props = {
 };
 
 export function AssignShiftForm({ assignForm, shifts, employees, isSaving, onFormChange, onSubmit }: Props) {
+    const [employeeQuery, setEmployeeQuery] = useState("");
+
+    const filteredEmployees = useMemo(() => {
+        const query = employeeQuery.trim().toLowerCase();
+        if (!query) return employees;
+
+        return employees.filter((emp) => {
+            const fullName = String(emp.fullName ?? "").toLowerCase();
+            const username = String(emp.userName ?? emp.username ?? "").toLowerCase();
+            const email = String(emp.email ?? "").toLowerCase();
+            const phone = String(emp.phone ?? "").toLowerCase();
+            const position = String(emp.positionResponse?.name ?? "").toLowerCase();
+            const id = String(emp.id);
+
+            return [fullName, username, email, phone, position, id].some((value) => value.includes(query));
+        });
+    }, [employees, employeeQuery]);
+
     return (
         <div className="rounded-xl border bg-card overflow-hidden">
             {/* Header */}
-            <div className="flex items-center gap-3 p-4 border-b bg-gradient-to-r from-primary/5 to-transparent">
+            <div className="flex items-center gap-3 p-4 border-b bg-linear-to-r from-primary/5 to-transparent">
                 <div className="flex items-center justify-center w-10 h-10 rounded-full bg-primary/10 text-primary">
                     <CalendarPlus className="h-5 w-5" />
                 </div>
@@ -46,6 +65,15 @@ export function AssignShiftForm({ assignForm, shifts, employees, isSaving, onFor
                             Nhân viên
                         </Label>
                         <div className="relative">
+                            <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                            <Input
+                                className="h-9 pl-8"
+                                placeholder="Tìm theo tên, mã nhân viên, username, email, SĐT..."
+                                value={employeeQuery}
+                                onChange={(e) => setEmployeeQuery(e.target.value)}
+                            />
+                        </div>
+                        <div className="relative">
                             <select
                                 className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 appearance-none cursor-pointer"
                                 value={assignForm.user_id}
@@ -54,9 +82,9 @@ export function AssignShiftForm({ assignForm, shifts, employees, isSaving, onFor
                                 }
                             >
                                 <option value="">Chọn nhân viên</option>
-                                {employees.map((emp) => (
+                                {filteredEmployees.map((emp) => (
                                     <option key={emp.id} value={String(emp.id)}>
-                                        {String(emp.fullName ?? emp.username ?? `User #${emp.id}`)}
+                                        #{emp.id} - {String(emp.fullName ?? emp.username ?? `User #${emp.id}`)} - {String(emp.positionResponse?.name ?? "N/A")} - {String(emp.employmentType ?? emp.employment_type ?? "N/A")}
                                     </option>
                                 ))}
                             </select>
@@ -66,6 +94,7 @@ export function AssignShiftForm({ assignForm, shifts, employees, isSaving, onFor
                                 </svg>
                             </div>
                         </div>
+                        <p className="text-xs text-muted-foreground">Hiển thị {filteredEmployees.length}/{employees.length} nhân viên phù hợp.</p>
                     </div>
 
                     {/* Shift */}

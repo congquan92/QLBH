@@ -152,25 +152,6 @@ export default function OrdersPage() {
     }
   }
 
-  async function handleCancelOrder(orderId: number) {
-    if (!confirm("Bạn có chắc chắn muốn hủy đơn hàng này?")) return;
-
-    setUpdatingOrderId(orderId);
-    try {
-      const res = await OrderApi.cancel(orderId);
-      if (res.status === 200) {
-        toast.success(`Đã hủy đơn hàng #${orderId}`);
-        await fetchOrders();
-      } else {
-        toast.error(res.message || "Không thể hủy đơn hàng");
-      }
-    } catch {
-      toast.error("Không thể hủy đơn hàng");
-    } finally {
-      setUpdatingOrderId(null);
-    }
-  }
-
   return (
     <div className="space-y-4">
       <OrdersHeader />
@@ -200,7 +181,6 @@ export default function OrdersPage() {
             isLoading={isLoading}
             updatingOrderId={updatingOrderId}
             onChangeStatus={handleChangeStatus}
-            onCancelOrder={handleCancelOrder}
           />
         </CardContent>
       </Card>
