@@ -1,7 +1,7 @@
 import { CategoryApi } from "@/api/category.api";
 import { ProductApi } from "@/api/product.api";
 import ListProduct from "@/app/(client)/san-pham/_components/listProduct";
-import { findChildCategoryBySlugs } from "@/lib/public-catalog";
+import { findChildCategoryBySlugs } from "@/app/(client)/[category]/public-catalog";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 

@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { UserAuthUtil } from "@/lib/user-auth";
+import { UserAuthUtil } from "@/lib/UserAuth-util";
 
 import { Eye, EyeOff, Loader2, UserRound } from "lucide-react";
 import Image from "next/image";

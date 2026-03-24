@@ -16,7 +16,7 @@ import Zoom from "yet-another-react-lightbox/plugins/zoom";
 import { Product } from "@/types/product";
 import { toast } from "sonner";
 import { UserAuthStore } from "@/hooks/useClientAuth";
-import { UserAuthUtil } from "@/lib/user-auth";
+import { UserAuthUtil } from "@/lib/UserAuth-util";
 import { usePathname, useRouter } from "next/navigation";
 
 export default function ListProductDetail({ products, relatedProducts }: { products: ProductDetail; relatedProducts: Product[] }) {

@@ -1,6 +1,6 @@
 import axios from "axios";
 import { AdminAuthUtil } from "@/lib/AdminAuth-util";
-import { UserAuthUtil } from "@/lib/user-auth";
+import { UserAuthUtil } from "@/lib/UserAuth-util";
 import type { AxiosRequestConfig, InternalAxiosRequestConfig } from "axios";
 
 type AuthScope = "admin" | "user";
