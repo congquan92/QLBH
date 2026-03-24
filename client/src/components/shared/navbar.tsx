@@ -17,11 +17,11 @@ function transformCategoriesToNavItems(categories: Category[]): NavigationItem[]
                 hasDropdown: hasChildren,
                 dropdownItems: hasChildren
                     ? category.childCategory
-                          .filter((child) => child.status === "ACTIVE")
-                          .map((child) => ({
-                              label: child.name,
-                              href: `/${slug}/${Helper.generateSlug(child.name)}`,
-                          }))
+                        .filter((child) => child.status === "ACTIVE")
+                        .map((child) => ({
+                            label: child.name,
+                            href: `/${slug}/${Helper.generateSlug(child.name)}`,
+                        }))
                     : undefined,
             };
         });

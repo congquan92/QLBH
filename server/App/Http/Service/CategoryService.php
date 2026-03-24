@@ -42,10 +42,19 @@ class CategoryService
             });
         }
 
-        // 2. Xử lý sắp xếp (Ví dụ: sort=name_asc hoặc name_desc)
+        // 2. Xử lý sắp xếp
+        // Hỗ trợ 2 format: "column:direction" (vd: id:asc) HOẶC "column_direction" (vd: name_desc)
         if (!empty($sort)) {
-            $direction = str_contains($sort, '_desc') ? 'desc' : 'asc';
-            $column = str_replace(['_asc', '_desc'], '', $sort);
+            if (str_contains($sort, ':')) {
+                // Format mới: "id:asc", "name:desc"
+                [$column, $direction] = explode(':', $sort, 2);
+            } else {
+                // Format cũ: "id_asc", "name_desc"
+                $direction = str_contains($sort, '_desc') ? 'desc' : 'asc';
+                $column = str_replace(['_asc', '_desc'], '', $sort);
+            }
+            $column = trim($column);
+            $direction = in_array(strtolower(trim($direction)), ['asc', 'desc']) ? strtolower(trim($direction)) : 'asc';
             $query->orderBy($column, $direction);
         } else {
             $query->orderBy('id', 'desc');
