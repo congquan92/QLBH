@@ -7,12 +7,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Helper } from "@/lib/helper";
 import type { Supplier } from "@/types/admin-crud";
 import type { Product, ProductDetail } from "@/types/product";
+import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { ImportManagement } from "./_components/import-management";
 import { InventoryHeader } from "./_components/inventory-header";
 import { SupplierManagement } from "./_components/supplier-management";
-import type { DeliveryStatus, ImportDetailDialogData, ImportDetailRow, ImportRow, ProductOption, SupplierFormValues, SupplierRow, VariantOption } from "./_components/inventory-types";
+import type { DeliveryStatus, ImportDetailDialogData, ImportDetailRow, ImportRow, LowStockVariantRow, ProductOption, SupplierFormValues, SupplierRow, VariantOption } from "./_components/inventory-types";
+
+const LOW_STOCK_THRESHOLD = 5;
 
 function toSafeString(value: unknown): string {
     return String(value ?? "").trim();
@@ -102,16 +105,58 @@ function mapVariantOptions(detail: ProductDetail): VariantOption[] {
     });
 }
 
+function parseLowStockVariantIdsParam(raw: string | null): number[] {
+    if (!raw) return [];
+    return Array.from(
+        new Set(
+            raw
+                .split(",")
+                .map((item) => Number(item.trim()))
+                .filter((item) => Number.isFinite(item) && item > 0),
+        ),
+    );
+}
+
+function mapLowStockVariants(detail: ProductDetail, productOption?: ProductOption): LowStockVariantRow[] {
+    return (detail.productVariant ?? [])
+        .map((variant) => {
+            const quantity = Number(variant.quantity ?? 0);
+            const attrs = (variant.variantAttributes ?? [])
+                .map((item) => `${toSafeString(item.attribute)}: ${toSafeString(item.value)}`)
+                .filter(Boolean)
+                .join(" | ");
+
+            return {
+                productId: Number(detail.id ?? 0),
+                productName: toSafeString(detail.name) || `Product #${String(detail.id ?? "-")}`,
+                supplierId: Number(detail.supplierId ?? productOption?.supplierId ?? 0),
+                supplierName: productOption?.supplierName ?? "-",
+                variantId: Number(variant.id ?? 0),
+                sku: toSafeString(variant.sku),
+                attributesLabel: attrs,
+                quantity,
+                unitPrice: Number(variant.price ?? detail.salePrice ?? 0),
+                suggestedQuantity: Math.max(1, LOW_STOCK_THRESHOLD - quantity + 1),
+            } satisfies LowStockVariantRow;
+        })
+        .filter((item) => item.variantId > 0 && Number.isFinite(item.quantity) && item.quantity <= LOW_STOCK_THRESHOLD)
+        .sort((a, b) => a.quantity - b.quantity);
+}
+
 export default function InventoryPage() {
+    const searchParams = useSearchParams();
     const [suppliers, setSuppliers] = useState<SupplierRow[]>([]);
     const [imports, setImports] = useState<ImportRow[]>([]);
     const [products, setProducts] = useState<ProductOption[]>([]);
+    const [lowStockVariants, setLowStockVariants] = useState<LowStockVariantRow[]>([]);
 
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
     const [activeTab, setActiveTab] = useState<"imports" | "suppliers">("imports");
     const [openCreateSupplier, setOpenCreateSupplier] = useState(false);
     const [openCreateImport, setOpenCreateImport] = useState(false);
+
+    const preselectedLowStockVariantIds = useMemo(() => parseLowStockVariantIdsParam(searchParams.get("lowStock")), [searchParams]);
 
     const fetchInventoryData = useCallback(async () => {
         setIsLoading(true);
@@ -123,14 +168,29 @@ export default function InventoryPage() {
             ]);
 
             const supplierRows = mapSupplierRows(supplierRes.data.data);
+            const productOptions = mapProductOptions(productRes.data.data ?? [], supplierRows);
+
+            const detailResults = await Promise.allSettled((productRes.data.data ?? []).map((item) => ProductApi.getAdminProductDetail(item.id)));
+            const lowStockRows: LowStockVariantRow[] = [];
+
+            for (const result of detailResults) {
+                if (result.status !== "fulfilled") continue;
+
+                const detail = result.value.data;
+                const productOption = productOptions.find((item) => item.id === Number(detail.id ?? 0));
+                lowStockRows.push(...mapLowStockVariants(detail, productOption));
+            }
+
             setSuppliers(supplierRows);
             setImports(mapImportRows((importRes.data.data as Array<Record<string, unknown>>) ?? []));
-            setProducts(mapProductOptions(productRes.data.data ?? [], supplierRows));
+            setProducts(productOptions);
+            setLowStockVariants(lowStockRows);
         } catch (error) {
             toast.error(Helper.errorMessage(error));
             setSuppliers([]);
             setImports([]);
             setProducts([]);
+            setLowStockVariants([]);
         } finally {
             setIsLoading(false);
         }
@@ -215,6 +275,29 @@ export default function InventoryPage() {
         try {
             await AdminCrudApi.createImportProduct(payload);
             toast.success("Đã tạo phiếu nhập mới");
+            await fetchInventoryData();
+        } catch (error) {
+            toast.error(Helper.errorMessage(error));
+        } finally {
+            setIsSaving(false);
+        }
+    }
+
+    async function createImportBatch(payloads: Array<{ product_id: number; description: string; import_details: Array<{ product_variant_id: number; quantity: number; unitPrice: number }> }>) {
+        if (payloads.length === 0) return;
+
+        setIsSaving(true);
+
+        try {
+            const results = await Promise.allSettled(payloads.map((payload) => AdminCrudApi.createImportProduct(payload)));
+            const successCount = results.filter((result) => result.status === "fulfilled").length;
+            const failCount = results.length - successCount;
+
+            if (failCount === 0) {
+                toast.success(`Đã tạo ${successCount} phiếu nhập từ danh sách sắp hết hàng.`);
+            } else {
+                toast.error(`Đã tạo ${successCount} phiếu nhập, lỗi ${failCount} phiếu.`);
+            }
             await fetchInventoryData();
         } catch (error) {
             toast.error(Helper.errorMessage(error));
@@ -326,11 +409,14 @@ export default function InventoryPage() {
                             imports={imports}
                             suppliers={suppliers}
                             products={products}
+                            lowStockVariants={lowStockVariants}
+                            initialSelectedLowStockVariantIds={preselectedLowStockVariantIds}
                             isLoading={isLoading}
                             isSaving={isSaving}
                             onRefresh={fetchInventoryData}
                             loadVariantsForProduct={loadVariantsForProduct}
                             onCreate={createImport}
+                            onCreateBatch={createImportBatch}
                             onGetDetail={getImportDetail}
                             onConfirm={confirmImport}
                             onCancel={cancelImport}

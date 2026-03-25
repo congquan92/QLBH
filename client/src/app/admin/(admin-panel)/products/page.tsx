@@ -128,6 +128,7 @@ function createFormFromDetail(detail: ProductDetail): ProductFormValues {
         id: variant.id,
         sku: String(variant.sku ?? ""),
         price: String(variant.price ?? ""),
+        quantity: String(variant.quantity ?? 0),
         weight: String(variant.weight ?? ""),
         length: String(variant.length ?? ""),
         width: String(variant.width ?? ""),
@@ -265,6 +266,7 @@ function buildVariantsPayload(form: ProductFormValues) {
         .map((variant) => ({
             sku: variant.sku.trim() || undefined,
             price: Number(variant.price),
+            quantity: Math.max(0, Number(variant.quantity || 0)),
             weight: Number(variant.weight),
             length: Number(variant.length),
             width: Number(variant.width),
@@ -476,6 +478,7 @@ export default function ProductsPage() {
                     id: existingVariant?.id,
                     sku: existingVariant?.sku ?? "",
                     price: existingVariant?.price ?? fallbackPrice,
+                    quantity: existingVariant?.quantity ?? "0",
                     weight: existingVariant?.weight ?? current.weight,
                     length: existingVariant?.length ?? current.length,
                     width: existingVariant?.width ?? current.width,
@@ -802,6 +805,7 @@ export default function ProductsPage() {
                         .map((variant) => ({
                             sku: variant.sku.trim() || undefined,
                             price: Number(variant.price),
+                            quantity: Math.max(0, Number(variant.quantity || 0)),
                             weight: Number(variant.weight),
                             length: Number(variant.length),
                             width: Number(variant.width),

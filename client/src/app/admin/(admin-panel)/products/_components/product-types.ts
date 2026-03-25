@@ -45,6 +45,7 @@ export type ProductVariantInput = {
     id?: number;
     sku: string;
     price: string;
+    quantity: string;
     weight: string;
     length: string;
     width: string;

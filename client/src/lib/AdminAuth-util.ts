@@ -4,6 +4,8 @@ export const ADMIN_SESSION_STORAGE_KEY = "qlbh_admin_session";
 export const ADMIN_STORAGE_PREFIX = "qlbh_admin";
 export const ADMIN_LOGIN_PATH = "/admin/login";
 
+const ADMIN_PATH_ALIAS_GROUPS: string[][] = [["/admin/users", "/admin/customers", "/admin/employees", "/admin/account", "/admin/tai-khoan"]];
+
 export interface AdminSession {
     token: string;
     expiredAt: string;
@@ -53,6 +55,26 @@ function normalizeAdminPath(raw?: string) {
 
     pathname = pathname.replace(/\/+$/, "");
     return pathname || "/admin";
+}
+
+function expandAliasCandidates(path: string) {
+    const normalized = normalizeAdminPath(path);
+    if (!normalized) return [];
+
+    const candidates = new Set<string>([normalized]);
+
+    for (const group of ADMIN_PATH_ALIAS_GROUPS) {
+        for (const base of group) {
+            if (normalized === base || normalized.startsWith(`${base}/`)) {
+                const suffix = normalized.slice(base.length);
+                for (const alias of group) {
+                    candidates.add(`${alias}${suffix}`);
+                }
+            }
+        }
+    }
+
+    return Array.from(candidates);
 }
 
 function getRoleAccess(role?: LoginRole) {
@@ -217,11 +239,14 @@ export const AdminAuthUtil = {
             return true;
         }
 
-        const candidates = new Set<string>([normalized]);
-        if (normalized.startsWith("/admin/")) {
-            candidates.add(normalized.replace("/admin", ""));
-        } else if (normalized.startsWith("/")) {
-            candidates.add(`/admin${normalized}`);
+        const candidates = new Set<string>();
+        for (const candidate of expandAliasCandidates(normalized)) {
+            candidates.add(candidate);
+            if (candidate.startsWith("/admin/")) {
+                candidates.add(candidate.replace("/admin", ""));
+            } else if (candidate.startsWith("/")) {
+                candidates.add(`/admin${candidate}`);
+            }
         }
 
         return session.allowedUrls.some((allowed) => {

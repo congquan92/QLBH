@@ -27,6 +27,19 @@ export interface VariantOption {
     label: string;
 }
 
+export interface LowStockVariantRow {
+    productId: number;
+    productName: string;
+    supplierId: number;
+    supplierName: string;
+    variantId: number;
+    sku: string;
+    attributesLabel: string;
+    quantity: number;
+    unitPrice: number;
+    suggestedQuantity: number;
+}
+
 export interface ImportDetailRow {
     id: number;
     quantity: number;

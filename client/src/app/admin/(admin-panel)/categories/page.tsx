@@ -205,7 +205,10 @@ export default function CategoriesPage() {
     }
 
     const categoryTreeKey = categories
-        .map((category) => `${category.id}:${(category.childCategory ?? []).map((child) => child.id).join(",")}`)
+        .map((category) => {
+            const childKey = (category.childCategory ?? []).map((child) => `${child.id}:${child.status ?? ""}`).join(",");
+            return `${category.id}:${category.status ?? ""}:${childKey}`;
+        })
         .join("|");
 
     return (

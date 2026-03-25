@@ -625,6 +625,7 @@ export function ProductFormPanel({
                                                         <th className="px-3 py-2 text-left font-medium">Thuộc tính biến thể</th>
                                                         <th className="px-3 py-2 text-left font-medium">SKU</th>
                                                         <th className="px-3 py-2 text-left font-medium">Giá</th>
+                                                        <th className="px-3 py-2 text-left font-medium">Số lượng tồn</th>
                                                         <th className="px-3 py-2 text-left font-medium">Nặng (g)</th>
                                                         <th className="px-3 py-2 text-left font-medium">Dài</th>
                                                         <th className="px-3 py-2 text-left font-medium">Rộng</th>
@@ -659,6 +660,9 @@ export function ProductFormPanel({
                                                             </td>
                                                             <td className="px-3 py-2">
                                                                 <Input type="number" min="0" value={variant.price} onChange={(event) => updateVariantField(variant.key, "price", event.target.value)} placeholder="329000" />
+                                                            </td>
+                                                            <td className="px-3 py-2">
+                                                                <Input type="number" min="0" value={variant.quantity || "0"} readOnly disabled title="Số lượng tồn kho hiện tại của biến thể" />
                                                             </td>
                                                             <td className="px-3 py-2">
                                                                 <Input type="number" min="0" step="1" value={variant.weight} onChange={(event) => updateVariantField(variant.key, "weight", event.target.value)} placeholder="350" />
