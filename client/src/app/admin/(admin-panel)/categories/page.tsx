@@ -21,6 +21,7 @@ type DeleteTarget = {
 
 export default function CategoriesPage() {
     const [categories, setCategories] = useState<Category[]>([]);
+    const [treeVersion, setTreeVersion] = useState(0);
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
 
@@ -50,6 +51,7 @@ export default function CategoriesPage() {
         try {
             const response = await CategoryApi.getAdminCategories({ page: 1, size: 200 });
             setCategories(normalizeCategoryList(response.data));
+            setTreeVersion((prev) => prev + 1);
         } catch (error) {
             toast.error(Helper.errorMessage(error));
         } finally {
@@ -159,7 +161,6 @@ export default function CategoriesPage() {
         }
     }
 
-
     // Nên ta so sánh trước/sau và chỉ gọi API cho những item đổi parent
     async function handleReorder(newCategories: Category[]) {
         // Xây map parentId hiện tại trên server (categories gốc chưa sửa)
@@ -205,10 +206,7 @@ export default function CategoriesPage() {
     }
 
     return (
-        <AdminPageShell
-            title="Danh mục"
-            description="Quản lý cấu trúc danh mục và phân cấp sản phẩm"
-        >
+        <AdminPageShell title="Danh mục" description="Quản lý cấu trúc danh mục và phân cấp sản phẩm">
             {/* Top action bar */}
             <div className="flex items-center justify-end mb-4">
                 <Button onClick={openCreateDialog}>
@@ -218,26 +216,10 @@ export default function CategoriesPage() {
             </div>
 
             {/* Category tree */}
-            <CategoryTree
-                categories={categories}
-                isLoading={isLoading}
-                isSaving={isSaving}
-                onEdit={openEditDialog}
-                onDelete={openDeleteDialog}
-                onRestore={(id) => void handleRestore(id)}
-                onReorder={handleReorder}
-            />
+            <CategoryTree key={treeVersion} categories={categories} isLoading={isLoading} isSaving={isSaving} onEdit={openEditDialog} onDelete={openDeleteDialog} onRestore={(id) => void handleRestore(id)} onReorder={handleReorder} />
 
             {/* Create / Edit Dialog */}
-            <CategoryDialog
-                open={dialogOpen}
-                onOpenChange={closeDialog}
-                form={form}
-                onFormChange={setForm}
-                categories={categories}
-                isSaving={isSaving}
-                onSubmit={() => void submitCategory()}
-            />
+            <CategoryDialog open={dialogOpen} onOpenChange={closeDialog} form={form} onFormChange={setForm} categories={categories} isSaving={isSaving} onSubmit={() => void submitCategory()} />
 
             {/* Delete Confirm Dialog */}
             <DeleteConfirmDialog

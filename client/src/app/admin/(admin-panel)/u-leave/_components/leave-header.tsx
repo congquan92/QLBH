@@ -3,19 +3,14 @@
 import { useState } from "react";
 import { CalendarOff, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogHeader,
-    DialogTitle,
-    DialogTrigger,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, Send } from "lucide-react";
 import type { Shift } from "@/types/admin-crud";
+
+const TOMORROW_MIN_DATE = new Date(Date.now() + 86400000).toISOString().split("T")[0];
 
 type LeaveForm = {
     leave_date: string;
@@ -70,31 +65,18 @@ export function LeaveHeader({ shifts, isSubmitting, onSubmit }: Props) {
                             <Send className="h-5 w-5 text-primary" />
                             Gửi đơn nghỉ phép
                         </DialogTitle>
-                        <DialogDescription>
-                            Điền thông tin bên dưới để gửi đơn xin nghỉ phép
-                        </DialogDescription>
+                        <DialogDescription>Điền thông tin bên dưới để gửi đơn xin nghỉ phép</DialogDescription>
                     </DialogHeader>
 
                     <form onSubmit={handleSubmit} className="space-y-4 pt-2">
                         <div className="space-y-2">
                             <Label htmlFor="leave_date">Ngày nghỉ</Label>
-                            <Input
-                                id="leave_date"
-                                type="date"
-                                value={form.leave_date}
-                                onChange={(e) => setForm({ ...form, leave_date: e.target.value })}
-                                required
-                                min={new Date(Date.now() + 86400000).toISOString().split("T")[0]}
-                            />
+                            <Input id="leave_date" type="date" value={form.leave_date} onChange={(e) => setForm({ ...form, leave_date: e.target.value })} required min={TOMORROW_MIN_DATE} />
                         </div>
 
                         <div className="space-y-2">
                             <Label htmlFor="shift_id">Ca làm việc</Label>
-                            <Select
-                                value={form.shift_id}
-                                onValueChange={(val) => setForm({ ...form, shift_id: val })}
-                                required
-                            >
+                            <Select value={form.shift_id} onValueChange={(val) => setForm({ ...form, shift_id: val })} required>
                                 <SelectTrigger id="shift_id">
                                     <SelectValue placeholder="Chọn ca làm việc" />
                                 </SelectTrigger>
@@ -109,13 +91,10 @@ export function LeaveHeader({ shifts, isSubmitting, onSubmit }: Props) {
                         </div>
 
                         <div className="space-y-2">
-                            <Label htmlFor="reason">Lý do <span className="text-muted-foreground text-xs">(tuỳ chọn)</span></Label>
-                            <Input
-                                id="reason"
-                                value={form.reason}
-                                onChange={(e) => setForm({ ...form, reason: e.target.value })}
-                                placeholder="Nhập lý do nghỉ phép..."
-                            />
+                            <Label htmlFor="reason">
+                                Lý do <span className="text-muted-foreground text-xs">(tuỳ chọn)</span>
+                            </Label>
+                            <Input id="reason" value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })} placeholder="Nhập lý do nghỉ phép..." />
                         </div>
 
                         <div className="flex gap-2 pt-2">
@@ -135,7 +114,10 @@ export function LeaveHeader({ shifts, isSubmitting, onSubmit }: Props) {
                             <Button
                                 type="button"
                                 variant="outline"
-                                onClick={() => { setForm(emptyForm); setOpen(false); }}
+                                onClick={() => {
+                                    setForm(emptyForm);
+                                    setOpen(false);
+                                }}
                                 disabled={isSubmitting}
                             >
                                 Hủy

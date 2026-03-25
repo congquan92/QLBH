@@ -41,9 +41,7 @@ export function EditEmployeeDialog({ editingUser, roles, isSaving, editRoleId, e
                         </div>
                         <div>
                             <DialogTitle>Chỉnh sửa nhân viên</DialogTitle>
-                            <DialogDescription className="mt-0.5">
-                                Cập nhật vai trò và trạng thái tài khoản.
-                            </DialogDescription>
+                            <DialogDescription className="mt-0.5">Cập nhật vai trò và trạng thái tài khoản.</DialogDescription>
                         </div>
                     </div>
                 </DialogHeader>
@@ -53,9 +51,7 @@ export function EditEmployeeDialog({ editingUser, roles, isSaving, editRoleId, e
                     <div className="flex items-center gap-3 rounded-xl border bg-muted/20 p-3">
                         <Avatar className="h-11 w-11">
                             <AvatarImage src={String(editingUser.avatar ?? "")} alt={displayName} />
-                            <AvatarFallback className="text-sm font-bold bg-primary/10 text-primary">
-                                {initials}
-                            </AvatarFallback>
+                            <AvatarFallback className="text-sm font-bold bg-primary/10 text-primary">{initials}</AvatarFallback>
                         </Avatar>
                         <div>
                             <p className="font-semibold text-sm leading-none">{displayName}</p>
@@ -75,18 +71,15 @@ export function EditEmployeeDialog({ editingUser, roles, isSaving, editRoleId, e
                             Chức vụ hiện tại
                         </Label>
                         <div className="rounded-md border bg-muted/30 px-3 py-2">
-                            <p className="text-sm font-medium">
-                                {editingUser.positionResponse?.name ?? "Chưa có chức vụ"}
-                            </p>
+                            <p className="text-sm font-medium">{editingUser.positionResponse?.name ?? "Chưa có chức vụ"}</p>
                             {editingUser.positionResponse?.baseSalary && (
                                 <p className="text-xs text-muted-foreground mt-0.5">
-                                    Lương cơ bản: {Number(editingUser.positionResponse.baseSalary).toLocaleString("vi-VN")}đ
-                                    {editingUser.positionResponse.salaryType === "HOURLY" ? "/giờ" : "/tháng"}
+                                    Lương cơ bản: {Number(editingUser.positionResponse.baseSalary).toLocaleString("vi-VN")}đ{editingUser.positionResponse.salaryType === "HOURLY" ? "/giờ" : "/tháng"}
                                 </p>
                             )}
                         </div>
                         <p className="text-[11px] text-muted-foreground italic">
-                            Để thay đổi chức vụ, hãy sử dụng chức năng <strong>"Thăng chức / Điều chuyển"</strong> (nút <TrendingUp className="inline h-3 w-3 text-purple-500" />) ở bảng nhân viên.
+                            Để thay đổi chức vụ, hãy sử dụng chức năng <strong>&quot;Thăng chức / Điều chuyển&quot;</strong> (nút <TrendingUp className="inline h-3 w-3 text-purple-500" />) ở bảng nhân viên.
                         </p>
                     </div>
 
@@ -117,16 +110,12 @@ export function EditEmployeeDialog({ editingUser, roles, isSaving, editRoleId, e
                             <SelectContent>
                                 <SelectItem value="ACTIVE">
                                     <div className="flex items-center gap-2">
-                                        <Badge className="bg-green-100 text-green-700 border-green-200 text-xs px-1.5 py-0">
-                                            Hoạt động
-                                        </Badge>
+                                        <Badge className="bg-green-100 text-green-700 border-green-200 text-xs px-1.5 py-0">Hoạt động</Badge>
                                     </div>
                                 </SelectItem>
                                 <SelectItem value="INACTIVE">
                                     <div className="flex items-center gap-2">
-                                        <Badge className="bg-red-100 text-red-600 border-red-200 text-xs px-1.5 py-0">
-                                            Bị khóa
-                                        </Badge>
+                                        <Badge className="bg-red-100 text-red-600 border-red-200 text-xs px-1.5 py-0">Bị khóa</Badge>
                                     </div>
                                 </SelectItem>
                             </SelectContent>
