@@ -31,7 +31,6 @@ type Props = {
     onSubmit: (form: LeaveForm) => Promise<void>;
 };
 
-const TOMORROW_MIN_DATE = new Date(Date.now() + 86400000).toISOString().split("T")[0];
 const emptyForm: LeaveForm = { leave_date: "", shift_id: "", reason: "" };
 
 export function LeaveHeader({ shifts, isSubmitting, onSubmit }: Props) {
