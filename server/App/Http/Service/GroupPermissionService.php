@@ -63,7 +63,7 @@ class GroupPermissionService
 
             $response = $group->load('permissions');
 
-            AdminPermissionSyncRequested::dispatch(null, null, 'group_permission_created');
+            AdminPermissionSyncRequested::dispatchSilently(null, null, 'group_permission_created');
 
             return $response;
         });
@@ -81,7 +81,7 @@ class GroupPermissionService
 
             $response = $group->load('permissions');
 
-            AdminPermissionSyncRequested::dispatch(null, null, 'group_permission_updated');
+            AdminPermissionSyncRequested::dispatchSilently(null, null, 'group_permission_updated');
 
             return $response;
         });
@@ -94,7 +94,7 @@ class GroupPermissionService
         return DB::transaction(function () use ($group) {
             $deleted = $group->delete();
 
-            AdminPermissionSyncRequested::dispatch(null, null, 'group_permission_deleted');
+            AdminPermissionSyncRequested::dispatchSilently(null, null, 'group_permission_deleted');
 
             return $deleted;
         });
@@ -106,7 +106,7 @@ class GroupPermissionService
 
         $response = GroupPermissionMapper::toGroupPermissionResponse($group->load('permissions'));
 
-        AdminPermissionSyncRequested::dispatch(null, null, 'group_permissions_detached');
+        AdminPermissionSyncRequested::dispatchSilently(null, null, 'group_permissions_detached');
 
         return $response;
     }

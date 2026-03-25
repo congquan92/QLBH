@@ -73,7 +73,7 @@ class RoleService
 
             $response = RoleMapper::toRoleResponse($role->load('groupPermissions'));
 
-            AdminPermissionSyncRequested::dispatch((int) $role->id, null, 'role_created');
+            AdminPermissionSyncRequested::dispatchSilently((int) $role->id, null, 'role_created');
 
             return $response;
         });
@@ -101,7 +101,7 @@ class RoleService
 
             $response = RoleMapper::toRoleResponse($role);
 
-            AdminPermissionSyncRequested::dispatch((int) $role->id, null, 'role_permissions_updated');
+            AdminPermissionSyncRequested::dispatchSilently((int) $role->id, null, 'role_permissions_updated');
 
             return $response;
         });
@@ -119,7 +119,7 @@ class RoleService
 
             $response = RoleMapper::toRoleResponse($role);
 
-            AdminPermissionSyncRequested::dispatch((int) $role->id, null, 'role_permissions_detached');
+            AdminPermissionSyncRequested::dispatchSilently((int) $role->id, null, 'role_permissions_detached');
 
             return $response;
         });
@@ -142,7 +142,7 @@ class RoleService
             $role->groupPermissions()->detach();
             $deleted = $role->delete();
 
-            AdminPermissionSyncRequested::dispatch((int) $role->id, null, 'role_deleted');
+            AdminPermissionSyncRequested::dispatchSilently((int) $role->id, null, 'role_deleted');
 
             return $deleted;
         });

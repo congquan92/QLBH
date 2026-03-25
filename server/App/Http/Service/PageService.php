@@ -73,7 +73,7 @@ class PageService
                     ->update(['page_id' => $page->id]);
             }
 
-            AdminPermissionSyncRequested::dispatch(null, null, 'page_created');
+            AdminPermissionSyncRequested::dispatchSilently(null, null, 'page_created');
 
             return $page->load('groupPermissions');
         });
@@ -101,7 +101,7 @@ class PageService
                     ->update(['page_id' => $page->id]);
             }
 
-            AdminPermissionSyncRequested::dispatch(null, null, 'page_updated');
+            AdminPermissionSyncRequested::dispatchSilently(null, null, 'page_updated');
 
             return $page->load('groupPermissions');
         });
@@ -122,7 +122,7 @@ class PageService
             // 3. Xóa Page
             $deleted = $page->delete();
 
-            AdminPermissionSyncRequested::dispatch(null, null, 'page_deleted');
+            AdminPermissionSyncRequested::dispatchSilently(null, null, 'page_deleted');
 
             return $deleted;
         });
@@ -148,7 +148,7 @@ class PageService
                 ->whereIn('id', $groupPermissionIds)
                 ->update(['page_id' => null]);
 
-            AdminPermissionSyncRequested::dispatch(null, null, 'page_groups_detached');
+            AdminPermissionSyncRequested::dispatchSilently(null, null, 'page_groups_detached');
 
             // 3. Trả về dữ liệu
             return PageMapper::toPageResponse($page->load('groupPermissions.permissions'));
