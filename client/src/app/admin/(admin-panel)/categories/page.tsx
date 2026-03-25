@@ -204,6 +204,10 @@ export default function CategoriesPage() {
         }
     }
 
+    const categoryTreeKey = categories
+        .map((category) => `${category.id}:${(category.childCategory ?? []).map((child) => child.id).join(",")}`)
+        .join("|");
+
     return (
         <AdminPageShell
             title="Danh mục"
@@ -219,6 +223,7 @@ export default function CategoriesPage() {
 
             {/* Category tree */}
             <CategoryTree
+                key={categoryTreeKey}
                 categories={categories}
                 isLoading={isLoading}
                 isSaving={isSaving}

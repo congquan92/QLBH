@@ -50,14 +50,6 @@ export function CategoryTree({
     const [isDirty, setIsDirty] = useState(false);
     const [isSavingOrder, setIsSavingOrder] = useState(false);
 
-    // Sync when parent data changes (after save/refresh)
-    const prevCatRef = useRef(categories);
-    if (prevCatRef.current !== categories) {
-        prevCatRef.current = categories;
-        setLocalCategories(categories);
-        setIsDirty(false);
-    }
-
     // ── Drag state ──
     const dragParentIndex = useRef<number | null>(null);
     const dragChildIndex = useRef<number | null>(null);

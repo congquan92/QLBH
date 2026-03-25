@@ -86,7 +86,7 @@ export function EditEmployeeDialog({ editingUser, roles, isSaving, editRoleId, e
                             )}
                         </div>
                         <p className="text-[11px] text-muted-foreground italic">
-                            Để thay đổi chức vụ, hãy sử dụng chức năng <strong>"Thăng chức / Điều chuyển"</strong> (nút <TrendingUp className="inline h-3 w-3 text-purple-500" />) ở bảng nhân viên.
+                            Để thay đổi chức vụ, hãy sử dụng chức năng <strong>&quot;Thăng chức / Điều chuyển&quot;</strong> (nút <TrendingUp className="inline h-3 w-3 text-purple-500" />) ở bảng nhân viên.
                         </p>
                     </div>
 

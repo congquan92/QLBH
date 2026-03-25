@@ -17,6 +17,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader2, Send } from "lucide-react";
 import type { Shift } from "@/types/admin-crud";
 
+const TOMORROW_MIN_DATE = new Date(Date.now() + 86400000).toISOString().split("T")[0];
+
 type LeaveForm = {
     leave_date: string;
     shift_id: string;
@@ -29,6 +31,7 @@ type Props = {
     onSubmit: (form: LeaveForm) => Promise<void>;
 };
 
+const TOMORROW_MIN_DATE = new Date(Date.now() + 86400000).toISOString().split("T")[0];
 const emptyForm: LeaveForm = { leave_date: "", shift_id: "", reason: "" };
 
 export function LeaveHeader({ shifts, isSubmitting, onSubmit }: Props) {
@@ -54,7 +57,7 @@ export function LeaveHeader({ shifts, isSubmitting, onSubmit }: Props) {
                     <p className="text-sm text-muted-foreground">Gửi và theo dõi đơn nghỉ phép của bạn</p>
                 </div>
             </div>
-
+                                min={TOMORROW_MIN_DATE}
             {/* Button mở dialog */}
             <Dialog open={open} onOpenChange={setOpen}>
                 <DialogTrigger asChild>
@@ -84,7 +87,7 @@ export function LeaveHeader({ shifts, isSubmitting, onSubmit }: Props) {
                                 value={form.leave_date}
                                 onChange={(e) => setForm({ ...form, leave_date: e.target.value })}
                                 required
-                                min={new Date(Date.now() + 86400000).toISOString().split("T")[0]}
+                                min={TOMORROW_MIN_DATE}
                             />
                         </div>
 

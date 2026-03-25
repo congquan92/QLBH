@@ -7,7 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Helper } from "@/lib/helper";
 import type { SalaryBulkItem } from "@/types/salary";
 import { AlertCircle, CheckCircle2, ChevronLeft, ChevronRight, Users } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 type Props = {
     data: SalaryBulkItem[];
@@ -18,11 +18,11 @@ type Props = {
 
 export function SalaryOverviewTable({ data, isLoading, month, year }: Props) {
     const pageSize = 10;
-    const [page, setPage] = useState(1);
-
-    useEffect(() => {
-        setPage(1);
-    }, [data, month, year]);
+    const paginationContext = `${month}-${year}-${data.length}`;
+    const [pagingState, setPagingState] = useState({
+        context: paginationContext,
+        page: 1,
+    });
 
     const maxSalary = data.length > 0 ? Math.max(...data.filter((d) => d.status === "ok").map((d) => d.final_salary)) : 0;
     const totalOk = data.filter((d) => d.status === "ok").length;
@@ -30,7 +30,8 @@ export function SalaryOverviewTable({ data, isLoading, month, year }: Props) {
     const grandTotal = data.reduce((sum, d) => sum + d.final_salary, 0);
 
     const totalPages = Math.max(1, Math.ceil(data.length / pageSize));
-    const currentPage = Math.min(page, totalPages);
+    const requestedPage = pagingState.context === paginationContext ? pagingState.page : 1;
+    const currentPage = Math.max(1, Math.min(requestedPage, totalPages));
     const pagedData = useMemo(() => {
         const start = (currentPage - 1) * pageSize;
         return data.slice(start, start + pageSize);
@@ -190,7 +191,12 @@ export function SalaryOverviewTable({ data, isLoading, month, year }: Props) {
                                 type="button"
                                 variant="outline"
                                 size="sm"
-                                onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+                                onClick={() =>
+                                    setPagingState((prev) => ({
+                                        context: paginationContext,
+                                        page: Math.max(1, (prev.context === paginationContext ? prev.page : 1) - 1),
+                                    }))
+                                }
                                 disabled={currentPage <= 1}
                             >
                                 <ChevronLeft className="h-4 w-4" />
@@ -203,7 +209,12 @@ export function SalaryOverviewTable({ data, isLoading, month, year }: Props) {
                                 type="button"
                                 variant="outline"
                                 size="sm"
-                                onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+                                onClick={() =>
+                                    setPagingState((prev) => ({
+                                        context: paginationContext,
+                                        page: Math.min(totalPages, (prev.context === paginationContext ? prev.page : 1) + 1),
+                                    }))
+                                }
                                 disabled={currentPage >= totalPages}
                             >
                                 Sau

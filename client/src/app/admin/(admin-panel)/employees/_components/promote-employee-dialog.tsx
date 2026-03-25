@@ -12,6 +12,7 @@ import type { Position } from "@/types/admin-crud";
 import type { UserProfile } from "@/types/user";
 import { ArrowUpCircle, Briefcase, Calendar, ChevronRight, Loader2, TrendingUp } from "lucide-react";
 import { getUsername } from "./employee-table";
+const TOMORROW_MIN_DATE = new Date(Date.now() + 86400000).toISOString().split("T")[0];
 
 type Props = {
     user: UserProfile | null;
@@ -162,7 +163,7 @@ export function PromoteEmployeeDialog({
                             type="date"
                             value={effectiveDate}
                             onChange={(e) => onChangeEffectiveDate(e.target.value)}
-                            min={new Date(Date.now() + 86400000).toISOString().split("T")[0]}
+                            min={TOMORROW_MIN_DATE}
                         />
                         <p className="text-[11px] text-muted-foreground">
                             Ngày hiệu lực phải từ <strong>ngày mai</strong> trở đi. Lương mới sẽ được tính từ ngày này.
