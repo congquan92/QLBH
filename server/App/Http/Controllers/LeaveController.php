@@ -45,6 +45,20 @@ class LeaveController extends Controller
 
         return $this->success($data,"List me leave Request");
     }
+
+    public function availableShifts(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'leave_date' => 'required|date|after:today',
+        ], [
+            'leave_date.required' => 'Ngày nghỉ không được để trống.',
+            'leave_date.after' => 'Ngày xin nghỉ phải sau ngày hôm nay.',
+        ]);
+
+        $shifts = $this->leaveService->getAvailableShiftsByDate($validated['leave_date']);
+        return $this->success($shifts, 'Danh sách ca làm việc theo ngày đã chọn.');
+    }
+
     /**
      * API Gửi đơn nghỉ phép
      */

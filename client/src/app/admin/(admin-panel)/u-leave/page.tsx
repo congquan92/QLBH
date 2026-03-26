@@ -1,7 +1,6 @@
 "use client";
 
 import { LeaveApi } from "@/api/admin/leave.api";
-import { AdminCrudApi } from "@/api/admin/admin-crud.api";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import type { Shift } from "@/types/admin-crud";
@@ -21,16 +20,13 @@ export default function UserLeavePage() {
     const [shifts, setShifts] = useState<Shift[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isLoadingShifts, setIsLoadingShifts] = useState(false);
 
     const fetchData = useCallback(async () => {
         setIsLoading(true);
         try {
-            const [leavesRes, shiftsRes] = await Promise.all([
-                LeaveApi.getMyLeaves({ page: 1, size: 100, sort: "leave_date:desc" }),
-                AdminCrudApi.getShifts({ sort: "name:asc" }),
-            ]);
+            const leavesRes = await LeaveApi.getMyLeaves({ page: 1, size: 100, sort: "leave_date:desc" });
             setLeaves(leavesRes.data.data || []);
-            setShifts(shiftsRes.data.data || []);
         } catch (error) {
             console.error("Failed to fetch data", error);
         } finally {
@@ -41,6 +37,27 @@ export default function UserLeavePage() {
     useEffect(() => {
         void fetchData();
     }, [fetchData]);
+
+    async function handleLeaveDateChange(leaveDate: string) {
+        if (!leaveDate) {
+            setShifts([]);
+            return;
+        }
+
+        setIsLoadingShifts(true);
+        try {
+            const response = await LeaveApi.getAvailableShifts(leaveDate);
+            setShifts(Array.isArray(response.data) ? response.data : []);
+        } catch (error) {
+            setShifts([]);
+            const message =
+                (error as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+                "Không thể tải ca làm việc theo ngày đã chọn";
+            toast.error(message);
+        } finally {
+            setIsLoadingShifts(false);
+        }
+    }
 
     async function handleSubmit(form: LeaveForm) {
         if (!form.leave_date || !form.shift_id) {
@@ -57,7 +74,10 @@ export default function UserLeavePage() {
             toast.success("Đã gửi đơn nghỉ phép thành công");
             await fetchData();
         } catch (error) {
-            toast.error(error instanceof Error ? error.message : "Không thể tạo đơn nghỉ phép");
+            const message =
+                (error as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+                (error instanceof Error ? error.message : "Không thể tạo đơn nghỉ phép");
+            toast.error(message);
             throw error; // để dialog không tự đóng khi lỗi
         } finally {
             setIsSubmitting(false);
@@ -69,6 +89,8 @@ export default function UserLeavePage() {
             <LeaveHeader
                 shifts={shifts}
                 isSubmitting={isSubmitting}
+                isLoadingShifts={isLoadingShifts}
+                onLeaveDateChange={handleLeaveDateChange}
                 onSubmit={handleSubmit}
             />
             <LeaveList leaves={leaves} isLoading={isLoading} />

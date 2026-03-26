@@ -156,6 +156,7 @@ Route::middleware('auth')->group(function () {
     Route::prefix('leave-requests')->group(function () {
         Route::get('/list', [LeaveController::class, 'index'])->middleware('can:VIEW_LEAVE_LIST');
         Route::get('/me', [LeaveController::class, 'myLeaves']);
+        Route::get('/available-shifts', [LeaveController::class, 'availableShifts']);
         Route::post('/', [LeaveController::class, 'store']);
         Route::post('/{id}/status', [LeaveController::class, 'updateStatus'])->middleware('can:APPROVE_LEAVE');
         Route::delete('/{id}', [LeaveController::class, 'destroy']);

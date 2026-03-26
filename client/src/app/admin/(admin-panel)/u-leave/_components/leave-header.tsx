@@ -21,12 +21,14 @@ type LeaveForm = {
 type Props = {
     shifts: Shift[];
     isSubmitting: boolean;
+    isLoadingShifts: boolean;
+    onLeaveDateChange: (leaveDate: string) => Promise<void>;
     onSubmit: (form: LeaveForm) => Promise<void>;
 };
 
 const emptyForm: LeaveForm = { leave_date: "", shift_id: "", reason: "" };
 
-export function LeaveHeader({ shifts, isSubmitting, onSubmit }: Props) {
+export function LeaveHeader({ shifts, isSubmitting, isLoadingShifts, onLeaveDateChange, onSubmit }: Props) {
     const [open, setOpen] = useState(false);
     const [form, setForm] = useState<LeaveForm>(emptyForm);
 
@@ -49,7 +51,7 @@ export function LeaveHeader({ shifts, isSubmitting, onSubmit }: Props) {
                     <p className="text-sm text-muted-foreground">Gửi và theo dõi đơn nghỉ phép của bạn</p>
                 </div>
             </div>
-                                min={TOMORROW_MIN_DATE}
+
             {/* Button mở dialog */}
             <Dialog open={open} onOpenChange={setOpen}>
                 <DialogTrigger asChild>
@@ -75,7 +77,11 @@ export function LeaveHeader({ shifts, isSubmitting, onSubmit }: Props) {
                                 id="leave_date"
                                 type="date"
                                 value={form.leave_date}
-                                onChange={(e) => setForm({ ...form, leave_date: e.target.value })}
+                                onChange={(e) => {
+                                    const nextDate = e.target.value;
+                                    setForm((prev) => ({ ...prev, leave_date: nextDate, shift_id: "" }));
+                                    void onLeaveDateChange(nextDate);
+                                }}
                                 required
                                 min={TOMORROW_MIN_DATE}
                             />
@@ -83,18 +89,26 @@ export function LeaveHeader({ shifts, isSubmitting, onSubmit }: Props) {
 
                         <div className="space-y-2">
                             <Label htmlFor="shift_id">Ca làm việc</Label>
-                            <Select value={form.shift_id} onValueChange={(val) => setForm({ ...form, shift_id: val })} required>
+                            <Select
+                                value={form.shift_id}
+                                onValueChange={(val) => setForm({ ...form, shift_id: val })}
+                                required
+                                disabled={!form.leave_date || isLoadingShifts || shifts.length === 0}
+                            >
                                 <SelectTrigger id="shift_id">
-                                    <SelectValue placeholder="Chọn ca làm việc" />
+                                    <SelectValue placeholder={isLoadingShifts ? "Đang tải ca làm việc..." : "Chọn ca làm việc"} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {shifts.map((shift) => (
                                         <SelectItem key={shift.id} value={String(shift.id)}>
-                                            {shift.name}
+                                            {shift.name} {shift.start_time && shift.end_time ? `(${shift.start_time} - ${shift.end_time})` : ""}
                                         </SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
+                            {form.leave_date && !isLoadingShifts && shifts.length === 0 ? (
+                                <p className="text-xs text-muted-foreground">Bạn không có lịch làm việc trong ngày đã chọn.</p>
+                            ) : null}
                         </div>
 
                         <div className="space-y-2">
@@ -105,7 +119,7 @@ export function LeaveHeader({ shifts, isSubmitting, onSubmit }: Props) {
                         </div>
 
                         <div className="flex gap-2 pt-2">
-                            <Button type="submit" disabled={isSubmitting} className="flex-1">
+                            <Button type="submit" disabled={isSubmitting || !form.shift_id} className="flex-1">
                                 {isSubmitting ? (
                                     <>
                                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
