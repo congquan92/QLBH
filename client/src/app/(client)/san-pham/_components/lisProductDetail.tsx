@@ -1,7 +1,7 @@
 "use client";
 
 import { CartApi } from "@/api/cart.api";
-import ProductGrid from "@/components/feature/page/ProductGrid";
+import ProductCarousel from "@/components/feature/page/ProductCarousel";
 import { ProductDetail } from "@/types/product";
 import Image from "next/image";
 import { useEffect, useState } from "react";
@@ -366,13 +366,7 @@ export default function ListProductDetail({ products, relatedProducts }: { produ
             {/* Sản phẩm liên quan */}
             <div className="mt-12 border-t border-gray-200 pt-8">
                 <h2 className="text-2xl font-bold text-gray-900 mb-6">Sản phẩm liên quan</h2>
-                {relatedProducts.length > 0 ? (
-                    <ProductGrid products={relatedProducts} />
-                ) : (
-                    <div className="bg-gray-50 border border-gray-200 p-12 text-center text-gray-500">
-                        <p className="text-lg">Không có sản phẩm liên quan.</p>
-                    </div>
-                )}
+                <ProductCarousel products={relatedProducts} emptyMessage="Không có sản phẩm liên quan." />
             </div>
 
             {/* Lightbox */}
