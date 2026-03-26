@@ -18,7 +18,6 @@ use App\Http\States\OrderStateFactory;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\ProductVariant;
-use App\Models\User;
 use App\Models\Voucher;
 use App\Models\VoucherUsage;
 use Carbon\Carbon;
@@ -455,14 +454,23 @@ class OrderService
             }
             $this->updateSoldQuantity($orderItems);
 
+            $itemCount = array_reduce($orderItems, function ($sum, $item) {
+                return $sum + (int) ($item->quantity ?? 0);
+            }, 0);
+            $customerName = $order->customer_name ?? ($currentUser->full_name ?? 'Khách hàng');
+            $amountFormatted = number_format((float) $order->total_amount, 0, ',', '.');
+
             $orderResponse = OrderMapper::toOrderResponse($order);
-            $this->firebaseService->sendNotification(RoleType::ORDER_STAFF->value, [
+            $notificationPayload = [
                 'title' => '📦 Đơn hàng mới!',
-                'body' => 'Khách hàng vừa đặt đơn {$order->id} ',
+                'body' => "Đơn #{$order->id} | {$customerName} | {$amountFormatted}đ | {$itemCount} SP",
                 'order_id' => $order->id,
                 'type' => 'new_order',
                 'order_data' => json_encode($orderResponse),
-            ]);
+            ];
+
+            $this->firebaseService->sendNotification(RoleType::ORDER_STAFF->value, $notificationPayload);
+            $this->firebaseService->sendNotification(RoleType::ADMIN->value, $notificationPayload);
 
             return $order->id;
         });

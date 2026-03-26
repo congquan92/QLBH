@@ -80,7 +80,7 @@ class LeaveService
             ->all();
     }
 
-    public function findAll(?string $keyword, ?string $status, ?string $sort, int $page, int $size): PageResponse
+    public function findAll(?string $keyword, ?string $status, ?string $leaveDate, ?string $sort, int $page, int $size): PageResponse
 {
     $query = LeaveRequest::with(['user', 'shift']);
 
@@ -95,6 +95,10 @@ class LeaveService
 
     if (!empty($status)) {
         $query->where('status', $status);
+    }
+
+    if (!empty($leaveDate)) {
+        $query->whereDate('leave_date', Carbon::parse($leaveDate)->toDateString());
     }
 
     // Tìm kiếm theo keyword
@@ -130,7 +134,7 @@ class LeaveService
     return PageResponse::fromLaravelPaginator($paginator);
 }
 
-public function findMyLeaves(?string $keyword, ?string $status, ?string $sort, int $page, int $size): PageResponse
+public function findMyLeaves(?string $keyword, ?string $status, ?string $leaveDate, ?string $sort, int $page, int $size): PageResponse
 {
     $userId = Auth::id();
     $query = LeaveRequest::where('user_id', $userId)->with(['shift']);
@@ -146,6 +150,10 @@ public function findMyLeaves(?string $keyword, ?string $status, ?string $sort, i
 
     if (!empty($status)) {
         $query->where('status', $status);
+    }
+
+    if (!empty($leaveDate)) {
+        $query->whereDate('leave_date', Carbon::parse($leaveDate)->toDateString());
     }
 
     if (!empty($keyword)) {
