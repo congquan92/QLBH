@@ -59,6 +59,7 @@ Route::post('/otp/send', [BrevoController::class, 'send']);
 Route::post('/user/{userId}/verify-account', [UserController::class, 'verifyAccount']);
 Route::post('/user/forgot-password', [UserController::class, 'forgotPassword']);
 // ==========================================
+Route::post('/firebase/test', [FirebaseController::class, 'test']);
 // Route bảo vệ bởi JWT
 // ==========================================
 Route::middleware('auth')->group(function () {
@@ -155,6 +156,7 @@ Route::middleware('auth')->group(function () {
     Route::prefix('leave-requests')->group(function () {
         Route::get('/list', [LeaveController::class, 'index'])->middleware('can:VIEW_LEAVE_LIST');
         Route::get('/me', [LeaveController::class, 'myLeaves']);
+        Route::get('/available-shifts', [LeaveController::class, 'availableShifts']);
         Route::post('/', [LeaveController::class, 'store']);
         Route::post('/{id}/status', [LeaveController::class, 'updateStatus'])->middleware('can:APPROVE_LEAVE');
         Route::delete('/{id}', [LeaveController::class, 'destroy']);
@@ -363,7 +365,6 @@ Route::middleware('auth')->group(function () {
         Route::put('/{id}', [BonusController::class, 'update'])->middleware('can:PROMOTE_EMPLOYEE');
         Route::delete('/{id}', [BonusController::class, 'destroy'])->middleware('can:PROMOTE_EMPLOYEE');
     });
-
     // Salaries
     Route::get('salaries/all', [SalaryController::class, 'calculateAllSalaries'])->middleware('can:CALCULATE_SALARY');
     Route::get('salaries/calculate/{userId}', [SalaryController::class, 'calculateMonthlySalary'])->middleware('can:CALCULATE_SALARY');

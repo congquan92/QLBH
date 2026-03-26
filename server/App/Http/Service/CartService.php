@@ -74,7 +74,7 @@ class CartService
                     'quantity' => $data['quantity'],
                     'status' => Status::ACTIVE->value,
                     'list_price_snapshot' => $productVariant->price,
-                    'url_image_snapshot' => $productVariant->product->url_cover_image, // Giả định tên cột
+                    'url_image_snapshot' => $productVariant->product->url_image_cover,
                     'name_product_snapshot' => $productVariant->product->name,
                     'variant_attributes_snapshot' => ProductVariantMapper::toVariantResponse($productVariant),
                 ]);
