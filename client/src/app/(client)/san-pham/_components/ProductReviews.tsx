@@ -157,13 +157,19 @@ export default function ProductReviews({ productId, avgRating, soldQuantity }: P
             // Determine the actual PageResponse object.
             // Case 1: Server returns PageResponse directly → ReviewApi returns it as-is (has totalElements at top level)
             // Case 2: Wrapped in ApiResponse { status, message, data: PageResponse }
-            let pageRes: any;
-            if ((res as any)?.totalElements !== undefined) {
-                pageRes = res;
-            } else if ((res as any)?.data?.totalElements !== undefined) {
-                pageRes = (res as any).data;
+            interface PageLike {
+                data?: Review[];
+                totalElements?: number;
+                totalPages?: number;
+            }
+            const raw = res as PageLike & { data?: PageLike };
+            let pageRes: PageLike;
+            if (raw?.totalElements !== undefined) {
+                pageRes = raw;
+            } else if (raw?.data?.totalElements !== undefined) {
+                pageRes = raw.data as PageLike;
             } else {
-                pageRes = (res as any)?.data ?? res;
+                pageRes = (raw?.data ?? raw) as PageLike;
             }
             const newReviews: Review[] = pageRes?.data ?? [];
             const total: number = pageRes?.totalElements ?? 0;

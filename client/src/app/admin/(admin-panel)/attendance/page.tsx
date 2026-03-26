@@ -22,7 +22,7 @@ export default function AttendancePage() {
 
             // Find today's record
             const today = new Date().toISOString().split("T")[0];
-            const todayRec = res.data.data.find((rec) => rec.date === today);
+            const todayRec = res.data.data.find((rec: AttendanceRecord) => rec.date === today);
             setTodayRecord(todayRec || null);
         } catch (error) {
             console.error("Failed to fetch attendance history", error);
