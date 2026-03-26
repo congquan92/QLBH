@@ -5,6 +5,7 @@ import { UserApi } from "@/api/user.api";
 import { AccountSection } from "@/app/(client)/tai-khoan/_components/account-sidebar";
 import { AddressesSection } from "@/app/(client)/tai-khoan/_components/addresses-section";
 import { OrdersSection } from "@/app/(client)/tai-khoan/_components/orders-section";
+import { OrderHistorySection } from "@/app/(client)/tai-khoan/_components/order-history-section";
 import { SecuritySection } from "@/app/(client)/tai-khoan/_components/security-section";
 import { UserRouteGate } from "@/components/feature/RouteUserGate";
 import { Button } from "@/components/ui/button";
@@ -19,6 +20,7 @@ import { ApiResponse, PageResponse } from "@/types/api";
 import { OrderSummary } from "@/types/order";
 import { UserAddress, UserProfile } from "@/types/user";
 import {
+  ClipboardCheck,
   LogOut,
   MapPinHouse,
   PackageSearch,
@@ -107,6 +109,7 @@ function isAccountSection(value: string): value is AccountSection {
   return (
     value === "profile" ||
     value === "orders" ||
+    value === "order-history" ||
     value === "addresses" ||
     value === "security"
   );
@@ -120,12 +123,18 @@ function AccountPageContent() {
   const [activeSection, setActiveSection] = useState<AccountSection>("profile");
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [orders, setOrders] = useState<OrderSummary[]>([]);
+  const [orderHistory, setOrderHistory] = useState<OrderSummary[]>([]);
   const [addresses, setAddresses] = useState<UserAddress[]>([]);
   const [orderDetails, setOrderDetails] = useState<
     Record<number, OrderSummary>
   >({});
+  const [historyDetails, setHistoryDetails] = useState<
+    Record<number, OrderSummary>
+  >({});
   const [expandedOrderId, setExpandedOrderId] = useState<number | null>(null);
+  const [expandedHistoryId, setExpandedHistoryId] = useState<number | null>(null);
   const [loadingOrderId, setLoadingOrderId] = useState<number | null>(null);
+  const [loadingHistoryId, setLoadingHistoryId] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isSavingAddress, setIsSavingAddress] = useState(false);
@@ -160,7 +169,7 @@ function AccountPageContent() {
       ApiResponse<PageResponse<UserAddress>>,
     ] = await Promise.all([
       UserApi.getMyInfo(),
-      OrderApi.getMyOrders({ page: 1, size: 10, sort: "id:desc" }),
+      OrderApi.getMyOrders({ page: 1, size: 50, sort: "id:desc", deliveryStatus: "PENDING,CONFIRMED,PACKED,SHIPPED,CANCELLED,INACTIVE" }),
       UserApi.getMyAddresses({ page: 1, size: 20, sort: "id:desc" }),
     ]);
 
@@ -195,13 +204,33 @@ function AccountPageContent() {
     setIsLoading(false);
   }, [session?.fullName, session?.phone]);
 
+  const loadAddresses = useCallback(async () => {
+    const addressesResponse = await UserApi.getMyAddresses({
+      page: 1,
+      size: 20,
+      sort: "id:desc",
+    });
+    setAddresses(addressesResponse.data.data);
+  }, []);
+
+  const loadOrderHistory = useCallback(async () => {
+    const res = await OrderApi.getMyOrders({
+      page: 1,
+      size: 50,
+      sort: "id:desc",
+      deliveryStatus: "DELIVERED,COMPLETED",
+    });
+    setOrderHistory(res.data.data);
+  }, []);
+
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
       void loadAccountData();
+      void loadOrderHistory();
     }, 0);
 
     return () => window.clearTimeout(timeoutId);
-  }, [loadAccountData]);
+  }, [loadAccountData, loadOrderHistory]);
 
   useEffect(() => {
     const tab = searchParams.get("tab");
@@ -214,6 +243,7 @@ function AccountPageContent() {
     () => [
       { id: "profile" as const, label: "Thông tin cá nhân", icon: UserRound },
       { id: "orders" as const, label: "Đơn hàng", icon: PackageSearch },
+      { id: "order-history" as const, label: "Lịch sử đơn hàng", icon: ClipboardCheck },
       { id: "addresses" as const, label: "Địa chỉ", icon: MapPinHouse },
       { id: "security" as const, label: "Bảo mật", icon: ShieldCheck },
     ],
@@ -265,42 +295,70 @@ function AccountPageContent() {
     }
 
     setIsSavingAddress(true);
-    const response = await UserApi.addAddress({
-      ...addressForm,
-      province_id: provinceId,
-      district_id: districtId,
-      ward_id: wardId,
-    });
-    setIsSavingAddress(false);
+    try {
+      const response = await UserApi.addAddress({
+        ...addressForm,
+        province_id: provinceId,
+        district_id: districtId,
+        ward_id: wardId,
+      });
 
-    if (!response || response.status >= 400) {
-      toast.error(response?.message || "Không thể thêm địa chỉ.");
-      return;
+      if (!response || response.status >= 400) {
+        toast.error(response?.message || "Không thể thêm địa chỉ.");
+        return;
+      }
+
+      setAddressForm(EMPTY_ADDRESS_FORM);
+      await loadAddresses();
+      toast.success("Đã thêm địa chỉ mới.");
+    } catch (error: unknown) {
+      const axiosErr = error as { response?: { data?: { message?: string; details?: string[] } } };
+      const msg =
+        axiosErr?.response?.data?.message ||
+        axiosErr?.response?.data?.details?.[0] ||
+        "Không thể thêm địa chỉ.";
+      toast.error(msg);
+    } finally {
+      setIsSavingAddress(false);
     }
-
-    setAddressForm(EMPTY_ADDRESS_FORM);
-    await loadAccountData();
-    toast.success("Đã thêm địa chỉ mới.");
   };
 
   const handleSetDefault = async (addressId: number) => {
-    const response = await UserApi.setDefaultAddress(addressId);
-    if (!response || response.status >= 400) {
-      toast.error(response?.message || "Không thể đặt địa chỉ mặc định.");
-      return;
+    try {
+      const response = await UserApi.setDefaultAddress(addressId);
+      if (!response || response.status >= 400) {
+        toast.error(response?.message || "Không thể đặt địa chỉ mặc định.");
+        return;
+      }
+      await loadAddresses();
+      toast.success("Đã cập nhật địa chỉ mặc định.");
+    } catch (error: unknown) {
+      const axiosErr = error as { response?: { data?: { message?: string; details?: string[] } } };
+      const msg =
+        axiosErr?.response?.data?.message ||
+        axiosErr?.response?.data?.details?.[0] ||
+        "Không thể đặt địa chỉ mặc định.";
+      toast.error(msg);
     }
-    await loadAccountData();
-    toast.success("Đã cập nhật địa chỉ mặc định.");
   };
 
   const handleDeleteAddress = async (addressId: number) => {
-    const response = await UserApi.deleteAddress(addressId);
-    if (!response || response.status >= 400) {
-      toast.error(response?.message || "Không thể xóa địa chỉ.");
-      return;
+    try {
+      const response = await UserApi.deleteAddress(addressId);
+      if (!response || response.status >= 400) {
+        toast.error(response?.message || "Không thể xóa địa chỉ.");
+        return;
+      }
+      await loadAddresses();
+      toast.success("Đã xóa địa chỉ.");
+    } catch (error: unknown) {
+      const axiosErr = error as { response?: { data?: { message?: string; details?: string[] } } };
+      const msg =
+        axiosErr?.response?.data?.message ||
+        axiosErr?.response?.data?.details?.[0] ||
+        "Không thể xóa địa chỉ.";
+      toast.error(msg);
     }
-    await loadAccountData();
-    toast.success("Đã xóa địa chỉ.");
   };
 
   const handleChangePassword = async () => {
@@ -345,6 +403,32 @@ function AccountPageContent() {
       toast.error("Không thể tải chi tiết đơn hàng.");
     } finally {
       setLoadingOrderId(null);
+    }
+  };
+
+  const handleToggleHistoryDetail = async (orderId: number) => {
+    if (expandedHistoryId === orderId) {
+      setExpandedHistoryId(null);
+      return;
+    }
+
+    setExpandedHistoryId(orderId);
+
+    if (historyDetails[orderId]) {
+      return;
+    }
+
+    setLoadingHistoryId(orderId);
+    try {
+      const detailResponse = await OrderApi.getMyOrderDetail(orderId);
+      setHistoryDetails((current) => ({
+        ...current,
+        [orderId]: (detailResponse.data ?? {}) as OrderSummary,
+      }));
+    } catch {
+      toast.error("Không thể tải chi tiết đơn hàng.");
+    } finally {
+      setLoadingHistoryId(null);
     }
   };
 
@@ -459,6 +543,18 @@ function AccountPageContent() {
             loadingOrderId={loadingOrderId}
             onToggleOrderDetail={(orderId) =>
               void handleToggleOrderDetail(orderId)
+            }
+          />
+        </TabsContent>
+
+        <TabsContent value="order-history" className="w-full space-y-8">
+          <OrderHistorySection
+            orders={orderHistory}
+            orderDetails={historyDetails}
+            expandedOrderId={expandedHistoryId}
+            loadingOrderId={loadingHistoryId}
+            onToggleOrderDetail={(orderId) =>
+              void handleToggleHistoryDetail(orderId)
             }
           />
         </TabsContent>

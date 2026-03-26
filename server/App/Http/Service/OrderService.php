@@ -55,7 +55,12 @@ class OrderService
         $query->orderBy($column, $direction);
 
         if ($orderStatus) {
-            $query->where('order_status', $orderStatus);
+            $statuses = array_map('trim', explode(',', $orderStatus));
+            if (count($statuses) === 1) {
+                $query->where('order_status', $statuses[0]);
+            } else {
+                $query->whereIn('order_status', $statuses);
+            }
         }
         if ($startDate && $endDate) {
             $query->whereBetween('created_at', [$startDate, $endDate]);
@@ -107,7 +112,12 @@ class OrderService
 
 
         if ($orderStatus) {
-            $query->where('order_status', $orderStatus);
+            $statuses = array_map('trim', explode(',', $orderStatus));
+            if (count($statuses) === 1) {
+                $query->where('order_status', $statuses[0]);
+            } else {
+                $query->whereIn('order_status', $statuses);
+            }
         }
 
         if ($startDate && $endDate) {

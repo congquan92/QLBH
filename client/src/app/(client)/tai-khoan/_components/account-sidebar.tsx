@@ -1,6 +1,6 @@
 import { LucideIcon } from "lucide-react";
 
-export type AccountSection = "profile" | "orders" | "addresses" | "security";
+export type AccountSection = "profile" | "orders" | "order-history" | "addresses" | "security";
 
 interface AccountSectionItem {
     id: AccountSection;

@@ -36,7 +36,7 @@ export function ProfileSection({ profile, sessionName, sessionEmail, sessionPhon
             <section className="border border-gray-200 bg-white p-6">
                 <div className="flex flex-wrap items-start justify-between gap-4 border-b border-gray-200 pb-5">
                     <div>
-                        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-red-600">Hồ sơ Shopee-style</p>
+                        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-red-600">Hồ sơ</p>
                         <h2 className="mt-2 text-2xl font-semibold text-gray-900">Thông tin tài khoản</h2>
                         <p className="mt-2 text-sm text-gray-600">Quản lý hồ sơ cơ bản, trạng thái xác minh và quyền người dùng trong một nơi.</p>
                     </div>

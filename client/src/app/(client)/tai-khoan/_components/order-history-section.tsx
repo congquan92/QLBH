@@ -2,7 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Helper } from "@/lib/helper";
 import { OrderItem, OrderSummary } from "@/types/order";
-import { ChevronDown, ChevronUp, Loader2, Receipt, TicketPercent, Truck } from "lucide-react";
+import { ChevronDown, ChevronUp, ClipboardList, Loader2, Receipt, TicketPercent, Truck } from "lucide-react";
 import Image from "next/image";
 import { formatDateTime, getDeliveryStatusMeta, getPaymentStatusMeta, parseVariantSnapshot } from "./account-utils";
 
@@ -13,7 +13,7 @@ function getPaymentTypeLabel(value?: string) {
     return value || "-";
 }
 
-interface OrdersSectionProps {
+interface OrderHistorySectionProps {
     orders: OrderSummary[];
     orderDetails: Record<number, OrderSummary>;
     expandedOrderId: number | null;
@@ -28,20 +28,23 @@ function getLineItems(order: OrderSummary): OrderItem[] {
     }));
 }
 
-export function OrdersSection({ orders, orderDetails, expandedOrderId, loadingOrderId, onToggleOrderDetail }: OrdersSectionProps) {
+export function OrderHistorySection({ orders, orderDetails, expandedOrderId, loadingOrderId, onToggleOrderDetail }: OrderHistorySectionProps) {
     return (
         <div className="border border-gray-200 bg-white p-6">
             <div className="flex flex-wrap items-start justify-between gap-4 border-b border-gray-200 pb-5">
                 <div>
-                    <h2 className="mt-2 text-2xl font-semibold text-gray-900">Đơn hàng của tôi</h2>
-                    <p className="mt-2 text-sm text-gray-600">Xem các đơn hàng của bạn.</p>
+                    <h2 className="mt-2 text-2xl font-semibold text-gray-900">Lịch sử đơn hàng</h2>
+                    <p className="mt-2 text-sm text-gray-600">Các đơn hàng đã giao thành công và đã thanh toán.</p>
                 </div>
                 <div className="rounded-full border border-gray-200 bg-gray-50 px-4 py-2 text-sm font-medium text-gray-700">{orders.length} đơn hàng</div>
             </div>
 
             <div className="mt-6 space-y-4">
                 {orders.length === 0 ? (
-                    <div className="border border-dashed border-gray-300 bg-gray-50 p-8 text-center text-sm text-gray-500">Bạn chưa có đơn hàng nào.</div>
+                    <div className="flex flex-col items-center gap-3 border border-dashed border-gray-300 bg-gray-50 p-10 text-center">
+                        <ClipboardList className="h-8 w-8 text-gray-300" />
+                        <p className="text-sm text-gray-500">Chưa có đơn hàng nào hoàn thành.</p>
+                    </div>
                 ) : (
                     orders.map((order) => {
                         const detail = orderDetails[order.id];
@@ -53,11 +56,12 @@ export function OrdersSection({ orders, orderDetails, expandedOrderId, loadingOr
 
                         return (
                             <article key={order.id} className="overflow-hidden border border-gray-200 bg-white">
-                                <div className="border-b border-gray-200 bg-[#fffaf8] px-5 py-4">
+                                {/* Header */}
+                                <div className="border-b border-gray-200 bg-[#f0fdf4] px-5 py-4">
                                     <div className="flex flex-wrap items-start justify-between gap-4">
                                         <div>
                                             <div className="flex flex-wrap items-center gap-2">
-                                                <span className="text-sm font-semibold uppercase tracking-[0.18em] text-red-600">Mã đơn {mergedOrder.orderTrackingCode || `#${order.id}`}</span>
+                                                <span className="text-sm font-semibold uppercase tracking-[0.18em] text-green-700">Mã đơn {mergedOrder.orderTrackingCode || `#${order.id}`}</span>
                                                 <Badge variant="outline" className={`rounded-md border px-2.5 py-1 text-xs ${deliveryMeta.className}`}>
                                                     {deliveryMeta.label}
                                                 </Badge>
@@ -69,11 +73,12 @@ export function OrdersSection({ orders, orderDetails, expandedOrderId, loadingOr
                                         </div>
                                         <div className="text-right">
                                             <p className="text-sm text-gray-500">Tổng thanh toán</p>
-                                            <p className="mt-1 text-xl font-bold text-red-600">{Helper.formatPrice(String(mergedOrder.totalAmount ?? 0))}</p>
+                                            <p className="mt-1 text-xl font-bold text-green-700">{Helper.formatPrice(String(mergedOrder.totalAmount ?? 0))}</p>
                                         </div>
                                     </div>
                                 </div>
 
+                                {/* Line items */}
                                 <div className="space-y-3 px-5 py-4">
                                     {lineItems.map((item, index) => {
                                         const variants = parseVariantSnapshot(item.variantSnapShot);
@@ -104,6 +109,7 @@ export function OrdersSection({ orders, orderDetails, expandedOrderId, loadingOr
                                     })}
                                 </div>
 
+                                {/* Footer */}
                                 <div className="border-t border-gray-200 bg-gray-50 px-5 py-4">
                                     <div className="flex flex-wrap items-center justify-between gap-3">
                                         <div className="flex flex-wrap items-center gap-3 text-xs text-gray-600">
@@ -112,7 +118,7 @@ export function OrdersSection({ orders, orderDetails, expandedOrderId, loadingOr
                                                 Giao tới: {[mergedOrder.deliveryAddress, mergedOrder.deliveryWardName, mergedOrder.deliveryDistrictName, mergedOrder.deliveryProvinceName].filter(Boolean).join(", ") || "Chưa cập nhật"}
                                             </span>
                                             {mergedOrder.voucherResponse ? (
-                                                <span className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-2 py-1 text-red-700">
+                                                <span className="inline-flex items-center gap-1 rounded-full border border-green-200 bg-green-50 px-2 py-1 text-green-700">
                                                     <TicketPercent className="h-3.5 w-3.5" />
                                                     {mergedOrder.voucherResponse.description || "Có áp dụng voucher"}
                                                 </span>
@@ -137,39 +143,22 @@ export function OrdersSection({ orders, orderDetails, expandedOrderId, loadingOr
                                                         <div className="rounded-none border border-gray-200 bg-white p-4">
                                                             <h4 className="text-sm font-semibold uppercase tracking-[0.15em] text-gray-500">Thông tin giao nhận</h4>
                                                             <div className="mt-3 space-y-1">
-                                                                <p>
-                                                                    <span className="font-semibold text-gray-900">Người nhận:</span> {mergedOrder.customerName || "-"}
-                                                                </p>
-                                                                <p>
-                                                                    <span className="font-semibold text-gray-900">Số điện thoại:</span> {mergedOrder.customerPhone || "-"}
-                                                                </p>
+                                                                <p><span className="font-semibold text-gray-900">Người nhận:</span> {mergedOrder.customerName || "-"}</p>
+                                                                <p><span className="font-semibold text-gray-900">Số điện thoại:</span> {mergedOrder.customerPhone || "-"}</p>
                                                                 <p>
                                                                     <span className="font-semibold text-gray-900">Địa chỉ:</span>{" "}
                                                                     {[mergedOrder.deliveryAddress, mergedOrder.deliveryWardName, mergedOrder.deliveryDistrictName, mergedOrder.deliveryProvinceName].filter(Boolean).join(", ") || "-"}
                                                                 </p>
-                                                                <p>
-                                                                    <span className="font-semibold text-gray-900">Ghi chú:</span> {mergedOrder.note || "Không có"}
-                                                                </p>
+                                                                <p><span className="font-semibold text-gray-900">Ghi chú:</span> {mergedOrder.note || "Không có"}</p>
                                                             </div>
                                                         </div>
                                                         <div className="rounded-none border border-gray-200 bg-white p-4">
                                                             <h4 className="text-sm font-semibold uppercase tracking-[0.15em] text-gray-500">Theo dõi đơn hàng</h4>
                                                             <div className="mt-3 space-y-1">
-                                                                <p>
-                                                                    <span className="font-semibold text-gray-900">Mã tracking:</span> {mergedOrder.orderTrackingCode || `#${mergedOrder.id}`}
-                                                                </p>
-                                                                <p>
-                                                                    <span className="font-semibold text-gray-900">Cập nhật cuối:</span> {formatDateTime(mergedOrder.updatedAt)}
-                                                                </p>
-                                                                <p>
-                                                                    <span className="font-semibold text-gray-900">Đã xác nhận hoàn tất:</span> {mergedOrder.isConfirmed ? "Có" : "Chưa"}
-                                                                </p>
-                                                                <p>
-                                                                    <span className="font-semibold text-gray-900">Phương thức thanh toán:</span> {getPaymentTypeLabel(mergedOrder.paymentType)}
-                                                                </p>
-                                                                {String(mergedOrder.paymentStatus ?? "").toUpperCase() === "UNPAID" && ["BANK_TRANSFER", "BANK_TRANFER"].includes(String(mergedOrder.paymentType ?? "").toUpperCase()) ? (
-                                                                    <p className="text-amber-700 font-medium">Đơn thanh toán ngân hàng đang ở trạng thái chưa thanh toán.</p>
-                                                                ) : null}
+                                                                <p><span className="font-semibold text-gray-900">Mã tracking:</span> {mergedOrder.orderTrackingCode || `#${mergedOrder.id}`}</p>
+                                                                <p><span className="font-semibold text-gray-900">Cập nhật cuối:</span> {formatDateTime(mergedOrder.updatedAt)}</p>
+                                                                <p><span className="font-semibold text-gray-900">Đã xác nhận hoàn tất:</span> {mergedOrder.isConfirmed ? "Có" : "Chưa"}</p>
+                                                                <p><span className="font-semibold text-gray-900">Phương thức thanh toán:</span> {getPaymentTypeLabel(mergedOrder.paymentType)}</p>
                                                             </div>
                                                         </div>
                                                     </div>
