@@ -355,7 +355,7 @@ class UserService
         $user->role_id = $role->id;
         $user->save();
 
-        AdminPermissionSyncRequested::dispatch((int) $role->id, (int) $user->id, 'user_role_updated');
+        AdminPermissionSyncRequested::dispatchSilently((int) $role->id, (int) $user->id, 'user_role_updated');
     }
 
     public function updateStatus(int $userId, string $status): array

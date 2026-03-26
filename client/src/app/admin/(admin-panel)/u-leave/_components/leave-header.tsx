@@ -49,7 +49,7 @@ export function LeaveHeader({ shifts, isSubmitting, onSubmit }: Props) {
                     <p className="text-sm text-muted-foreground">Gửi và theo dõi đơn nghỉ phép của bạn</p>
                 </div>
             </div>
-
+                                min={TOMORROW_MIN_DATE}
             {/* Button mở dialog */}
             <Dialog open={open} onOpenChange={setOpen}>
                 <DialogTrigger asChild>
@@ -71,7 +71,14 @@ export function LeaveHeader({ shifts, isSubmitting, onSubmit }: Props) {
                     <form onSubmit={handleSubmit} className="space-y-4 pt-2">
                         <div className="space-y-2">
                             <Label htmlFor="leave_date">Ngày nghỉ</Label>
-                            <Input id="leave_date" type="date" value={form.leave_date} onChange={(e) => setForm({ ...form, leave_date: e.target.value })} required min={TOMORROW_MIN_DATE} />
+                            <Input
+                                id="leave_date"
+                                type="date"
+                                value={form.leave_date}
+                                onChange={(e) => setForm({ ...form, leave_date: e.target.value })}
+                                required
+                                min={TOMORROW_MIN_DATE}
+                            />
                         </div>
 
                         <div className="space-y-2">

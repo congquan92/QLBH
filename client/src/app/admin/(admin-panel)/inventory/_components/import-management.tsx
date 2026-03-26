@@ -7,8 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Helper } from "@/lib/helper";
 import { Eye, Loader2, Plus, RefreshCcw, Trash2 } from "lucide-react";
-import { useMemo, useState } from "react";
-import type { DeliveryStatus, ImportDetailDialogData, ImportFormValues, ImportRow, ProductOption, SupplierRow, VariantOption } from "./inventory-types";
+import { useEffect, useMemo, useState } from "react";
+import type { DeliveryStatus, ImportDetailDialogData, ImportFormValues, ImportRow, LowStockVariantRow, ProductOption, SupplierRow, VariantOption } from "./inventory-types";
 
 type CreateImportPayload = {
     product_id: number;
@@ -24,11 +24,14 @@ type ImportManagementProps = {
     imports: ImportRow[];
     suppliers: SupplierRow[];
     products: ProductOption[];
+    lowStockVariants: LowStockVariantRow[];
+    initialSelectedLowStockVariantIds?: number[];
     isLoading: boolean;
     isSaving: boolean;
     onRefresh: () => Promise<void>;
     loadVariantsForProduct: (productId: number) => Promise<VariantOption[]>;
     onCreate: (payload: CreateImportPayload) => Promise<void>;
+    onCreateBatch: (payloads: CreateImportPayload[]) => Promise<void>;
     onGetDetail: (id: number) => Promise<ImportDetailDialogData>;
     onConfirm: (id: number) => Promise<void>;
     onCancel: (id: number) => Promise<void>;
@@ -69,11 +72,14 @@ export function ImportManagement({
     imports,
     suppliers,
     products,
+    lowStockVariants,
+    initialSelectedLowStockVariantIds = [],
     isLoading,
     isSaving,
     onRefresh,
     loadVariantsForProduct,
     onCreate,
+    onCreateBatch,
     onGetDetail,
     onConfirm,
     onCancel,
@@ -94,6 +100,34 @@ export function ImportManagement({
     const [loadingDetail, setLoadingDetail] = useState(false);
     const [detailData, setDetailData] = useState<ImportDetailDialogData | null>(null);
     const [editedQuantities, setEditedQuantities] = useState<Record<number, number>>({});
+    const [selectedLowStockVariantIds, setSelectedLowStockVariantIds] = useState<Set<number>>(new Set());
+    const [draftLowStockQuantities, setDraftLowStockQuantities] = useState<Record<number, number>>({});
+    const [draftLowStockUnitPrices, setDraftLowStockUnitPrices] = useState<Record<number, number>>({});
+
+    useEffect(() => {
+        const next = new Set(initialSelectedLowStockVariantIds.filter((id) => lowStockVariants.some((item) => item.variantId === id)));
+        setSelectedLowStockVariantIds(next);
+    }, [initialSelectedLowStockVariantIds, lowStockVariants]);
+
+    useEffect(() => {
+        setDraftLowStockQuantities((prev) => {
+            const next: Record<number, number> = {};
+            for (const item of lowStockVariants) {
+                const current = Number(prev[item.variantId]);
+                next[item.variantId] = Number.isFinite(current) && current > 0 ? current : Math.max(1, Number(item.suggestedQuantity ?? 1));
+            }
+            return next;
+        });
+
+        setDraftLowStockUnitPrices((prev) => {
+            const next: Record<number, number> = {};
+            for (const item of lowStockVariants) {
+                const current = Number(prev[item.variantId]);
+                next[item.variantId] = Number.isFinite(current) && current >= 0 ? current : Math.max(0, Number(item.unitPrice ?? 0));
+            }
+            return next;
+        });
+    }, [lowStockVariants]);
 
     const filtered = useMemo(() => {
         const search = keyword.trim().toLowerCase();
@@ -149,6 +183,35 @@ export function ImportManagement({
         onCreateOpenChange(false);
         setVariantOptions([]);
         setForm(EMPTY_FORM);
+    }
+
+    async function submitCreateFromLowStockSelection() {
+        const pickedRows = lowStockVariants.filter((item) => selectedLowStockVariantIds.has(item.variantId));
+        if (pickedRows.length === 0) {
+            return;
+        }
+
+        const grouped = new Map<number, typeof pickedRows>();
+        for (const row of pickedRows) {
+            if (!grouped.has(row.productId)) {
+                grouped.set(row.productId, []);
+            }
+            grouped.get(row.productId)?.push(row);
+        }
+
+        const timestamp = new Date().toLocaleString("vi-VN");
+        const payloads: CreateImportPayload[] = Array.from(grouped.entries()).map(([productId, rows]) => ({
+            product_id: productId,
+            description: `Nhập bổ sung biến thể sắp hết hàng (${timestamp})`,
+            import_details: rows.map((row) => ({
+                product_variant_id: row.variantId,
+                quantity: Math.max(1, Number(draftLowStockQuantities[row.variantId] ?? row.suggestedQuantity ?? 1)),
+                unitPrice: Math.max(0, Number(draftLowStockUnitPrices[row.variantId] ?? row.unitPrice ?? 0)),
+            })),
+        }));
+
+        await onCreateBatch(payloads);
+        setSelectedLowStockVariantIds(new Set());
     }
 
     async function openDetail(id: number) {
@@ -208,6 +271,90 @@ export function ImportManagement({
                 </div>
             </CardHeader>
             <CardContent className="space-y-3">
+                <div className="rounded-lg border bg-muted/30 p-3">
+                    <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                            <p className="text-sm font-semibold">Biến thể sắp hết hàng</p>
+                            <p className="text-xs text-muted-foreground">Tích chọn để tạo nhanh phiếu nhập. Cùng sản phẩm sẽ gộp 1 phiếu, khác sản phẩm sẽ tự tách nhiều phiếu.</p>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            <Button type="button" variant="outline" size="sm" onClick={() => setSelectedLowStockVariantIds(new Set(lowStockVariants.map((item) => item.variantId)))}>
+                                Chọn tất cả
+                            </Button>
+                            <Button type="button" variant="outline" size="sm" onClick={() => setSelectedLowStockVariantIds(new Set())}>
+                                Bỏ chọn
+                            </Button>
+                            <Button type="button" size="sm" disabled={isSaving || selectedLowStockVariantIds.size === 0} onClick={() => void submitCreateFromLowStockSelection()}>
+                                Tạo phiếu nhập từ mục đã chọn ({selectedLowStockVariantIds.size})
+                            </Button>
+                        </div>
+                    </div>
+
+                    {lowStockVariants.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">Không có biến thể nào đang ở mức sắp hết hàng.</p>
+                    ) : (
+                        <div className="max-h-64 space-y-2 overflow-y-auto rounded-md border bg-background p-2">
+                            {lowStockVariants.map((item) => {
+                                const checked = selectedLowStockVariantIds.has(item.variantId);
+                                return (
+                                    <label key={`${item.productId}-${item.variantId}`} className="flex cursor-pointer items-start gap-3 rounded-md border p-2 hover:bg-muted/40">
+                                        <input
+                                            type="checkbox"
+                                            className="mt-1 h-4 w-4"
+                                            checked={checked}
+                                            onChange={(event) => {
+                                                setSelectedLowStockVariantIds((prev) => {
+                                                    const next = new Set(prev);
+                                                    if (event.target.checked) {
+                                                        next.add(item.variantId);
+                                                    } else {
+                                                        next.delete(item.variantId);
+                                                    }
+                                                    return next;
+                                                });
+                                            }}
+                                        />
+                                        <div className="min-w-0 flex-1">
+                                            <p className="line-clamp-1 text-sm font-medium">{item.productName}</p>
+                                            <p className="line-clamp-1 text-xs text-muted-foreground">SKU: {item.sku || `#${item.variantId}`}</p>
+                                            {item.attributesLabel ? <p className="line-clamp-2 text-xs text-muted-foreground">{item.attributesLabel}</p> : null}
+                                            <p className="mt-1 text-xs text-muted-foreground">Tồn: <span className="font-semibold text-red-600">{item.quantity}</span></p>
+                                            <div className="mt-2 grid gap-2 md:grid-cols-2">
+                                                <div>
+                                                    <p className="mb-1 text-[11px] text-muted-foreground">Số lượng nhập</p>
+                                                    <Input
+                                                        type="number"
+                                                        min={1}
+                                                        value={String(draftLowStockQuantities[item.variantId] ?? item.suggestedQuantity)}
+                                                        onChange={(event) => {
+                                                            const next = Math.max(1, Number(event.target.value || 1));
+                                                            setDraftLowStockQuantities((prev) => ({ ...prev, [item.variantId]: next }));
+                                                        }}
+                                                        onClick={(event) => event.stopPropagation()}
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <p className="mb-1 text-[11px] text-muted-foreground">Đơn giá nhập</p>
+                                                    <Input
+                                                        type="number"
+                                                        min={0}
+                                                        value={String(draftLowStockUnitPrices[item.variantId] ?? item.unitPrice)}
+                                                        onChange={(event) => {
+                                                            const next = Math.max(0, Number(event.target.value || 0));
+                                                            setDraftLowStockUnitPrices((prev) => ({ ...prev, [item.variantId]: next }));
+                                                        }}
+                                                        onClick={(event) => event.stopPropagation()}
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </label>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+
                 <div className="grid gap-2 md:grid-cols-4">
                     <Input value={keyword} onChange={(event) => setKeyword(event.target.value)} placeholder="Tìm theo mã phiếu, tên sản phẩm, nhà cung cấp..." className="md:col-span-2" />
                     <Select value={status} onValueChange={setStatus}>

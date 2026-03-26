@@ -8,6 +8,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSepar
 import { Helper } from "@/lib/helper";
 import type { ProductDetail } from "@/types/product";
 import { AlertTriangle, Loader2, RefreshCcw } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
 
 type StockAlertItem = {
@@ -81,10 +82,12 @@ function toStockAlerts(detail: ProductDetail, pendingMap: Map<number, Set<number
 }
 
 export function AdminStockAlertBell() {
+    const router = useRouter();
     const [items, setItems] = useState<StockAlertItem[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [loaded, setLoaded] = useState(false);
     const [errorMessage, setErrorMessage] = useState("");
+    const [selectedVariantIds, setSelectedVariantIds] = useState<Set<number>>(new Set());
 
     const needsActionCount = useMemo(() => items.filter((item) => item.pendingImportIds.length === 0).length, [items]);
 
@@ -113,6 +116,15 @@ export function AdminStockAlertBell() {
             }
 
             setItems(nextItems);
+            setSelectedVariantIds((prev) => {
+                const next = new Set<number>();
+                for (const item of nextItems) {
+                    if (prev.has(item.variantId)) {
+                        next.add(item.variantId);
+                    }
+                }
+                return next;
+            });
             setLoaded(true);
         } catch (error) {
             setErrorMessage(Helper.errorMessage(error));
@@ -121,6 +133,19 @@ export function AdminStockAlertBell() {
             setIsLoading(false);
         }
     }, []);
+
+    const selectedCount = selectedVariantIds.size;
+
+    function openInventoryWithSelection(useSelectedOnly: boolean) {
+        const variantIds = useSelectedOnly ? Array.from(selectedVariantIds) : items.map((item) => item.variantId);
+        const cleanedIds = Array.from(new Set(variantIds.filter((id) => Number.isFinite(id) && id > 0)));
+        if (cleanedIds.length === 0) {
+            router.push("/admin/inventory");
+            return;
+        }
+
+        router.push(`/admin/inventory?lowStock=${cleanedIds.join(",")}`);
+    }
 
     return (
         <DropdownMenu
@@ -144,10 +169,18 @@ export function AdminStockAlertBell() {
             <DropdownMenuContent align="end" className="w-120 max-w-[95vw] p-0">
                 <div className="flex items-center justify-between px-3 py-2">
                     <DropdownMenuLabel className="p-0">Cảnh báo biến thể sắp hết hàng</DropdownMenuLabel>
-                    <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={() => void loadStockAlerts()} disabled={isLoading}>
-                        {isLoading ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <RefreshCcw className="mr-1 h-3.5 w-3.5" />}
-                        Làm mới
-                    </Button>
+                    <div className="flex items-center gap-1">
+                        <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={() => void loadStockAlerts()} disabled={isLoading}>
+                            {isLoading ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <RefreshCcw className="mr-1 h-3.5 w-3.5" />}
+                            Làm mới
+                        </Button>
+                        <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={() => openInventoryWithSelection(false)}>
+                            Mở kho hàng
+                        </Button>
+                        <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={() => openInventoryWithSelection(true)} disabled={selectedCount === 0}>
+                            Tới kho ({selectedCount})
+                        </Button>
+                    </div>
                 </div>
                 <DropdownMenuSeparator />
 
@@ -161,7 +194,24 @@ export function AdminStockAlertBell() {
                     ) : (
                         <div className="space-y-2">
                             {items.map((item) => (
-                                <div key={`${item.productId}-${item.variantId}`} className="rounded-md border p-3">
+                                <label key={`${item.productId}-${item.variantId}`} className="flex cursor-pointer items-start gap-2 rounded-md border p-3 hover:bg-muted/30">
+                                    <input
+                                        type="checkbox"
+                                        className="mt-1 h-4 w-4"
+                                        checked={selectedVariantIds.has(item.variantId)}
+                                        onChange={(event) => {
+                                            setSelectedVariantIds((prev) => {
+                                                const next = new Set(prev);
+                                                if (event.target.checked) {
+                                                    next.add(item.variantId);
+                                                } else {
+                                                    next.delete(item.variantId);
+                                                }
+                                                return next;
+                                            });
+                                        }}
+                                    />
+                                    <div className="min-w-0 flex-1">
                                     <div className="flex items-center justify-between gap-2">
                                         <p className="line-clamp-1 text-sm font-semibold">{item.productName}</p>
                                         <Badge className={item.quantity <= 1 ? "bg-red-500 text-white hover:bg-red-500" : "bg-amber-500 text-white hover:bg-amber-500"}>Tồn: {item.quantity}</Badge>
@@ -180,7 +230,8 @@ export function AdminStockAlertBell() {
                                             <Badge className="bg-red-500 text-white hover:bg-red-500">Chưa có đơn nhập PENDING</Badge>
                                         )}
                                     </div>
-                                </div>
+                                    </div>
+                                </label>
                             ))}
                         </div>
                     )}

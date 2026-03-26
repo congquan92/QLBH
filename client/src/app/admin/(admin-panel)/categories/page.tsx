@@ -205,6 +205,13 @@ export default function CategoriesPage() {
         }
     }
 
+    const categoryTreeKey = categories
+        .map((category) => {
+            const childKey = (category.childCategory ?? []).map((child) => `${child.id}:${child.status ?? ""}`).join(",");
+            return `${category.id}:${category.status ?? ""}:${childKey}`;
+        })
+        .join("|");
+
     return (
         <AdminPageShell title="Danh mục" description="Quản lý cấu trúc danh mục và phân cấp sản phẩm">
             {/* Top action bar */}
@@ -216,7 +223,20 @@ export default function CategoriesPage() {
             </div>
 
             {/* Category tree */}
+<<<<<<< HEAD
             <CategoryTree key={treeVersion} categories={categories} isLoading={isLoading} isSaving={isSaving} onEdit={openEditDialog} onDelete={openDeleteDialog} onRestore={(id) => void handleRestore(id)} onReorder={handleReorder} />
+=======
+            <CategoryTree
+                key={categoryTreeKey}
+                categories={categories}
+                isLoading={isLoading}
+                isSaving={isSaving}
+                onEdit={openEditDialog}
+                onDelete={openDeleteDialog}
+                onRestore={(id) => void handleRestore(id)}
+                onReorder={handleReorder}
+            />
+>>>>>>> huy_tmp
 
             {/* Create / Edit Dialog */}
             <CategoryDialog open={dialogOpen} onOpenChange={closeDialog} form={form} onFormChange={setForm} categories={categories} isSaving={isSaving} onSubmit={() => void submitCategory()} />
