@@ -4,7 +4,7 @@ import type { CreateLeavePayload, LeaveRequest } from "@/types/leave";
 import type { Shift } from "@/types/admin-crud";
 
 export const LeaveApi = {
-    getAll: async (params?: { keyword?: string; status?: string; sort?: string; page?: number; size?: number }): Promise<ApiResponse<PageResponse<LeaveRequest>>> => {
+    getAll: async (params?: { keyword?: string; status?: string; leave_date?: string; sort?: string; page?: number; size?: number }): Promise<ApiResponse<PageResponse<LeaveRequest>>> => {
         try {
             const res = await axiosInstance.get("/leave-requests/list", { params });
             return res.data;
@@ -14,7 +14,7 @@ export const LeaveApi = {
         }
     },
 
-    getMyLeaves: async (params?: { keyword?: string; status?: string; sort?: string; page?: number; size?: number }): Promise<ApiResponse<PageResponse<LeaveRequest>>> => {
+    getMyLeaves: async (params?: { keyword?: string; status?: string; leave_date?: string; sort?: string; page?: number; size?: number }): Promise<ApiResponse<PageResponse<LeaveRequest>>> => {
         try {
             const res = await axiosInstance.get("/leave-requests/me", { params });
             return res.data;

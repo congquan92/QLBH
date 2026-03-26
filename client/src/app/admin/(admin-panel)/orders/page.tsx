@@ -11,9 +11,8 @@ import {
 } from "@/components/ui/card";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import type { OrderSummary } from "@/types/order";
-import { Loader2 } from "lucide-react";
-import { Skeleton } from "@/components/ui/skeleton";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import {
   OrdersFilters,
@@ -33,16 +32,24 @@ const DEFAULT_FILTERS: OrderFiltersState = {
 
 export default function OrdersPage() {
   useAdminAuth();
+  const searchParams = useSearchParams();
+  const initialKeyword = searchParams.get("keyword") ?? "";
   const [orders, setOrders] = useState<OrderSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [updatingOrderId, setUpdatingOrderId] = useState<number | null>(null);
   const [draftFilters, setDraftFilters] =
-    useState<OrderFiltersState>(DEFAULT_FILTERS);
+    useState<OrderFiltersState>({ ...DEFAULT_FILTERS, keyword: initialKeyword });
   const [appliedFilters, setAppliedFilters] =
-    useState<OrderFiltersState>(DEFAULT_FILTERS);
+    useState<OrderFiltersState>({ ...DEFAULT_FILTERS, keyword: initialKeyword });
   const [provinceOptions, setProvinceOptions] = useState<GhnProvince[]>([]);
   const [districtOptions, setDistrictOptions] = useState<GhnDistrict[]>([]);
   const [isLoadingLocations, setIsLoadingLocations] = useState(true);
+
+  useEffect(() => {
+    const nextKeyword = searchParams.get("keyword") ?? "";
+    setDraftFilters((prev) => ({ ...prev, keyword: nextKeyword }));
+    setAppliedFilters((prev) => ({ ...prev, keyword: nextKeyword }));
+  }, [searchParams]);
 
   useEffect(() => {
     let active = true;
