@@ -50,6 +50,7 @@ Route::post('/auth/social/google', [OAuthController::class, 'googleLogin']);
 Route::get('/voucher/list', action: [VoucherController::class, 'findAll']);
 Route::get('/voucher/detail/{id}', [VoucherController::class, 'show']);
 Route::get('/reviews/{id}', action: [ReviewController::class, 'show']);
+Route::get('/reviews/product/{productId}', [ReviewController::class, 'getByProduct']);
 Route::post('/otp/verify-otp', [BrevoController::class, 'verify']);
 Route::get('/user/email', [UserController::class, 'getUserByEmail']);
  Route::get('/payment/vnpay-return', [PaymentController::class, 'returnPayment'])->name('vnpay.return');

@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import { UserAuthStore } from "@/hooks/useClientAuth";
 import { UserAuthUtil } from "@/lib/UserAuth-util";
 import { usePathname, useRouter } from "next/navigation";
+import ProductReviews from "@/app/(client)/san-pham/_components/ProductReviews";
 
 export default function ListProductDetail({ products, relatedProducts }: { products: ProductDetail; relatedProducts: Product[] }) {
     const productImages = products.imageProduct.length > 0 ? products.imageProduct : [products.coverImage];
@@ -231,9 +232,8 @@ export default function ListProductDetail({ products, relatedProducts }: { produ
                                     <button
                                         key={value.id}
                                         onClick={() => handleAttributeSelect(attribute.name, value.value)}
-                                        className={`px-4 py-2 border text-sm font-medium transition-all ${
-                                            selectedAttributes[attribute.name] === value.value ? "border-red-600 bg-red-50 text-red-600" : "border-gray-300 bg-white text-gray-700 hover:border-gray-400"
-                                        }`}
+                                        className={`px-4 py-2 border text-sm font-medium transition-all ${selectedAttributes[attribute.name] === value.value ? "border-red-600 bg-red-50 text-red-600" : "border-gray-300 bg-white text-gray-700 hover:border-gray-400"
+                                            }`}
                                     >
                                         {value.value}
                                     </button>
@@ -352,23 +352,14 @@ export default function ListProductDetail({ products, relatedProducts }: { produ
                 <div className="py-8">
                     {activeTab === "description" && (
                         <div className="prose max-w-none">
-                            <div className="bg-gray-50 border border-gray-200 p-6 text-center text-gray-500">
+                            <div className="bg-gray-50 border border-gray-200 p-6 text-gray-700">
                                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Mô tả sản phẩm</h3>
-                                <p>Backend hiện mới cung cấp điểm trung bình và số lượng đã bán cho trang công khai.</p>
-                                <p className="text-sm mt-2">Danh sách bình luận chi tiết sẽ hiển thị khi API công khai cho review theo sản phẩm được bổ sung.</p>
+                                {products.description?.trim() ? <p className="whitespace-pre-line leading-relaxed">{products.description}</p> : <p className="text-sm text-gray-500">Sản phẩm này hiện chưa có mô tả chi tiết.</p>}
                             </div>
                         </div>
                     )}
 
-                    {activeTab === "reviews" && (
-                        <div className="prose max-w-none">
-                            <div className="bg-gray-50 border border-gray-200 p-6 text-center text-gray-500">
-                                <h3 className="text-lg font-semibold text-gray-900 mb-4">Đánh giá từ khách hàng</h3>
-                                <p>Chưa có đánh giá nào cho sản phẩm này.</p>
-                                <p className="text-sm mt-2">Danh sách bình luận chi tiết sẽ hiển thị khi API công khai cho review theo sản phẩm được bổ sung.</p>
-                            </div>
-                        </div>
-                    )}
+                    {activeTab === "reviews" && <ProductReviews productId={products.id} avgRating={products.avgRating} soldQuantity={products.soldQuantity} />}
                 </div>
             </div>
 

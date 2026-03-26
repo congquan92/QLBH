@@ -46,6 +46,32 @@ class ReviewSerivce
 
         return PageResponse::fromLaravelPaginator($paginator);
     }
+    public function getReviewsByProduct(int $productId, int $page, int $size, string $sort = 'id:desc')
+    {
+        $query = Review::with(['user', 'image', 'orderItem'])
+            ->where('product_id', $productId)
+            ->where('status', 'ACTIVE');
+
+        $column = 'id';
+        $direction = 'desc';
+        if ($sort && str_contains($sort, ':')) {
+            $parts = explode(':', $sort);
+            $column = $parts[0];
+            $direction = strtolower($parts[1] ?? 'asc') === 'asc' ? 'asc' : 'desc';
+        }
+
+        $paginator = $query->orderBy($column, $direction)
+            ->paginate($size, ['*'], 'page', $page);
+
+        $dtoItems = $paginator->getCollection()->map(function ($review) {
+            return ReviewMapper::toReviewResponse($review);
+        });
+
+        $paginator->setCollection($dtoItems);
+
+        return PageResponse::fromLaravelPaginator($paginator);
+    }
+
     public function create(array $data)
     {
         return DB::transaction(function () use ($data) {
