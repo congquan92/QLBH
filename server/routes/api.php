@@ -32,6 +32,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\UserRankController;
 use App\Http\Controllers\VoucherController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\GhnController;
 use App\Http\Controllers\RoleController;
 
 
@@ -60,6 +61,8 @@ Route::post('/user/{userId}/verify-account', [UserController::class, 'verifyAcco
 Route::post('/user/forgot-password', [UserController::class, 'forgotPassword']);
 // ==========================================
 Route::post('/firebase/test', [FirebaseController::class, 'test']);
+// GHN - Tính phí vận chuyển (public - không cần đăng nhập)
+Route::post('/ghn/calculate-fee', [GhnController::class, 'calculateFee']);
 // Route bảo vệ bởi JWT
 // ==========================================
 Route::middleware('auth')->group(function () {

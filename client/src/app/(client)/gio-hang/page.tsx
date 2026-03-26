@@ -4,6 +4,7 @@ import { CartApi } from "@/api/cart.api";
 import { OrderApi } from "@/api/order.api";
 import { PaymentApi } from "@/api/payment.api";
 import { UserApi } from "@/api/user.api";
+import { VoucherApi } from "@/api/voucher.api";
 import { CartCheckoutSummary } from "@/app/(client)/gio-hang/_components/cart-checkout-summary";
 import { CartEmptyState } from "@/app/(client)/gio-hang/_components/cart-empty-state";
 import { CartInvoice } from "@/app/(client)/gio-hang/_components/cart-invoice";
@@ -16,8 +17,10 @@ import { UserAuthUtil } from "@/lib/UserAuth-util";
 import { CartItem } from "@/types/cart";
 import { OrderSummary } from "@/types/order";
 import { UserAddress } from "@/types/user";
+import { Voucher } from "@/types/voucher";
+import { axiosInstance } from "@/lib/axios";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 export default function CartPage() {
@@ -34,6 +37,15 @@ export default function CartPage() {
     const [isPlacingOrder, setIsPlacingOrder] = useState(false);
     const [invoice, setInvoice] = useState<OrderSummary | null>(null);
     const [lastCheckoutAmount, setLastCheckoutAmount] = useState(0);
+
+    // Voucher state
+    const [vouchers, setVouchers] = useState<Voucher[]>([]);
+    const [selectedVoucherId, setSelectedVoucherId] = useState<number | null>(null);
+
+    // Shipping fee state
+    const [shippingFee, setShippingFee] = useState<number | null>(null);
+    const [isCalculatingShipping, setIsCalculatingShipping] = useState(false);
+    const shippingAbortRef = useRef<AbortController | null>(null);
 
     const [newAddress, setNewAddress] = useState<NewAddressForm>({
         customer_name: String(session?.fullName ?? ""),
@@ -57,7 +69,11 @@ export default function CartPage() {
         let isCancelled = false;
 
         const fetchCart = async () => {
-            const [cartResponse, addressResponse] = await Promise.all([CartApi.getMyCart({ page: 1, size: 50, sort: "id:desc" }), UserApi.getMyAddresses({ page: 1, size: 30, sort: "id:desc" })]);
+            const [cartResponse, addressResponse, voucherResponse] = await Promise.all([
+                CartApi.getMyCart({ page: 1, size: 50, sort: "id:desc" }),
+                UserApi.getMyAddresses({ page: 1, size: 30, sort: "id:desc" }),
+                VoucherApi.getMyAvailableVouchers({ page: 1, size: 50, sort: "id:desc" }).catch(() => null),
+            ]);
 
             if (isCancelled) {
                 return;
@@ -70,6 +86,16 @@ export default function CartPage() {
             const preferredAddress = nextAddresses.find((address) => address.is_default === 1 || address.is_default === true || address.isDefault) ?? nextAddresses[0] ?? null;
             setSelectedAddressId(preferredAddress?.id ?? null);
             setLastLoadedToken(sessionToken);
+
+            // Load vouchers
+            if (voucherResponse) {
+                const voucherData = voucherResponse.data;
+                if (Array.isArray(voucherData)) {
+                    setVouchers(voucherData);
+                } else if (voucherData && typeof voucherData === "object" && "data" in voucherData) {
+                    setVouchers((voucherData as { data: Voucher[] }).data ?? []);
+                }
+            }
         };
 
         void fetchCart();
@@ -78,6 +104,70 @@ export default function CartPage() {
             isCancelled = true;
         };
     }, [isAuthenticated, isAuthLoading, sessionToken]);
+
+    // ── Tính phí vận chuyển GHN qua backend ────────────────────────────────
+    const calculateShipping = useCallback(async (districtId: number, wardCode: string) => {
+        if (!districtId || !wardCode) {
+            setShippingFee(null);
+            return;
+        }
+
+        // Huỷ request cũ nếu còn đang chờ
+        if (shippingAbortRef.current) {
+            shippingAbortRef.current.abort();
+        }
+        const controller = new AbortController();
+        shippingAbortRef.current = controller;
+
+        setIsCalculatingShipping(true);
+        try {
+            const res = await axiosInstance.post(
+                "/ghn/calculate-fee",
+                { districtId, wardCode },
+                { signal: controller.signal },
+            );
+            const fee = (res.data as { data?: { shippingFee?: number; total?: number } })?.data?.total ?? (res.data as { data?: number })?.data ?? null;
+            if (typeof fee === "number") {
+                setShippingFee(fee);
+            } else {
+                setShippingFee(null);
+            }
+        } catch {
+            // Bỏ qua nếu bị abort hoặc lỗi
+            setShippingFee(null);
+        } finally {
+            setIsCalculatingShipping(false);
+        }
+    }, []);
+
+    // Trigger tính phí ship khi địa chỉ từ tài khoản thay đổi
+    useEffect(() => {
+        if (useNewAddress) return;
+        if (!selectedAddressId) {
+            setShippingFee(null);
+            return;
+        }
+        const addr = addresses.find((a) => a.id === selectedAddressId);
+        if (!addr) return;
+        const mapped = getAddressValue(addr);
+        if (mapped.districtId > 0 && mapped.wardId > 0) {
+            void calculateShipping(mapped.districtId, String(mapped.wardId));
+        } else {
+            setShippingFee(null);
+        }
+    }, [selectedAddressId, addresses, useNewAddress, calculateShipping]);
+
+    // Trigger tính phí ship khi nhập địa chỉ mới đủ ward
+    useEffect(() => {
+        if (!useNewAddress) return;
+        const districtId = Number(newAddress.district_id);
+        const wardCode = newAddress.ward_id;
+        if (districtId > 0 && wardCode) {
+            void calculateShipping(districtId, wardCode);
+        } else {
+            setShippingFee(null);
+        }
+    }, [newAddress.district_id, newAddress.ward_id, useNewAddress, calculateShipping]);
 
     const handleQuantityChange = async (item: CartItem, nextQuantity: number) => {
         if (nextQuantity < 1) {
@@ -152,6 +242,18 @@ export default function CartPage() {
     const selectedItems = cartItems.filter((item) => selectedItemIds.includes(item.id));
     const selectedTotalAmount = selectedItems.reduce((sum, item) => sum + getCartItemPrice(item) * item.quantity, 0);
     const { provinces, districts, wards, isLoadingProvinces, isLoadingDistricts, isLoadingWards } = useGhnAddressOptions(newAddress.province_id, newAddress.district_id);
+
+    // Tính giảm giá voucher
+    const selectedVoucher = vouchers.find((v) => v.id === selectedVoucherId) ?? null;
+    const voucherDiscountAmount = (() => {
+        if (!selectedVoucher) return 0;
+        const base = selectedVoucher.isShipping ? (shippingFee ?? 0) : selectedTotalAmount;
+        const rawDiscount = selectedVoucher.type === "PERCENTAGE"
+            ? base * (Number(selectedVoucher.discountValue ?? 0) / 100)
+            : Number(selectedVoucher.discountValue ?? 0);
+        const max = selectedVoucher.maxDiscountValue != null ? Number(selectedVoucher.maxDiscountValue) : Infinity;
+        return Math.min(rawDiscount, max);
+    })();
 
     const clearCartAfterOrder = async (items: CartItem[]) => {
         const tasks = items.map((item) => CartApi.deleteItem(item.id));
@@ -242,6 +344,7 @@ export default function CartPage() {
                 paymentType,
                 note: note.trim() || undefined,
                 order_items: orderItems,
+                voucherId: selectedVoucherId ?? undefined,
             });
 
             let createdOrderId = extractOrderId(createResponse.data);
@@ -288,6 +391,7 @@ export default function CartPage() {
             setCartItems((current) => current.filter((item) => !selectedIdsSnapshot.includes(item.id)));
             setSelectedItemIds([]);
             setNote("");
+            setSelectedVoucherId(null);
             toast.success("Đặt hàng thành công. Hóa đơn đã được lưu.");
         } catch (error) {
             const message = error instanceof Error ? error.message : "Không thể đặt hàng. Vui lòng thử lại.";
@@ -364,11 +468,17 @@ export default function CartPage() {
                         paymentType={paymentType}
                         note={note}
                         isPlacingOrder={isPlacingOrder}
+                        vouchers={vouchers}
+                        selectedVoucherId={selectedVoucherId}
+                        voucherDiscountAmount={voucherDiscountAmount}
+                        shippingFee={shippingFee}
+                        isCalculatingShipping={isCalculatingShipping}
                         onSelectAddress={setSelectedAddressId}
                         onUseNewAddressChange={setUseNewAddress}
                         onNewAddressChange={(updater) => setNewAddress((current) => updater(current))}
                         onPaymentTypeChange={setPaymentType}
                         onNoteChange={setNote}
+                        onSelectVoucher={setSelectedVoucherId}
                         onCheckout={() => void handleCheckout()}
                     />
                 </div>

@@ -39,7 +39,7 @@ export default async function Home() {
                         </Link>
                     </div>
                     <div className="mt-8">
-                        <ImgPage url="/a1.png" />
+                        <ImgPage url="/new_product.jpg" />
                         <ProductGrid products={productsCreated} emptyMessage="Chưa có sản phẩm mới để hiển thị." />
                     </div>
                 </section>
@@ -53,8 +53,8 @@ export default async function Home() {
                             Xem tất cả
                         </Link>
                     </div>
-                    <div className="mt-8">
-                        <ImgPage url="/a1.png" />
+                    <div className="mt-8 w-full">
+                        <ImgPage url="/sale.gif" />
                         <ProductCarousel products={productsSalePrice} emptyMessage="Chưa có sản phẩm khuyến mãi để hiển thị." />
                     </div>
                 </section>
