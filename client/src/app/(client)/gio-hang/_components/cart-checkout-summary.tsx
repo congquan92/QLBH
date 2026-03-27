@@ -61,6 +61,12 @@ function VoucherBadge({ voucher }: { voucher: Voucher }) {
       ? ` · Đơn từ ${Helper.formatPrice(String(voucher.minDiscountValue))}`
       : "";
 
+  const remaining = Number(voucher.remaining_quantity ?? voucher.remainingQuantity ?? 0);
+  const usageLimit = Number(voucher.usageLimitPerUser ?? voucher.usage_limit_per_user ?? 0);
+  const usedByUser = Number(voucher.currentUserUsedCount ?? voucher.current_user_used_count ?? 0);
+  const usageText = usageLimit > 0 ? ` · Lượt dùng: ${usedByUser}/${usageLimit}` : "";
+  const remainingText = ` · Còn: ${Math.max(0, remaining)}`;
+
   return (
     <span className="text-xs text-gray-600">
       {voucher.isShipping ? (
@@ -71,6 +77,8 @@ function VoucherBadge({ voucher }: { voucher: Voucher }) {
       {discount}
       {extra}
       {minOrder}
+      {usageText}
+      {remainingText}
     </span>
   );
 }
@@ -110,6 +118,7 @@ export function CartCheckoutSummary({
   const [showVoucherList, setShowVoucherList] = useState(false);
 
   const selectedVoucher = vouchers.find((v) => v.id === selectedVoucherId) ?? null;
+  const isShippingVoucherSelected = Boolean(selectedVoucher?.isShipping ?? selectedVoucher?.is_shipping ?? false);
 
   // Tổng thanh toán = hàng + ship - voucher
   const shippingFeeValue = shippingFee ?? 0;
@@ -159,7 +168,7 @@ export function CartCheckoutSummary({
           <div className="flex items-center justify-between text-green-700">
             <span className="flex items-center gap-1">
               <Tag className="size-3.5" />
-              Giảm voucher
+              {isShippingVoucherSelected ? "Giảm phí vận chuyển" : "Giảm voucher"}
             </span>
             <span className="font-medium">
               − {Helper.formatPrice(String(voucherDiscountAmount))}

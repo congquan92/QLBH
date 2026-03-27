@@ -277,13 +277,27 @@ class UserService
     public function changeEmail($newEmail, $otp)
     {
         $currentUser = auth()->user();
+
+        $normalizedEmail = strtolower(trim((string) $newEmail));
+        if ($normalizedEmail === '') {
+            throw new BusinessException(ErrorCode::BAD_REQUEST, 'Email mới không hợp lệ!');
+        }
+
+        if (User::where('email', $normalizedEmail)->where('id', '!=', $currentUser->id)->exists()) {
+            throw new BusinessException(ErrorCode::EXISTED, 'Email đã tồn tại!');
+        }
+
         $verifyOTP = $this->brevoService->verifyOTP($currentUser, OTPType::EMAIL_RESET, $otp);
         if (!$verifyOTP) {
             throw new BusinessException(ErrorCode::NOT_VERIFY, 'Xác thực thất bại!');
         }
-        $currentUser->email = $newEmail;
-        $currentUser->email_verified = true;
+
+        $currentUser->email = $normalizedEmail;
+        $currentUser->email_verified = false;
         $currentUser->save();
+
+        // Sau khi đổi email, gửi OTP xác thực về email mới.
+        $this->brevoService->sendTransacNotifications($currentUser, OTPType::VERIFICATION, true);
     }
     public function changePhone(UpdatePhoneRequest $req)
     {

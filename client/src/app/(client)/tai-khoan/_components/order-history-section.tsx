@@ -18,7 +18,9 @@ interface OrderHistorySectionProps {
     orderDetails: Record<number, OrderSummary>;
     expandedOrderId: number | null;
     loadingOrderId: number | null;
+    retryingOrderId: number | null;
     onToggleOrderDetail: (orderId: number) => void;
+    onRetryPayment: (orderId: number) => void;
 }
 
 function getLineItems(order: OrderSummary): OrderItem[] {
@@ -28,7 +30,7 @@ function getLineItems(order: OrderSummary): OrderItem[] {
     }));
 }
 
-export function OrderHistorySection({ orders, orderDetails, expandedOrderId, loadingOrderId, onToggleOrderDetail }: OrderHistorySectionProps) {
+export function OrderHistorySection({ orders, orderDetails, expandedOrderId, loadingOrderId, retryingOrderId, onToggleOrderDetail, onRetryPayment }: OrderHistorySectionProps) {
     return (
         <div className="border border-gray-200 bg-white p-6">
             <div className="flex flex-wrap items-start justify-between gap-4 border-b border-gray-200 pb-5">
@@ -159,6 +161,20 @@ export function OrderHistorySection({ orders, orderDetails, expandedOrderId, loa
                                                                 <p><span className="font-semibold text-gray-900">Cập nhật cuối:</span> {formatDateTime(mergedOrder.updatedAt)}</p>
                                                                 <p><span className="font-semibold text-gray-900">Đã xác nhận hoàn tất:</span> {mergedOrder.isConfirmed ? "Có" : "Chưa"}</p>
                                                                 <p><span className="font-semibold text-gray-900">Phương thức thanh toán:</span> {getPaymentTypeLabel(mergedOrder.paymentType)}</p>
+                                                                {String(mergedOrder.paymentStatus ?? "").toUpperCase() === "UNPAID" && ["BANK_TRANSFER", "BANK_TRANFER"].includes(String(mergedOrder.paymentType ?? "").toUpperCase()) ? (
+                                                                    <div className="space-y-2">
+                                                                        <p className="font-medium text-amber-700">Đơn thanh toán ngân hàng đang ở trạng thái chưa thanh toán.</p>
+                                                                        <Button
+                                                                            size="sm"
+                                                                            className="rounded-none bg-amber-600 hover:bg-amber-700"
+                                                                            onClick={() => onRetryPayment(mergedOrder.id)}
+                                                                            disabled={retryingOrderId === mergedOrder.id}
+                                                                        >
+                                                                            {retryingOrderId === mergedOrder.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                                                                            Thanh toán lại
+                                                                        </Button>
+                                                                    </div>
+                                                                ) : null}
                                                             </div>
                                                         </div>
                                                     </div>

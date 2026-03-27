@@ -26,6 +26,12 @@ class VoucherService
 
         $query = Voucher::query();
 
+        $query->withCount([
+            'voucherUsages as current_user_used_count' => function ($usageQuery) use ($user) {
+                $usageQuery->where('user_id', $user->id);
+            },
+        ]);
+
         // 2. Logic "getAvailableVouchersForUser" viết thẳng vào đây:
         // Lấy mức chi tiêu tối thiểu của hạng hiện tại mà User đang đạt được
         $userMinSpent = $user->userRank->min_spent ?? 0;
@@ -34,6 +40,14 @@ class VoucherService
             ->where('remaining_quantity', '>', 0)
             ->where('start_date', '<=', now())
             ->where('end_date', '>=', now())
+            ->where(function ($q) use ($user) {
+                $q->whereNull('usage_limit_per_user')
+                    ->orWhere('usage_limit_per_user', '<=', 0)
+                    ->orWhereRaw(
+                        '(SELECT COUNT(*) FROM voucher_usages WHERE voucher_usages.voucher_id = vouchers.id AND voucher_usages.user_id = ?) < vouchers.usage_limit_per_user',
+                        [$user->id]
+                    );
+            })
             ->where(function ($q) use ($userMinSpent) {
                 $q->whereHas('userRank', function ($sub) use ($userMinSpent) {
                     // Lấy các Voucher có yêu cầu chi tiêu thấp hơn hoặc bằng mức của User

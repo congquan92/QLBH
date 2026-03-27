@@ -23,7 +23,13 @@ export interface Voucher {
     remaining_quantity?: string | number;
     used_quantity?: string | number;
     isShipping?: boolean;
+    is_shipping?: boolean;
     usageLimitPerUser?: number;
+    usage_limit_per_user?: number;
+    currentUserUsedCount?: number;
+    current_user_used_count?: number;
+    canUse?: boolean;
+    can_use?: boolean;
     userRankResponse?: VoucherUserRank;
     [key: string]: unknown;
 }

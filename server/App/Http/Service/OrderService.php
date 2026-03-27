@@ -170,9 +170,33 @@ class OrderService
             if (!$nextStatus) {
                 throw new BusinessException(ErrorCode::BAD_REQUEST, 'Trạng thái đơn hàng không hợp lệ');
             }
+            $previousStatus = $order->order_status->value;
             $currentState = OrderStateFactory::getState($order->order_status);
             $currentState->changeState($order, $nextStatus, $this->firebaseService);
             $order->save();
+
+            // Đồng bộ trạng thái đơn realtime cho phía khách hàng.
+            $this->firebaseService->updateOrderStatus($order);
+
+            $statusMessage = "Đơn #{$order->id}: {$previousStatus} -> {$order->order_status->value}";
+            $orderPayload = json_encode(OrderMapper::toOrderResponse($order));
+
+            // Thông báo realtime cho quản trị viên và nhân viên xử lý đơn.
+            $this->firebaseService->sendNotification('role_' . strtolower(RoleType::ORDER_STAFF->value), [
+                'title' => 'Cập nhật trạng thái đơn hàng',
+                'body' => $statusMessage,
+                'order_id' => $order->id,
+                'type' => 'order_status_admin',
+                'order_data' => $orderPayload,
+            ]);
+
+            $this->firebaseService->sendNotification('role_' . strtolower(RoleType::ADMIN->value), [
+                'title' => 'Cập nhật trạng thái đơn hàng',
+                'body' => $statusMessage,
+                'order_id' => $order->id,
+                'type' => 'order_status_admin',
+                'order_data' => $orderPayload,
+            ]);
         });
     }
     public function completeOrder($orderId)
@@ -229,17 +253,6 @@ class OrderService
             }
 
             if ($order->order_status === DeliveryStatus::PENDING) {
-                if (
-                    $order->payment_type === PaymentType::COD ||
-                    ($order->payment_type == PaymentType::BANK_TRANSFER && $order->payment_status == PaymentStatus::UNPAID)
-                ) {
-                    foreach ($order->orderItem as $item) {
-                        $variant = ProductVariant::where('id', $item->product_variant_id)->firstOrFail();
-                        $variant->increment('quantity', $item->quantity);
-                        $variant->save();
-                    }
-                }
-
                 $order->order_status = DeliveryStatus::CANCELLED;
                 $order->save();
                 return $order;
@@ -258,14 +271,6 @@ class OrderService
 
             if ($order->payment_status === PaymentStatus::PAID) {
                 return $order;
-            }
-
-            foreach ($order->orderItem as $item) {
-                $variant = ProductVariant::where('id', $item->product_variant_id)->firstOrFail();
-                if ($variant->quantity < $item->quantity) {
-                    throw new BusinessException(ErrorCode::BAD_REQUEST, "Sản phẩm {$variant->sku} đã hết hàng trong lúc thanh toán");
-                }
-                $variant->decrement('quantity', $item->quantity);
             }
 
             $order->payment_status = PaymentStatus::PAID;
@@ -297,10 +302,12 @@ class OrderService
     {
         return DB::transaction(function () use ($req) {
             Log::info("create Order");
-            $currentUser = null;
-            if (request()->bearerToken()) {
-                $currentUser = auth('api')->user();
+            $currentUser = auth()->user();
+
+            if (!$currentUser) {
+                throw new BusinessException(ErrorCode::UNAUTHENTICATED, 'Vui lòng đăng nhập để đặt hàng !');
             }
+
             $order = new Order();
             $order->customer_name = $req->customerName;
             $order->customer_phone = $req->customerPhone;
@@ -315,7 +322,7 @@ class OrderService
             $order->order_status = DeliveryStatus::PENDING;
             $order->payment_status = PaymentStatus::UNPAID;
             $order->note = $req->note;
-            $order->user_id = $currentUser ? $currentUser->id : null;
+            $order->user_id = $currentUser->id;
 
             $mergedVariants = collect($req->order_items)->reduce(function ($carry, $item) {
                 $id = $item['productVariantId'];
@@ -390,7 +397,7 @@ class OrderService
                     throw new BusinessException(ErrorCode::BAD_REQUEST, 'Vui lòng đăng nhập để sử dụng voucher !');
                 }
                 $voucher = Voucher::where('id', $req->voucherId)
-                    ->where('status', operator: VoucherStatus::ACTIVE)
+                    ->where('status', VoucherStatus::ACTIVE->value)
                     ->first();
 
                 if (!$voucher) {
@@ -408,7 +415,7 @@ class OrderService
 
                 $this->voucherService->decreaseVoucherQuantity($voucher);
 
-                $order->voucher_snapshot = json_encode(VoucherMapper::toVoucherResponse($voucher));
+                $order->voucher_snapshot = json_encode(VoucherMapper::toVoucherResponse($voucher, $currentUser));
                 $order->voucher_id = $voucher->id;
                 $order->voucher_discount_value = $discountValue;
             }
@@ -435,11 +442,11 @@ class OrderService
                 $item->save();
             }
 
-            if ($currentUser && $req->point > 0) {
+            if ($req->point > 0) {
                 $currentUser->decrement('point', $req->point);
             }
 
-            if ($voucher && $currentUser) {
+            if ($voucher) {
                 VoucherUsage::create([
                     'voucher_id' => $voucher->id,
                     'user_id' => $currentUser->id,
@@ -447,12 +454,6 @@ class OrderService
                     'usedAt'     => now(),
                 ]);
             }
-            if ($order->payment_type === PaymentType::COD) {
-                foreach ($mergedVariants as $variantId => $totalQuantity) {
-                    ProductVariant::where('id', $variantId)->decrement('quantity', $totalQuantity);
-                }
-            }
-            $this->updateSoldQuantity($orderItems);
 
             $itemCount = array_reduce($orderItems, function ($sum, $item) {
                 return $sum + (int) ($item->quantity ?? 0);

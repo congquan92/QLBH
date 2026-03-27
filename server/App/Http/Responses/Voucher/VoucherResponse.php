@@ -2,7 +2,6 @@
 namespace App\Http\Responses\Voucher;
 
 use App\Http\Responses\UserRank\UserRankResponse;
-use Illuminate\Support\Carbon;
 class VoucherResponse
 {
     public function __construct(
@@ -20,7 +19,9 @@ class VoucherResponse
         public int $usageLimitPerUser,
         public string $used_quantity,
         public string $remaining_quantity,
-        public ?UserRankResponse $userRankResponse
+        public ?UserRankResponse $userRankResponse,
+        public int $currentUserUsedCount,
+        public bool $canUse,
     ) {
     }
 }

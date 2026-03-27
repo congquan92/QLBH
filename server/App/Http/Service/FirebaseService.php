@@ -13,8 +13,22 @@ class FirebaseService
 
     public function __construct()
     {
-        $this->databaseUrl = config('services.firebase.base_url');
+        $this->databaseUrl = rtrim((string) config('services.firebase.base_url'), '/');
         $this->serviceAccountPath = base_path('firebase.json');
+    }
+
+    private function normalizeTarget(string $target): string
+    {
+        if (str_starts_with($target, 'role_') || str_starts_with($target, 'user_')) {
+            return $target;
+        }
+
+        $normalizedRole = strtolower(trim($target));
+        if ($normalizedRole !== '') {
+            return 'role_' . $normalizedRole;
+        }
+
+        return $target;
     }
 
     /**
@@ -88,6 +102,11 @@ class FirebaseService
      */
     public function updateOrderStatus($order)
     {
+        if ($this->databaseUrl === '') {
+            Log::error("Firebase: FIREBASE_URL chưa được cấu hình");
+            return;
+        }
+
         $token = $this->getAccessToken();
         if (!$token) {
             Log::error("Firebase: Không thể lấy Access Token");
@@ -98,8 +117,8 @@ class FirebaseService
 
         $data = [
             'order_id' => $order->id,
-            'status' => $order->order_status,
-            'payment_status' => $order->payment_status,
+            'status' => $order->order_status?->value ?? (string) $order->order_status,
+            'payment_status' => $order->payment_status?->value ?? (string) $order->payment_status,
             'customer' => $order->customer_name,
             'total' => $order->total_amount,
             'updated_at' => now()->toDateTimeString(),
@@ -108,12 +127,29 @@ class FirebaseService
         $response = Http::put($url, $data);
 
         if ($response->failed()) {
-            Log::error("Firebase Sync Failed: " . $response->body());
+            Log::error("Firebase Sync Failed", [
+                'order_id' => $order->id,
+                'status_code' => $response->status(),
+                'response' => $response->body(),
+            ]);
+        } else {
+            Log::info("Firebase Sync Success", [
+                'order_id' => $order->id,
+                'status' => $data['status'],
+                'payment_status' => $data['payment_status'],
+            ]);
         }
     }
 
     public function sendNotification($target, $data)
 {
+    if ($this->databaseUrl === '') {
+        Log::error("Firebase: FIREBASE_URL chưa được cấu hình", [
+            'target' => $target,
+        ]);
+        return null;
+    }
+
     $token = $this->getAccessToken();
     if (!$token) {
         Log::warning("Firebase notification skipped because access token is unavailable", [
@@ -124,8 +160,10 @@ class FirebaseService
         return null;
     }
     
+    $normalizedTarget = $this->normalizeTarget((string) $target);
+
     // target có thể là 'role_admin', 'role_warehouse' hoặc 'user_123'
-    $url = "{$this->databaseUrl}/notifications/{$target}.json?access_token={$token}";
+    $url = "{$this->databaseUrl}/notifications/{$normalizedTarget}.json?access_token={$token}";
 
     $payload = [
         'title'      => $data['title'],
@@ -136,6 +174,18 @@ class FirebaseService
         'order_data' => $data['order_data'] ?? null,
     ];
 
-    return Http::post($url, $payload);
+    $response = Http::post($url, $payload);
+
+    if ($response->failed()) {
+        Log::error("Firebase notification failed", [
+            'target' => $normalizedTarget,
+            'status_code' => $response->status(),
+            'response' => $response->body(),
+            'type' => $payload['type'] ?? null,
+            'order_id' => $payload['order_id'] ?? null,
+        ]);
+    }
+
+    return $response;
 }
 }

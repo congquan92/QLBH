@@ -43,7 +43,6 @@ Route::post('/auth/login', [AuthController::class, 'login']);
 Route::get('/product/list', [ProductController::class, 'findAll']);
 Route::post('/auth/register', [AuthController::class, 'register']);
 Route::get('/product/detail/{productId}', [ProductController::class, 'getProductById']);
-Route::post('/order/add', [OrderController::class, 'store']);
 Route::get('/category/all', [CategoryController::class, 'findAllWithouPagination']);
 Route::get('/product/category/{id}', [ProductController::class, 'findAllByCategory']);
 Route::post('/firebase/test', [FirebaseController::class, 'test']);
@@ -132,6 +131,7 @@ Route::middleware('auth')->group(function () {
     });
 
     // Order
+    Route::post('/order/add', [OrderController::class, 'store']);
     Route::get("/order/list", [OrderController::class, 'findAll']);
     Route::get("/order/admin/list", [OrderController::class, 'findAllByAdmin'])->middleware('can:VIEW_ORDERS_ADMIN');
     Route::post("/order/changestatus/{id}", [OrderController::class, 'updateStatus'])->middleware('can:UPDATE_ORDER_STATUS');

@@ -1,4 +1,4 @@
-import { adminAxiosInstance as axiosInstance } from "@/lib/axios";
+import { axiosInstance } from "@/lib/axios";
 
 const WARNING_PREFIX = "[WARNING][FileUploadApi]";
 const MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024;

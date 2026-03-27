@@ -20,8 +20,67 @@ import { UserAddress } from "@/types/user";
 import { Voucher } from "@/types/voucher";
 import { axiosInstance } from "@/lib/axios";
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+
+function notifyOrdersUpdated() {
+    const updatedAt = String(Date.now());
+
+    try {
+        localStorage.setItem("qlbh:orders-updated-at", updatedAt);
+    } catch {
+        // Ignore storage errors.
+    }
+
+    if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("qlbh:order-created", { detail: { updatedAt } }));
+    }
+}
+
+function toNumber(value: unknown): number {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function isShippingVoucher(voucher: Voucher): boolean {
+    return Boolean(voucher.isShipping ?? voucher.is_shipping ?? false);
+}
+
+function getVoucherRemaining(voucher: Voucher): number {
+    return toNumber(voucher.remaining_quantity ?? voucher.remainingQuantity ?? 0);
+}
+
+function getVoucherUsageLimit(voucher: Voucher): number {
+    return toNumber(voucher.usageLimitPerUser ?? voucher.usage_limit_per_user ?? 0);
+}
+
+function getCurrentUserUsedCount(voucher: Voucher): number {
+    return toNumber(voucher.currentUserUsedCount ?? voucher.current_user_used_count ?? 0);
+}
+
+function canUserUseVoucher(voucher: Voucher): boolean {
+    const explicitCanUse = voucher.canUse ?? voucher.can_use;
+    if (typeof explicitCanUse === "boolean") return explicitCanUse;
+
+    const usageLimit = getVoucherUsageLimit(voucher);
+    const usedCount = getCurrentUserUsedCount(voucher);
+    if (usageLimit > 0 && usedCount >= usageLimit) {
+        return false;
+    }
+
+    return getVoucherRemaining(voucher) > 0;
+}
+
+function isVoucherEligible(voucher: Voucher, selectedTotalAmount: number, shippingFee: number | null): boolean {
+    if (!canUserUseVoucher(voucher)) return false;
+
+    const minRequired = toNumber(voucher.minDiscountValue);
+    const isShipping = isShippingVoucher(voucher);
+    const base = isShipping ? toNumber(shippingFee) : selectedTotalAmount;
+
+    if (base <= 0) return false;
+    return base >= minRequired;
+}
 
 export default function CartPage() {
     const session = UserAuthStore.useStore((state) => state.session);
@@ -243,16 +302,30 @@ export default function CartPage() {
     const selectedTotalAmount = selectedItems.reduce((sum, item) => sum + getCartItemPrice(item) * item.quantity, 0);
     const { provinces, districts, wards, isLoadingProvinces, isLoadingDistricts, isLoadingWards } = useGhnAddressOptions(newAddress.province_id, newAddress.district_id);
 
+    const eligibleVouchers = useMemo(() => vouchers.filter((voucher) => isVoucherEligible(voucher, selectedTotalAmount, shippingFee)), [vouchers, selectedTotalAmount, shippingFee]);
+    const selectedVoucher = eligibleVouchers.find((v) => v.id === selectedVoucherId) ?? null;
+
+    useEffect(() => {
+        if (selectedVoucherId == null) return;
+        const stillEligible = eligibleVouchers.some((voucher) => voucher.id === selectedVoucherId);
+        if (!stillEligible) {
+            setSelectedVoucherId(null);
+            toast.info("Voucher đã được bỏ chọn vì không còn hợp lệ với giỏ hàng hiện tại.");
+        }
+    }, [selectedVoucherId, eligibleVouchers]);
+
     // Tính giảm giá voucher
-    const selectedVoucher = vouchers.find((v) => v.id === selectedVoucherId) ?? null;
     const voucherDiscountAmount = (() => {
         if (!selectedVoucher) return 0;
-        const base = selectedVoucher.isShipping ? (shippingFee ?? 0) : selectedTotalAmount;
+        const isShipping = isShippingVoucher(selectedVoucher);
+        const base = isShipping ? toNumber(shippingFee) : selectedTotalAmount;
+        if (base <= 0) return 0;
         const rawDiscount = selectedVoucher.type === "PERCENTAGE"
             ? base * (Number(selectedVoucher.discountValue ?? 0) / 100)
             : Number(selectedVoucher.discountValue ?? 0);
         const max = selectedVoucher.maxDiscountValue != null ? Number(selectedVoucher.maxDiscountValue) : Infinity;
-        return Math.min(rawDiscount, max);
+        const capped = Math.min(rawDiscount, max);
+        return isShipping ? Math.min(capped, base) : capped;
     })();
 
     const clearCartAfterOrder = async (items: CartItem[]) => {
@@ -392,6 +465,8 @@ export default function CartPage() {
             setSelectedItemIds([]);
             setNote("");
             setSelectedVoucherId(null);
+
+            notifyOrdersUpdated();
             toast.success("Đặt hàng thành công. Hóa đơn đã được lưu.");
         } catch (error) {
             const message = error instanceof Error ? error.message : "Không thể đặt hàng. Vui lòng thử lại.";
@@ -468,7 +543,7 @@ export default function CartPage() {
                         paymentType={paymentType}
                         note={note}
                         isPlacingOrder={isPlacingOrder}
-                        vouchers={vouchers}
+                        vouchers={eligibleVouchers}
                         selectedVoucherId={selectedVoucherId}
                         voucherDiscountAmount={voucherDiscountAmount}
                         shippingFee={shippingFee}
