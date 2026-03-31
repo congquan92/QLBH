@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Helper } from "@/lib/helper";
 import { Eye, Loader2, Plus, RefreshCcw, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 import type { DeliveryStatus, ImportDetailDialogData, ImportFormValues, ImportRow, LowStockVariantRow, ProductOption, SupplierRow, VariantOption } from "./inventory-types";
 
 type CreateImportPayload = {
@@ -66,6 +67,11 @@ function parseSnapshot(value: string): string {
     } catch {
         return raw;
     }
+}
+
+function hasActiveSupplier(productId: number, products: ProductOption[]): boolean {
+    const product = products.find((item) => item.id === productId);
+    return !!product?.supplierActive;
 }
 
 export function ImportManagement({
@@ -140,6 +146,14 @@ export function ImportManagement({
     }, [imports, keyword, status, supplierId]);
 
     async function onProductChange(nextProductId: string) {
+        const numericProductId = Number(nextProductId);
+        if (nextProductId && !hasActiveSupplier(numericProductId, products)) {
+            toast.error("Sản phẩm này đang gắn với nhà cung cấp đã tạm ngừng/vô hiệu. Vui lòng chọn sản phẩm có nhà cung cấp khác đang hoạt động.");
+            setForm((prev) => ({ ...prev, productId: "", lines: [{ variantId: "", quantity: "1", unitPrice: "0" }] }));
+            setVariantOptions([]);
+            return;
+        }
+
         setForm((prev) => ({ ...prev, productId: nextProductId, lines: [{ variantId: "", quantity: "1", unitPrice: "0" }] }));
         setVariantOptions([]);
         if (!nextProductId) return;
@@ -163,6 +177,11 @@ export function ImportManagement({
 
     async function submitCreate() {
         if (!form.productId) return;
+
+        if (!hasActiveSupplier(Number(form.productId), products)) {
+            toast.error("Không thể tạo phiếu nhập: sản phẩm không còn nhà cung cấp hoạt động.");
+            return;
+        }
 
         const normalizedLines = form.lines
             .map((line) => ({
@@ -191,8 +210,20 @@ export function ImportManagement({
             return;
         }
 
+        const validRows = pickedRows.filter((item) => hasActiveSupplier(item.productId, products));
+        const skippedCount = pickedRows.length - validRows.length;
+
+        if (validRows.length === 0) {
+            toast.error("Các sản phẩm đã chọn không còn nhà cung cấp hoạt động. Vui lòng chọn sản phẩm khác.");
+            return;
+        }
+
+        if (skippedCount > 0) {
+            toast.warning(`Đã bỏ qua ${skippedCount} biến thể vì sản phẩm không còn nhà cung cấp hoạt động.`);
+        }
+
         const grouped = new Map<number, typeof pickedRows>();
-        for (const row of pickedRows) {
+        for (const row of validRows) {
             if (!grouped.has(row.productId)) {
                 grouped.set(row.productId, []);
             }
@@ -455,12 +486,15 @@ export function ImportManagement({
                                 </SelectTrigger>
                                 <SelectContent>
                                     {products.map((product) => (
-                                        <SelectItem key={product.id} value={String(product.id)}>
-                                            {product.name} - NCC: {product.supplierName}
+                                        <SelectItem key={product.id} value={String(product.id)} disabled={!product.supplierActive}>
+                                            {product.name} - NCC: {product.supplierName}{!product.supplierActive ? " (không hoạt động)" : ""}
                                         </SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
+                            {form.productId && !hasActiveSupplier(Number(form.productId), products) ? (
+                                <p className="text-xs text-rose-600">Sản phẩm đã mất liên kết với nhà cung cấp hoạt động. Vui lòng chọn sản phẩm khác.</p>
+                            ) : null}
                         </div>
                         <div className="space-y-2">
                             <Label>Mô tả phiếu nhập</Label>

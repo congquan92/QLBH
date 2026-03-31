@@ -85,6 +85,20 @@ export default function ListProductDetail({ products, relatedProducts }: { produ
     };
 
     const [activeTab, setActiveTab] = useState<"description" | "reviews">("description");
+
+    const getAttributeValueImage = (value: { image?: string | null; urlImage?: string | null; url_image?: string | null }) => {
+        const image = String(value.image ?? "").trim();
+        if (image) return image;
+
+        const urlImage = String(value.urlImage ?? "").trim();
+        if (urlImage) return urlImage;
+
+        const urlImageSnake = String(value.url_image ?? "").trim();
+        if (urlImageSnake) return urlImageSnake;
+
+        return "";
+    };
+
     const selectedVariant = products.productVariant.find((variant) => variant.variantAttributes.every((attribute) => selectedAttributes[attribute.attribute] === attribute.value)) ?? products.productVariant[0];
     const totalStock = selectedVariant?.quantity ?? products.productVariant.reduce((sum, variant) => sum + variant.quantity, 0);
 
@@ -228,16 +242,30 @@ export default function ListProductDetail({ products, relatedProducts }: { produ
                                 {selectedAttributes[attribute.name] && <span className="text-sm text-gray-600">{selectedAttributes[attribute.name]}</span>}
                             </div>
                             <div className="flex flex-wrap gap-2">
-                                {attribute.attributeValue.map((value) => (
-                                    <button
-                                        key={value.id}
-                                        onClick={() => handleAttributeSelect(attribute.name, value.value)}
-                                        className={`px-4 py-2 border text-sm font-medium transition-all ${selectedAttributes[attribute.name] === value.value ? "border-red-600 bg-red-50 text-red-600" : "border-gray-300 bg-white text-gray-700 hover:border-gray-400"
-                                            }`}
-                                    >
-                                        {value.value}
-                                    </button>
-                                ))}
+                                {attribute.attributeValue.map((value) => {
+                                    const imageUrl = getAttributeValueImage(value);
+                                    return (
+                                        <button
+                                            key={value.id}
+                                            onClick={() => handleAttributeSelect(attribute.name, value.value)}
+                                            className={`px-4 py-2 border text-sm font-medium transition-all ${selectedAttributes[attribute.name] === value.value ? "border-red-600 bg-red-50 text-red-600" : "border-gray-300 bg-white text-gray-700 hover:border-gray-400"
+                                                }`}
+                                        >
+                                            <span className="flex items-center gap-2">
+                                                {imageUrl ? (
+                                                    <Image
+                                                        src={imageUrl}
+                                                        alt={value.value}
+                                                        width={28}
+                                                        height={28}
+                                                        className="h-7 w-7 border border-gray-200 object-cover"
+                                                    />
+                                                ) : null}
+                                                <span>{value.value}</span>
+                                            </span>
+                                        </button>
+                                    );
+                                })}
                             </div>
                         </div>
                     ))}

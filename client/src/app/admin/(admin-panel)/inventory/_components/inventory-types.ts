@@ -17,6 +17,7 @@ export interface ProductOption {
     name: string;
     supplierId: number;
     supplierName: string;
+    supplierActive: boolean;
 }
 
 export interface VariantOption {
@@ -75,6 +76,9 @@ export interface SupplierFormValues {
     ward: string;
     district: string;
     province: string;
+    wardId?: string;
+    districtId?: string;
+    provinceId?: string;
     status: SupplierStatus;
 }
 

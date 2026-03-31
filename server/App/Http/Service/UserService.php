@@ -241,7 +241,8 @@ class UserService
    public function getAllUserByEmail($email, ?bool $emailVerified = true)
 {
     // Chỉ lấy các cột cần thiết từ DB để nhẹ memory
-    $query = User::where('email', $email);
+    $query = User::where('email', $email)
+    ->where('status', UserStatus::ACTIVE);
 
     if ($emailVerified !== null) {
         $query->where('email_verified', $emailVerified);

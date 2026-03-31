@@ -19,16 +19,17 @@ class FirebaseService
 
     private function normalizeTarget(string $target): string
     {
-        if (str_starts_with($target, 'role_') || str_starts_with($target, 'user_')) {
+        $normalized = strtolower(trim($target));
+
+        if ($normalized === '') {
             return $target;
         }
 
-        $normalizedRole = strtolower(trim($target));
-        if ($normalizedRole !== '') {
-            return 'role_' . $normalizedRole;
+        if (str_starts_with($normalized, 'role_') || str_starts_with($normalized, 'user_')) {
+            return $normalized;
         }
 
-        return $target;
+        return 'role_' . $normalized;
     }
 
     /**

@@ -4,7 +4,7 @@ import { Helper } from "@/lib/helper";
 import { OrderItem, OrderSummary } from "@/types/order";
 import { ChevronDown, ChevronUp, ClipboardList, Loader2, Receipt, TicketPercent, Truck } from "lucide-react";
 import Image from "next/image";
-import { formatDateTime, getDeliveryStatusMeta, getPaymentStatusMeta, parseVariantSnapshot } from "./account-utils";
+import { formatDate, formatDateTime, getDeliveryStatusMeta, getPaymentStatusMeta, parseVariantSnapshot } from "./account-utils";
 
 function getPaymentTypeLabel(value?: string) {
     const raw = String(value ?? "").toUpperCase();
@@ -28,6 +28,18 @@ function getLineItems(order: OrderSummary): OrderItem[] {
         ...item,
         nameProductSnapshot: item.nameProductSnapshot ?? item.nameProductSnapShot,
     }));
+}
+
+function toNumber(value: unknown) {
+    const parsed = Number(value ?? 0);
+    return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function getVoucherTypeLabel(type?: string) {
+    const raw = String(type ?? "").toUpperCase();
+    if (raw === "PERCENTAGE") return "Giảm theo phần trăm";
+    if (raw === "FIXED_AMOUNT") return "Giảm số tiền cố định";
+    return raw || "Không xác định";
 }
 
 export function OrderHistorySection({ orders, orderDetails, expandedOrderId, loadingOrderId, retryingOrderId, onToggleOrderDetail, onRetryPayment }: OrderHistorySectionProps) {
@@ -55,6 +67,12 @@ export function OrderHistorySection({ orders, orderDetails, expandedOrderId, loa
                         const paymentMeta = getPaymentStatusMeta(mergedOrder.paymentStatus);
                         const lineItems = getLineItems(mergedOrder);
                         const isExpanded = expandedOrderId === order.id;
+                        const voucher = mergedOrder.voucherResponse;
+                        const voucherDiscountValue = toNumber(voucher?.discountValue ?? voucher?.discount_value);
+                        const voucherMaxDiscount = toNumber(voucher?.maxDiscountValue ?? voucher?.max_discount_value);
+                        const voucherMinOrder = toNumber(voucher?.minDiscountValue ?? voucher?.min_discount_value);
+                        const actualDiscount = toNumber(mergedOrder.discountValue);
+                        const isShippingVoucher = Boolean(voucher?.isShipping ?? voucher?.is_shipping);
 
                         return (
                             <article key={order.id} className="overflow-hidden border border-gray-200 bg-white">
@@ -119,10 +137,10 @@ export function OrderHistorySection({ orders, orderDetails, expandedOrderId, loa
                                                 <Truck className="h-3.5 w-3.5" />
                                                 Giao tới: {[mergedOrder.deliveryAddress, mergedOrder.deliveryWardName, mergedOrder.deliveryDistrictName, mergedOrder.deliveryProvinceName].filter(Boolean).join(", ") || "Chưa cập nhật"}
                                             </span>
-                                            {mergedOrder.voucherResponse ? (
+                                            {voucher ? (
                                                 <span className="inline-flex items-center gap-1 rounded-full border border-green-200 bg-green-50 px-2 py-1 text-green-700">
                                                     <TicketPercent className="h-3.5 w-3.5" />
-                                                    {mergedOrder.voucherResponse.description || "Có áp dụng voucher"}
+                                                    {voucher.description || "Có áp dụng voucher"}
                                                 </span>
                                             ) : null}
                                         </div>
@@ -197,6 +215,49 @@ export function OrderHistorySection({ orders, orderDetails, expandedOrderId, loa
                                                                 <span>Giảm giá</span>
                                                                 <span>- {Helper.formatPrice(String(mergedOrder.discountValue ?? 0))}</span>
                                                             </p>
+                                                            {voucher ? (
+                                                                <div className="rounded-none border border-green-200 bg-green-50/40 p-3 text-xs text-green-900">
+                                                                    <p className="font-semibold">Chi tiết voucher áp dụng</p>
+                                                                    <div className="mt-2 space-y-1.5">
+                                                                        <p className="flex items-start justify-between gap-3">
+                                                                            <span className="text-green-800/80">Mô tả</span>
+                                                                            <span className="text-right font-medium">{voucher.description || "Voucher khuyến mãi"}</span>
+                                                                        </p>
+                                                                        <p className="flex items-start justify-between gap-3">
+                                                                            <span className="text-green-800/80">Loại</span>
+                                                                            <span className="text-right font-medium">{getVoucherTypeLabel(String(voucher.type ?? ""))}</span>
+                                                                        </p>
+                                                                        <p className="flex items-start justify-between gap-3">
+                                                                            <span className="text-green-800/80">Giá trị voucher</span>
+                                                                            <span className="text-right font-medium">
+                                                                                {String(voucher.type ?? "").toUpperCase() === "PERCENTAGE"
+                                                                                    ? `${voucherDiscountValue}%`
+                                                                                    : Helper.formatPrice(String(voucherDiscountValue))}
+                                                                            </span>
+                                                                        </p>
+                                                                        <p className="flex items-start justify-between gap-3">
+                                                                            <span className="text-green-800/80">Đơn tối thiểu</span>
+                                                                            <span className="text-right font-medium">{Helper.formatPrice(String(voucherMinOrder))}</span>
+                                                                        </p>
+                                                                        <p className="flex items-start justify-between gap-3">
+                                                                            <span className="text-green-800/80">Giảm tối đa</span>
+                                                                            <span className="text-right font-medium">{voucherMaxDiscount > 0 ? Helper.formatPrice(String(voucherMaxDiscount)) : "Không giới hạn"}</span>
+                                                                        </p>
+                                                                        <p className="flex items-start justify-between gap-3">
+                                                                            <span className="text-green-800/80">Phạm vi áp dụng</span>
+                                                                            <span className="text-right font-medium">{isShippingVoucher ? "Áp dụng phí vận chuyển" : "Áp dụng tiền hàng"}</span>
+                                                                        </p>
+                                                                        <p className="flex items-start justify-between gap-3">
+                                                                            <span className="text-green-800/80">Hiệu lực</span>
+                                                                            <span className="text-right font-medium">{formatDate(String(voucher.startDate ?? voucher.start_date ?? ""))} - {formatDate(String(voucher.endDate ?? voucher.end_date ?? ""))}</span>
+                                                                        </p>
+                                                                        <p className="flex items-start justify-between gap-3 border-t border-green-200 pt-1.5">
+                                                                            <span className="text-green-800/80">Giảm thực tế đơn này</span>
+                                                                            <span className="text-right font-semibold">- {Helper.formatPrice(String(actualDiscount))}</span>
+                                                                        </p>
+                                                                    </div>
+                                                                </div>
+                                                            ) : null}
                                                             <div className="border-t border-gray-200 pt-2">
                                                                 <p className="flex items-center justify-between text-base font-bold text-gray-900">
                                                                     <span>Tổng cộng</span>

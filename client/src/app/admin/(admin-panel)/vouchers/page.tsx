@@ -21,7 +21,7 @@ function formToPayload(form: VoucherForm) {
         description: form.description,
         type: form.type,
         discount_value: Number(form.discount_value),
-        max_discount_value: form.max_discount_value ? Number(form.max_discount_value) : null,
+        max_discount_value: form.max_discount_value ? Number(form.max_discount_value) : 0,
         min_discount_value: form.min_discount_value ? Number(form.min_discount_value) : 0,
         total_quantity: Number(form.total_quantity),
         start_date: form.start_date,
@@ -128,23 +128,24 @@ export default function VouchersPage() {
         if (!deleteTarget) return;
         setIsSaving(true);
         try {
-            // Soft-disable: update status to INACTIVE if API supports it;
-            // fallback: send a dummy update to signal deactivation
-            await VoucherApi.update(deleteTarget.id, {
-                ...formToPayload({
-                    ...emptyForm,
-                    description: String(deleteTarget.description ?? ""),
-                    type: String(deleteTarget.type ?? "PERCENTAGE"),
-                    discount_value: String(deleteTarget.discountValue ?? 0),
-                    user_rank_id: String(
-                        (deleteTarget as { userRankId?: number }).userRankId ?? ""
-                    ),
-                }),
-                status: "INACTIVE",
-            });
+            // Only patch status to avoid overwriting required columns.
+            await VoucherApi.update(deleteTarget.id, { status: "INACTIVE" });
             toast.success(`Đã vô hiệu hóa voucher.`);
             setDeleteDialogOpen(false);
             setDeleteTarget(null);
+            await fetchData();
+        } catch (error) {
+            toast.error(Helper.errorMessage(error));
+        } finally {
+            setIsSaving(false);
+        }
+    }
+
+    async function handleRestore(voucher: Voucher) {
+        setIsSaving(true);
+        try {
+            await VoucherApi.update(voucher.id, { status: "ACTIVE" });
+            toast.success("Khôi phục voucher thành công.");
             await fetchData();
         } catch (error) {
             toast.error(Helper.errorMessage(error));
@@ -230,6 +231,7 @@ export default function VouchersPage() {
                         isLoading={isLoading}
                         onEdit={handleOpenEdit}
                         onDelete={handleOpenDelete}
+                        onRestore={handleRestore}
                     />
                 </CardContent>
             </Card>

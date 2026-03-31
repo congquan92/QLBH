@@ -47,6 +47,18 @@ function normalizeBaseUrl(raw: string) {
     return value.endsWith("/") ? value.slice(0, -1) : value;
 }
 
+function normalizeRoleTarget(rawRoleName?: string) {
+    const role = String(rawRoleName ?? "").trim();
+    if (!role) return "";
+
+    const lowered = role.toLowerCase();
+    if (lowered.startsWith("role_")) {
+        return lowered;
+    }
+
+    return `role_${lowered}`;
+}
+
 function toRecord(value: unknown): Record<string, unknown> {
     if (!value || typeof value !== "object" || Array.isArray(value)) return {};
     return value as Record<string, unknown>;
@@ -158,7 +170,7 @@ export function AdminNotificationBell({ roleName, userId }: { roleName?: string;
     const knownNotificationKeysRef = useRef<Set<string>>(new Set());
     const pageSize = 5;
 
-    const roleTarget = useMemo(() => String(roleName ?? "").trim().toUpperCase(), [roleName]);
+    const roleTarget = useMemo(() => normalizeRoleTarget(roleName), [roleName]);
     const userTarget = useMemo(() => (Number(userId) > 0 ? `user_${userId}` : ""), [userId]);
     const viewerKey = useMemo(() => (Number(userId) > 0 ? `user_${userId}` : roleTarget || "anonymous"), [roleTarget, userId]);
     const streamTargets = useMemo(() => [roleTarget, userTarget].filter(Boolean), [roleTarget, userTarget]);
@@ -401,11 +413,18 @@ export function AdminNotificationBell({ roleName, userId }: { roleName?: string;
                                 const amount = formatCurrency(detail.totalAmount);
                                 const bodyText = normalizeNotificationBody(item.body, detail.orderId ?? item.orderId);
                                 return (
-                                    <button
+                                    <div
                                         key={key}
-                                        type="button"
+                                        role="button"
+                                        tabIndex={0}
                                         className={`w-full rounded-md border px-3 py-2 text-left transition-colors ${isSeen ? "bg-background" : "bg-muted/60 font-semibold"}`}
                                         onClick={() => void markAsSeen(item)}
+                                        onKeyDown={(event) => {
+                                            if (event.key === "Enter" || event.key === " ") {
+                                                event.preventDefault();
+                                                void markAsSeen(item);
+                                            }
+                                        }}
                                     >
                                         <div className="flex items-center justify-between gap-2">
                                             <p className="line-clamp-1 text-sm">{item.title}</p>
@@ -436,7 +455,7 @@ export function AdminNotificationBell({ roleName, userId }: { roleName?: string;
                                                 </Button>
                                             </div>
                                         ) : null}
-                                    </button>
+                                    </div>
                                 );
                             })}
                         </div>

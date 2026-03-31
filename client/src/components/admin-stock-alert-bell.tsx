@@ -21,7 +21,7 @@ type StockAlertItem = {
     pendingImportIds: number[];
 };
 
-const LOW_STOCK_THRESHOLD = 5;
+const LOW_STOCK_THRESHOLD = 10;
 
 function toSafeString(value: unknown): string {
     return String(value ?? "").trim();

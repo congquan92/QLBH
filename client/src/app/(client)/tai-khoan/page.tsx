@@ -162,7 +162,6 @@ function AccountPageContent() {
   const [verifyEmailOtp, setVerifyEmailOtp] = useState("");
   const [isSendingVerifyOtp, setIsSendingVerifyOtp] = useState(false);
   const [isVerifyingEmail, setIsVerifyingEmail] = useState(false);
-  const [hasAutoSentVerifyOtp, setHasAutoSentVerifyOtp] = useState(false);
   const [newEmail, setNewEmail] = useState("");
   const [changeEmailOtp, setChangeEmailOtp] = useState("");
   const [isSendingChangeEmailOtp, setIsSendingChangeEmailOtp] = useState(false);
@@ -374,15 +373,6 @@ function AccountPageContent() {
       setIsSendingVerifyOtp(false);
     }
   }, [profile?.id]);
-
-  useEffect(() => {
-    if (!profile?.id || profile?.verifiedEmail || hasAutoSentVerifyOtp) {
-      return;
-    }
-
-    setHasAutoSentVerifyOtp(true);
-    void handleSendVerifyEmailOtp();
-  }, [profile?.id, profile?.verifiedEmail, hasAutoSentVerifyOtp, handleSendVerifyEmailOtp]);
 
   useEffect(() => {
     const base = normalizeBaseUrl(process.env.NEXT_PUBLIC_FIREBASE_DB_URL ?? "");

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Helper } from "@/lib/helper";
 import type { Category, CategoryChild } from "@/types/navbar";
 import { Plus } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { CategoryDialog, emptyForm, type CategoryForm } from "./_components/category-dialog";
 import { CategoryTree } from "./_components/category-tree";
@@ -19,6 +19,21 @@ type DeleteTarget = {
     name: string;
 };
 
+function normalizeCategoryList(payload: unknown): Category[] {
+    if (Array.isArray(payload)) {
+        return payload as Category[];
+    }
+
+    if (payload && typeof payload === "object") {
+        const nested = (payload as { data?: unknown }).data;
+        if (Array.isArray(nested)) {
+            return nested as Category[];
+        }
+    }
+
+    return [];
+}
+
 export default function CategoriesPage() {
     const [categories, setCategories] = useState<Category[]>([]);
     const [treeVersion, setTreeVersion] = useState(0);
@@ -30,23 +45,7 @@ export default function CategoriesPage() {
     const [form, setForm] = useState<CategoryForm>(emptyForm);
     const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
 
-    // ──────────────────────────────────────────────
-    function normalizeCategoryList(payload: unknown): Category[] {
-        if (Array.isArray(payload)) {
-            return payload as Category[];
-        }
-
-        if (payload && typeof payload === "object") {
-            const nested = (payload as { data?: unknown }).data;
-            if (Array.isArray(nested)) {
-                return nested as Category[];
-            }
-        }
-
-        return [];
-    }
-
-    async function fetchData() {
+    const fetchData = useCallback(async () => {
         setIsLoading(true);
         try {
             const response = await CategoryApi.getAdminCategories({ page: 1, size: 200 });
@@ -57,11 +56,11 @@ export default function CategoriesPage() {
         } finally {
             setIsLoading(false);
         }
-    }
+    }, []);
 
     useEffect(() => {
         void fetchData();
-    }, []);
+    }, [fetchData]);
 
     // ── Open dialog for create ──
     function openCreateDialog() {
@@ -224,7 +223,7 @@ export default function CategoriesPage() {
 
             {/* Category tree */}
             <CategoryTree
-                key={categoryTreeKey}
+                key={`${treeVersion}-${categoryTreeKey}`}
                 categories={categories}
                 isLoading={isLoading}
                 isSaving={isSaving}

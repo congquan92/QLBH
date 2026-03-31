@@ -36,6 +36,12 @@ function normalizeDeliveryStatus(value: unknown): DeliveryStatus {
     return "PENDING";
 }
 
+function extractStreetFromFullAddress(fullAddress: string): string {
+    const normalized = toSafeString(fullAddress);
+    if (!normalized) return "";
+    return normalized.split(",")[0]?.trim() ?? "";
+}
+
 function mapSupplierRows(items: Supplier[]): SupplierRow[] {
     return items.map((item) => ({
         id: Number(item.id ?? 0),
@@ -55,7 +61,8 @@ function mapProductOptions(items: Product[], suppliers: SupplierRow[]): ProductO
         id: item.id,
         name: toSafeString(item.name) || `Product #${item.id}`,
         supplierId: Number(item.supplierId ?? 0),
-        supplierName: supplierMap.get(Number(item.supplierId ?? 0)) ?? `Supplier #${String(item.supplierId ?? "-")}`,
+        supplierName: supplierMap.get(Number(item.supplierId ?? 0)) ?? "Không có NCC hoạt động",
+        supplierActive: supplierMap.has(Number(item.supplierId ?? 0)),
     }));
 }
 
@@ -158,6 +165,26 @@ export default function InventoryPage() {
 
     const preselectedLowStockVariantIds = useMemo(() => parseLowStockVariantIdsParam(searchParams.get("lowStock")), [searchParams]);
 
+    const searchSuppliers = useCallback(async (params: { keyword?: string; status?: string }) => {
+        setIsLoading(true);
+        try {
+            const supplierRes = await AdminCrudApi.getSuppliers({
+                page: 1,
+                size: 400,
+                sort: "id:desc",
+                keyword: toSafeString(params.keyword) || undefined,
+                status: params.status && params.status !== "all" ? params.status : undefined,
+            });
+
+            setSuppliers(mapSupplierRows(supplierRes.data.data));
+        } catch (error) {
+            toast.error(Helper.errorMessage(error));
+            setSuppliers([]);
+        } finally {
+            setIsLoading(false);
+        }
+    }, []);
+
     const fetchInventoryData = useCallback(async () => {
         setIsLoading(true);
         try {
@@ -221,6 +248,9 @@ export default function InventoryPage() {
                 ward: payload.ward.trim(),
                 district: payload.district.trim(),
                 province: payload.province.trim(),
+                wardId: payload.wardId,
+                districtId: payload.districtId,
+                provinceId: payload.provinceId,
             });
             toast.success("Đã tạo nhà cung cấp mới");
             await fetchInventoryData();
@@ -241,6 +271,9 @@ export default function InventoryPage() {
                 ward: payload.ward.trim(),
                 district: payload.district.trim(),
                 province: payload.province.trim(),
+                wardId: payload.wardId,
+                districtId: payload.districtId,
+                provinceId: payload.provinceId,
                 status: payload.status,
             });
             toast.success(`Đã cập nhật nhà cung cấp #${id}`);
@@ -252,11 +285,48 @@ export default function InventoryPage() {
         }
     }
 
+    async function getSupplierDetail(id: number): Promise<SupplierFormValues> {
+        const response = (await AdminCrudApi.getSupplierDetail(id)) as unknown;
+
+        const payload = response && typeof response === "object" && "data" in response ? (response as { data: unknown }).data : response;
+        const supplier = (payload ?? {}) as Record<string, unknown>;
+        const location = (supplier.location ?? {}) as Record<string, unknown>;
+        const fullAddress = toSafeString(supplier.full_address);
+        const address = toSafeString(supplier.address) || extractStreetFromFullAddress(fullAddress);
+
+        return {
+            id: Number(supplier.id ?? id),
+            name: toSafeString(supplier.name),
+            phone: toSafeString(supplier.phone),
+            address,
+            ward: toSafeString(supplier.ward),
+            district: toSafeString(supplier.district),
+            province: toSafeString(supplier.province),
+            wardId: toSafeString(location.ward_id),
+            districtId: toSafeString(location.district_id),
+            provinceId: toSafeString(location.province_id),
+            status: normalizeSupplierStatus(supplier.status),
+        };
+    }
+
     async function deleteSupplier(id: number) {
         setIsSaving(true);
         try {
             await AdminCrudApi.deleteSupplier(id);
-            toast.success(`Đã vô hiệu hóa nhà cung cấp #${id}`);
+            toast.success(`Đã tạm ngừng nhà cung cấp #${id}`);
+            await fetchInventoryData();
+        } catch (error) {
+            toast.error(Helper.errorMessage(error));
+        } finally {
+            setIsSaving(false);
+        }
+    }
+
+    async function restoreSupplier(id: number) {
+        setIsSaving(true);
+        try {
+            await AdminCrudApi.updateSupplier(id, { status: "ACTIVE" });
+            toast.success(`Đã khôi phục nhà cung cấp #${id}`);
             await fetchInventoryData();
         } catch (error) {
             toast.error(Helper.errorMessage(error));
@@ -433,9 +503,12 @@ export default function InventoryPage() {
                             isLoading={isLoading}
                             isSaving={isSaving}
                             onRefresh={fetchInventoryData}
+                            onSearch={searchSuppliers}
+                            onGetDetail={getSupplierDetail}
                             onCreate={createSupplier}
                             onUpdate={updateSupplier}
                             onDelete={deleteSupplier}
+                            onRestore={restoreSupplier}
                             createOpen={openCreateSupplier}
                             onCreateOpenChange={setOpenCreateSupplier}
                         />

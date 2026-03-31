@@ -43,7 +43,7 @@ Route::post('/auth/login', [AuthController::class, 'login']);
 Route::get('/product/list', [ProductController::class, 'findAll']);
 Route::post('/auth/register', [AuthController::class, 'register']);
 Route::get('/product/detail/{productId}', [ProductController::class, 'getProductById']);
-Route::get('/category/all', [CategoryController::class, 'findAllWithouPagination']);
+Route::get('/category/all', [CategoryController::class, 'findAllPublicWithPagination']);
 Route::get('/product/category/{id}', [ProductController::class, 'findAllByCategory']);
 Route::post('/firebase/test', [FirebaseController::class, 'test']);
 Route::post('/auth/social/google', [OAuthController::class, 'googleLogin']);

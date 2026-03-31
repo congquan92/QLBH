@@ -76,6 +76,47 @@ class CategoryService
         $paginator->setCollection($dtoItems);
         return PageResponse::fromLaravelPaginator($paginator);
     }
+
+    public function findAllPublicWithPagination(int $page, int $size, ?string $keyword, ?string $sort)
+    {
+        $query = Category::whereNull('parent_id')
+            ->where('status', Status::ACTIVE);
+
+        if (!empty($keyword)) {
+            $query->where(function ($q) use ($keyword) {
+                $q->where('name', 'LIKE', '%' . $keyword . '%')
+                    ->orWhereHas('childrenRecursive', function ($childQuery) use ($keyword) {
+                        $childQuery->where('name', 'LIKE', '%' . $keyword . '%')
+                            ->where('status', Status::ACTIVE);
+                    });
+            });
+        }
+
+        if (!empty($sort)) {
+            if (str_contains($sort, ':')) {
+                [$column, $direction] = explode(':', $sort, 2);
+            } else {
+                $direction = str_contains($sort, '_desc') ? 'desc' : 'asc';
+                $column = str_replace(['_asc', '_desc'], '', $sort);
+            }
+            $column = trim($column);
+            $direction = in_array(strtolower(trim($direction)), ['asc', 'desc']) ? strtolower(trim($direction)) : 'asc';
+            $query->orderBy($column, $direction);
+        } else {
+            $query->orderBy('id', 'desc');
+        }
+
+        $query->with('childrenRecursive');
+
+        $paginator = $query->paginate($size, ['*'], 'page', $page);
+
+        $dtoItems = $paginator->getCollection()->map(function ($category) {
+            return CategoryMapper::toResponseActiveOnly($category);
+        });
+
+        $paginator->setCollection($dtoItems);
+        return PageResponse::fromLaravelPaginator($paginator);
+    }
     public function update(CategoryUpdateRequest $req)
     {
         $category = Category::where('id', $req->id)

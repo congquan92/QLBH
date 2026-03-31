@@ -1,7 +1,7 @@
 <?php
 namespace App\Http\Service;
 
-use App\Enums\Status;
+use App\Enums\VoucherStatus;
 use App\Enums\VoucherType;
 use App\Exceptions\BusinessException;
 use App\Exceptions\ErrorCode;
@@ -15,6 +15,24 @@ use DB;
 use Illuminate\Support\Carbon;
 class VoucherService
 {
+    private function syncLegacyVoucherStatuses(): void
+    {
+        DB::table('vouchers')
+            ->where('status', 'DISABLED')
+            ->update(['status' => VoucherStatus::INACTIVE->value]);
+    }
+
+    private function syncExpiredVouchers(): void
+    {
+        Voucher::query()
+            ->whereIn('status', [
+                VoucherStatus::ACTIVE->value,
+                VoucherStatus::INACTIVE->value,
+            ])
+            ->where('end_date', '<', now())
+            ->update(['status' => VoucherStatus::EXPIRED->value]);
+    }
+
     public function findAll(?string $sort, int $page, int $size)
     {
         $user = auth()->user();
@@ -23,6 +41,9 @@ class VoucherService
         if (!$user) {
             throw new BusinessException(ErrorCode::BAD_REQUEST, "Vui lòng đăng nhập để hiển thị voucher khả dụng!");
         }
+
+        $this->syncLegacyVoucherStatuses();
+        $this->syncExpiredVouchers();
 
         $query = Voucher::query();
 
@@ -36,7 +57,7 @@ class VoucherService
         // Lấy mức chi tiêu tối thiểu của hạng hiện tại mà User đang đạt được
         $userMinSpent = $user->userRank->min_spent ?? 0;
 
-        $query->where('status', 'ACTIVE')
+        $query->where('status', VoucherStatus::ACTIVE->value)
             ->where('remaining_quantity', '>', 0)
             ->where('start_date', '<=', now())
             ->where('end_date', '>=', now())
@@ -88,7 +109,15 @@ class VoucherService
         int $page,
         int $size
     ) {
-        $query = Voucher::with(['userRank']); // Eager load để tránh N+1 query
+        $this->syncLegacyVoucherStatuses();
+        $this->syncExpiredVouchers();
+
+        $query = Voucher::with(['userRank'])
+            ->whereIn('status', [
+                VoucherStatus::ACTIVE->value,
+                VoucherStatus::INACTIVE->value,
+                VoucherStatus::EXPIRED->value,
+            ]); // Eager load để tránh N+1 query
 
         // 1. Xử lý Sort
         $column = 'id';
@@ -144,6 +173,8 @@ class VoucherService
 
     public function add(VoucherCreationRequest $request)
     {
+        $this->syncLegacyVoucherStatuses();
+
         $data = $request->validated();
         $data['remaining_quantity'] = $data['total_quantity'];
         $data['used_quantity'] = 0;
@@ -152,14 +183,16 @@ class VoucherService
     public function update($id, array $data)
     {
         return DB::transaction(function () use ($id, $data): void {
+            $this->syncLegacyVoucherStatuses();
             $voucher = Voucher::where('id', $id)->firstOrFail();
             $voucher->update($data);
         });
     }
     public function getVoucherById($id)
     {
+        $this->syncLegacyVoucherStatuses();
         $voucher = Voucher::where('id', $id)
-            ->where('status', Status::ACTIVE)->firstOrFail();
+            ->where('status', VoucherStatus::ACTIVE->value)->firstOrFail();
         return VoucherMapper::toVoucherResponse($voucher);
     }
     public function validateVoucherWithOrderAmount(Voucher $voucher, $orderAmount)

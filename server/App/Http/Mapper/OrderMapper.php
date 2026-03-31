@@ -27,7 +27,7 @@ class OrderMapper implements JsonSerializable
             totalAmount: (float) $order->total_amount,
             note: $order->note,
             isConfirmed: (bool) $order->is_confirmed,
-            totalFeeShip: (float) $order->total_fee_ship,
+            totalFeeShip: (float) $order->total_fee_for_ship,
             discountValue: (float) $order->voucher_discount_value,
             originalOrderAmount: (float) $order->original_order_amount,
             deliveryStatus: $order->order_status->value,
