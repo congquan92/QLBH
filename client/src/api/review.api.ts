@@ -15,6 +15,18 @@ export const ReviewApi = {
         }
     },
 
+    getByProduct: async (productId: number, page = 1, size = 5, sort = "id:desc"): Promise<ApiResponse<PageResponse<Review>>> => {
+        try {
+            const res = await axiosInstance.get(`/reviews/product/${productId}`, {
+                params: { page, size, sort },
+            });
+            return res.data as ApiResponse<PageResponse<Review>>;
+        } catch (error) {
+            console.error(`${WARNING_PREFIX} /reviews/product/{productId} failed.`, error);
+            throw error;
+        }
+    },
+
     getAdminReviews: async (query?: ReviewQuery) => {
         const page = query?.page ?? 1;
         const size = query?.size ?? 10;

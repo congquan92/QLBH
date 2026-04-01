@@ -4,14 +4,83 @@ namespace App\Http\Service;
 use App\Http\Responses\PageResponse;
 use App\Models\LeaveRequest;
 use App\Enums\LeaveStatus;
+use App\Models\Shift;
 use App\Models\PositionDefaultSchedule;
+use App\Models\ShiftAssignment;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\ValidationException;
 
 class LeaveService
 {
-    public function findAll(?string $keyword, ?string $status, ?string $sort, int $page, int $size): PageResponse
+    public function getAvailableShiftsByDate(string $leaveDate): array
+    {
+        $user = Auth::user();
+        $userId = Auth::id();
+        $date = Carbon::parse($leaveDate)->toDateString();
+
+        if (!$user) {
+            return [];
+        }
+
+        $roleName = $user->role?->name;
+        if ($roleName === 'ADMIN') {
+            return Shift::query()
+                ->orderBy('name')
+                ->get()
+                ->map(fn ($shift) => [
+                    'id' => $shift->id,
+                    'name' => $shift->name,
+                    'start_time' => $shift->start_time,
+                    'end_time' => $shift->end_time,
+                ])
+                ->values()
+                ->all();
+        }
+
+        $assignedShifts = ShiftAssignment::query()
+            ->where('user_id', $userId)
+            ->where('date', $date)
+            ->with('shift')
+            ->get()
+            ->map(fn ($item) => $item->shift)
+            ->filter();
+
+        if ($assignedShifts->isNotEmpty()) {
+            return $assignedShifts
+                ->unique('id')
+                ->values()
+                ->map(fn ($shift) => [
+                    'id' => $shift->id,
+                    'name' => $shift->name,
+                    'start_time' => $shift->start_time,
+                    'end_time' => $shift->end_time,
+                ])
+                ->all();
+        }
+
+        $dayOfWeek = Carbon::parse($date)->dayOfWeek;
+
+        return PositionDefaultSchedule::query()
+            ->where('position_id', $user->position_id)
+            ->where('day_of_week', $dayOfWeek)
+            ->with('shift')
+            ->get()
+            ->map(fn ($item) => $item->shift)
+            ->filter()
+            ->unique('id')
+            ->values()
+            ->map(fn ($shift) => [
+                'id' => $shift->id,
+                'name' => $shift->name,
+                'start_time' => $shift->start_time,
+                'end_time' => $shift->end_time,
+            ])
+            ->all();
+    }
+
+    public function findAll(?string $keyword, ?string $status, ?string $leaveDate, ?string $sort, int $page, int $size): PageResponse
 {
     $query = LeaveRequest::with(['user', 'shift']);
 
@@ -26,6 +95,10 @@ class LeaveService
 
     if (!empty($status)) {
         $query->where('status', $status);
+    }
+
+    if (!empty($leaveDate)) {
+        $query->whereDate('leave_date', Carbon::parse($leaveDate)->toDateString());
     }
 
     // Tìm kiếm theo keyword
@@ -61,7 +134,7 @@ class LeaveService
     return PageResponse::fromLaravelPaginator($paginator);
 }
 
-public function findMyLeaves(?string $keyword, ?string $status, ?string $sort, int $page, int $size): PageResponse
+public function findMyLeaves(?string $keyword, ?string $status, ?string $leaveDate, ?string $sort, int $page, int $size): PageResponse
 {
     $userId = Auth::id();
     $query = LeaveRequest::where('user_id', $userId)->with(['shift']);
@@ -77,6 +150,10 @@ public function findMyLeaves(?string $keyword, ?string $status, ?string $sort, i
 
     if (!empty($status)) {
         $query->where('status', $status);
+    }
+
+    if (!empty($leaveDate)) {
+        $query->whereDate('leave_date', Carbon::parse($leaveDate)->toDateString());
     }
 
     if (!empty($keyword)) {
@@ -116,13 +193,15 @@ public function findMyLeaves(?string $keyword, ?string $status, ?string $sort, i
     // Chỉ kiểm tra lịch làm thực tế với nhân viên (không áp dụng cho ADMIN)
     $roleName = $user->role?->name;
     if ($roleName !== 'ADMIN') {
-        $hasSchedule = \App\Models\ShiftAssignment::where('user_id', $userId)
-            ->where('date', $leaveDate->toDateString())
-            ->where('shift_id', $data['shift_id'])
-            ->exists();
+        $availableShiftIds = collect($this->getAvailableShiftsByDate($leaveDate->toDateString()))
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
 
-        if (!$hasSchedule) {
-            throw new Exception("Bạn không có lịch làm việc cho ca này vào ngày " . $leaveDate->format('d/m/Y'));
+        if (!in_array((int) $data['shift_id'], $availableShiftIds, true)) {
+            throw ValidationException::withMessages([
+                'shift_id' => ["Bạn không có lịch làm việc cho ca này vào ngày " . $leaveDate->format('d/m/Y')],
+            ]);
         }
     }
 

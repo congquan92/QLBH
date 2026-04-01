@@ -2,6 +2,7 @@
 
 namespace App\Http\Service;
 
+use App\Events\AdminPermissionSyncRequested;
 use App\Http\Mapper\GroupPermissionMapper;
 use App\Http\Responses\PageResponse;
 use App\Models\GroupPermission;
@@ -60,7 +61,11 @@ class GroupPermissionService
 
             $group->permissions()->sync($data['permission_ids']);
 
-            return $group->load('permissions');
+            $response = $group->load('permissions');
+
+            AdminPermissionSyncRequested::dispatchSilently(null, null, 'group_permission_created');
+
+            return $response;
         });
     }
 
@@ -74,7 +79,11 @@ class GroupPermissionService
                 $group->permissions()->sync($data['permission_ids']);
             }
 
-            return $group->load('permissions');
+            $response = $group->load('permissions');
+
+            AdminPermissionSyncRequested::dispatchSilently(null, null, 'group_permission_updated');
+
+            return $response;
         });
     }
 
@@ -83,7 +92,11 @@ class GroupPermissionService
         $group = GroupPermission::where('id', $id)->firstOrFail();
 
         return DB::transaction(function () use ($group) {
-            return $group->delete();
+            $deleted = $group->delete();
+
+            AdminPermissionSyncRequested::dispatchSilently(null, null, 'group_permission_deleted');
+
+            return $deleted;
         });
     }
     public function detachPermissions($groupId, array $permissionIds)
@@ -91,6 +104,10 @@ class GroupPermissionService
         $group = GroupPermission::findOrFail($groupId);
         $group->permissions()->detach($permissionIds);
 
-        return GroupPermissionMapper::toGroupPermissionResponse($group->load('permissions'));
+        $response = GroupPermissionMapper::toGroupPermissionResponse($group->load('permissions'));
+
+        AdminPermissionSyncRequested::dispatchSilently(null, null, 'group_permissions_detached');
+
+        return $response;
     }
 }

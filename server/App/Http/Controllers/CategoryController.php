@@ -35,6 +35,17 @@ class CategoryController extends Controller
         $result = $this->categoryService->findAllWithPagination($page, $size,$keyword,$sort);
         return $this->success($result, 'Product list fetched successfully');
     }
+
+    public function findAllPublicWithPagination(Request $request)
+    {
+        $keyword = $request->query('keyword');
+        $sort = $request->query('sort', 'id');
+        $page = (int) $request->query('page', 1);
+        $size = (int) $request->query('size', 10);
+
+        $result = $this->categoryService->findAllPublicWithPagination($page, $size, $keyword, $sort);
+        return $this->success($result, 'Category list fetched successfully');
+    }
     public function updateCategory(CategoryUpdateRequest $request){
         $this->categoryService->update($request);
     }

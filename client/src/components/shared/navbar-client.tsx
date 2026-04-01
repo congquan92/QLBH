@@ -6,7 +6,7 @@ import { ChevronDown, Menu, Search, ShoppingCart, User, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { UserAuthUtil } from "@/lib/user-auth";
+import { UserAuthUtil } from "@/lib/UserAuth-util";
 
 import { NavigationItem } from "@/types/navbar";
 import { useRouter } from "next/navigation";
@@ -104,11 +104,7 @@ export default function NavbarClient({ navItems }: NavbarClientProps) {
                         </form>
 
                         {/* Mobile search icon */}
-                        <button
-                            onClick={openMobileSearch}
-                            className="md:hidden p-2 hover:bg-gray-100 rounded-full transition-colors cursor-pointer"
-                            aria-label="Mở tìm kiếm"
-                        >
+                        <button onClick={openMobileSearch} className="md:hidden p-2 hover:bg-gray-100 rounded-full transition-colors cursor-pointer" aria-label="Mở tìm kiếm">
                             <Search className="size-5 text-gray-700" />
                         </button>
 
@@ -203,15 +199,15 @@ export default function NavbarClient({ navItems }: NavbarClientProps) {
                                 className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-none text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
                             />
                         </div>
-                        <button
-                            type="submit"
-                            className="px-4 py-2.5 bg-red-600 text-white text-sm font-medium rounded-none hover:bg-red-700 transition-colors"
-                        >
+                        <button type="submit" className="px-4 py-2.5 bg-red-600 text-white text-sm font-medium rounded-none hover:bg-red-700 transition-colors">
                             Tìm
                         </button>
                         <button
                             type="button"
-                            onClick={() => { setMobileSearchOpen(false); setKeyword(""); }}
+                            onClick={() => {
+                                setMobileSearchOpen(false);
+                                setKeyword("");
+                            }}
                             className="p-2 hover:bg-gray-100 rounded-full transition-colors"
                             aria-label="Đóng tìm kiếm"
                         >

@@ -31,6 +31,13 @@ function parseVariantSnapshot(value: unknown): string {
     }
 }
 
+function getPaymentTypeLabel(value: unknown): string {
+    const raw = String(value ?? "").toUpperCase();
+    if (raw === "COD") return "COD";
+    if (raw === "BANK_TRANSFER" || raw === "BANK_TRANFER") return "Thanh toán ngân hàng";
+    return String(value ?? "-");
+}
+
 export function OrderDetailDialog({ order, onClose }: OrderDetailDialogProps) {
     const items = Array.isArray(order?.orderItemResponses) ? order.orderItemResponses : Array.isArray(order?.orderItem) ? order.orderItem : [];
 
@@ -56,6 +63,10 @@ export function OrderDetailDialog({ order, onClose }: OrderDetailDialogProps) {
                                     <Badge>{getStatusLabel(order.deliveryStatus ?? order.orderStatus)}</Badge>
                                 </div>
                                 <p className="mt-2 text-xs text-muted-foreground">Thanh toán: {String(order.paymentStatus ?? "-")}</p>
+                                <p className="mt-1 text-xs text-muted-foreground">Hình thức: {getPaymentTypeLabel(order.paymentType)}</p>
+                                {String(order.paymentStatus ?? "").toUpperCase() === "UNPAID" && ["BANK_TRANSFER", "BANK_TRANFER"].includes(String(order.paymentType ?? "").toUpperCase()) ? (
+                                    <p className="mt-1 text-xs font-medium text-amber-700">Đơn chưa thanh toán qua ngân hàng.</p>
+                                ) : null}
                             </div>
                             <div className="rounded-md border p-3">
                                 <p className="text-xs text-muted-foreground">Giá trị đơn</p>

@@ -29,7 +29,7 @@ class AttendanceController extends Controller
     {
         try {
             // 1. Lấy thông tin user từ JWT (Middleware auth:api đã xác thực)
-            $user = auth('api')->user();
+            $user = auth()->user();
 
             if (!$user) {
                 return response()->json([

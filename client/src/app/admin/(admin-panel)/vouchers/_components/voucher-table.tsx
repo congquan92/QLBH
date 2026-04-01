@@ -5,13 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Helper } from "@/lib/helper";
 import type { Voucher } from "@/types/voucher";
-import { Pencil, TicketPercent, Trash2 } from "lucide-react";
+import { Pencil, RotateCcw, TicketPercent, Trash2 } from "lucide-react";
 
 interface VoucherTableProps {
     vouchers: Voucher[];
     isLoading: boolean;
     onEdit: (item: Voucher) => void;
     onDelete: (item: Voucher) => void;
+    onRestore: (item: Voucher) => void;
 }
 
 function StatusBadge({ status }: { status?: string }) {
@@ -19,7 +20,6 @@ function StatusBadge({ status }: { status?: string }) {
         ACTIVE: { label: "Đang hoạt động", className: "bg-green-50 text-green-700 border-green-300" },
         INACTIVE: { label: "Không hoạt động", className: "bg-yellow-50 text-yellow-700 border-yellow-300" },
         EXPIRED: { label: "Hết hạn", className: "bg-slate-50 text-slate-500 border-slate-300" },
-        DISABLED: { label: "Đã vô hiệu", className: "bg-red-50 text-red-600 border-red-300" },
     };
     const s = status ? (map[status] ?? { label: status, className: "" }) : map.INACTIVE;
     return (
@@ -50,7 +50,7 @@ function formatDiscount(voucher: Voucher) {
     return Helper.formatCurrency(Number(val));
 }
 
-export function VoucherTable({ vouchers, isLoading, onEdit, onDelete }: VoucherTableProps) {
+export function VoucherTable({ vouchers, isLoading, onEdit, onDelete, onRestore }: VoucherTableProps) {
     if (isLoading) {
         return (
             <div className="space-y-2 p-1">
@@ -121,7 +121,7 @@ export function VoucherTable({ vouchers, isLoading, onEdit, onDelete }: VoucherT
                                             <TicketPercent className="h-3.5 w-3.5 text-primary" />
                                         </div>
                                         <div className="min-w-0">
-                                            <p className="font-medium text-sm truncate max-w-[180px]" title={desc}>
+                                            <p className="font-medium text-sm truncate max-w-45" title={desc}>
                                                 {desc}
                                             </p>
                                             <p className="text-xs text-muted-foreground font-mono">
@@ -200,9 +200,21 @@ export function VoucherTable({ vouchers, isLoading, onEdit, onDelete }: VoucherT
                                             className="h-7 w-7 p-0 text-red-500 hover:bg-red-50 hover:border-red-300 hover:text-red-600 transition-colors"
                                             onClick={() => onDelete(v)}
                                             title="Vô hiệu hóa"
+                                            disabled={v.status === "EXPIRED"}
                                         >
                                             <Trash2 className="h-3.5 w-3.5" />
                                         </Button>
+                                        {v.status === "INACTIVE" ? (
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                className="h-7 w-7 p-0 text-green-600 hover:bg-green-50 hover:border-green-300 hover:text-green-700 transition-colors"
+                                                onClick={() => onRestore(v)}
+                                                title="Khôi phục"
+                                            >
+                                                <RotateCcw className="h-3.5 w-3.5" />
+                                            </Button>
+                                        ) : null}
                                     </div>
                                 </td>
                             </tr>

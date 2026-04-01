@@ -1,9 +1,10 @@
 import { adminAxiosInstance as axiosInstance } from "@/lib/axios";
 import type { ApiResponse, PageResponse } from "@/types/api";
 import type { CreateLeavePayload, LeaveRequest } from "@/types/leave";
+import type { Shift } from "@/types/admin-crud";
 
 export const LeaveApi = {
-    getAll: async (params?: { keyword?: string; status?: string; sort?: string; page?: number; size?: number }): Promise<ApiResponse<PageResponse<LeaveRequest>>> => {
+    getAll: async (params?: { keyword?: string; status?: string; leave_date?: string; sort?: string; page?: number; size?: number }): Promise<ApiResponse<PageResponse<LeaveRequest>>> => {
         try {
             const res = await axiosInstance.get("/leave-requests/list", { params });
             return res.data;
@@ -13,7 +14,7 @@ export const LeaveApi = {
         }
     },
 
-    getMyLeaves: async (params?: { keyword?: string; status?: string; sort?: string; page?: number; size?: number }): Promise<ApiResponse<PageResponse<LeaveRequest>>> => {
+    getMyLeaves: async (params?: { keyword?: string; status?: string; leave_date?: string; sort?: string; page?: number; size?: number }): Promise<ApiResponse<PageResponse<LeaveRequest>>> => {
         try {
             const res = await axiosInstance.get("/leave-requests/me", { params });
             return res.data;
@@ -29,6 +30,18 @@ export const LeaveApi = {
             return res.data;
         } catch (error) {
             console.warn("[LeaveApi] /leave-requests/ failed", error);
+            throw error;
+        }
+    },
+
+    getAvailableShifts: async (leave_date: string): Promise<ApiResponse<Shift[]>> => {
+        try {
+            const res = await axiosInstance.get("/leave-requests/available-shifts", {
+                params: { leave_date },
+            });
+            return res.data;
+        } catch (error) {
+            console.warn("[LeaveApi] /leave-requests/available-shifts failed", error);
             throw error;
         }
     },

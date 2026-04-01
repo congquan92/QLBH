@@ -3,14 +3,21 @@ namespace App\Http\Mapper;
 
 use App\Enums\Status;
 use App\Http\Responses\Voucher\VoucherResponse;
+use App\Models\User;
 use App\Models\Voucher;
 class VoucherMapper
 {
-    public static function toVoucherResponse($voucher): VoucherResponse
+    public static function toVoucherResponse(Voucher $voucher, ?User $currentUser = null): VoucherResponse
     {
         $userRankResponse = (($voucher->userRank && $voucher->userRank->status === Status::ACTIVE)
             ? UserRankMapper::toUserRankResponse($voucher->userRank)
             : null);
+
+        $currentUserUsedCount = (int) ($voucher->current_user_used_count ?? 0);
+        $usageLimit = (int) ($voucher->usage_limit_per_user ?? 0);
+        $canUse = $voucher->remaining_quantity > 0
+            && ($usageLimit <= 0 || $currentUserUsedCount < $usageLimit);
+
         return new VoucherResponse(
             $voucher->id,
             $voucher->type->value,
@@ -26,7 +33,9 @@ class VoucherMapper
             $voucher->usage_limit_per_user,
             $voucher->used_quantity,
             $voucher->remaining_quantity,
-            $userRankResponse
+            $userRankResponse,
+            $currentUserUsedCount,
+            $canUse
         );
     }
 }

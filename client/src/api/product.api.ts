@@ -34,6 +34,34 @@ function normalizeListQuery(pageOrQuery?: number | ProductListQuery, size?: numb
     };
 }
 
+type AdminProductListQuery = {
+    keyword?: string;
+    status?: string;
+    sort?: string;
+    page?: number;
+    size?: number;
+};
+
+function normalizeAdminListQuery(pageOrQuery?: number | AdminProductListQuery, size?: number) {
+    if (typeof pageOrQuery === "object") {
+        return {
+            page: pageOrQuery.page ?? 1,
+            size: pageOrQuery.size ?? 20,
+            keyword: pageOrQuery.keyword,
+            status: pageOrQuery.status,
+            sort: pageOrQuery.sort,
+        };
+    }
+
+    return {
+        page: pageOrQuery ?? 1,
+        size: size ?? 20,
+        keyword: undefined,
+        status: undefined,
+        sort: undefined,
+    };
+}
+
 export const ProductApi = {
     // check lai
     getAllProducts: async (pageOrQuery: number | ProductListQuery = 1, size?: number): Promise<ApiResponse<PageResponse<Product>>> => {
@@ -75,10 +103,11 @@ export const ProductApi = {
     },
 
     /** GET /product/admin/list — Admin product list with full info */
-    getAdminProducts: async (page = 1, size = 20): Promise<ApiResponse<PageResponse<Product>>> => {
+    getAdminProducts: async (pageOrQuery: number | AdminProductListQuery = 1, size?: number): Promise<ApiResponse<PageResponse<Product>>> => {
+        const query = normalizeAdminListQuery(pageOrQuery, size);
         try {
             const res = await axiosInstance.get<ApiResponse<PageResponse<Product>>>("/product/admin/list", {
-                params: { page, size },
+                params: query,
             });
 
             return res.data;

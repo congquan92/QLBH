@@ -53,6 +53,15 @@ export default function EmployeesPage() {
 
     const employeeRoles = roles.filter((role) => String(role.name).toUpperCase() !== "USER");
 
+    function inferEmploymentTypeFromPositionId(positionId: string): "FULL_TIME" | "PART_TIME" {
+        const selected = positions.find((pos) => String(pos.id) === positionId);
+        const normalized = String(selected?.name ?? "").toLowerCase();
+        if (normalized.includes("part time") || normalized.includes("part-time") || normalized.includes("bán thời gian")) {
+            return "PART_TIME";
+        }
+        return "FULL_TIME";
+    }
+
     const fetchEmployees = useCallback(async () => {
         setIsLoading(true);
         try {
@@ -114,7 +123,7 @@ export default function EmployeesPage() {
                 dateOfBirth: createForm.dateOfBirth,
                 roleId: Number(createForm.roleId),
                 positionId: Number(createForm.positionId),
-                employmentType: createForm.employmentType,
+                employmentType: inferEmploymentTypeFromPositionId(createForm.positionId),
             });
             toast.success("Tạo nhân viên thành công.");
             setCreateForm(emptyCreateForm);
@@ -191,10 +200,9 @@ export default function EmployeesPage() {
     function openPromoteDialog(user: UserProfile) {
         setPromotingUser(user);
         // Pre-fill with current position & employment type
-        setPromotePositionId(user.positionResponse?.id ? String(user.positionResponse.id) : "");
-        const et = user.employmentType
-            ?? (user as { employment_type?: unknown }).employment_type;
-        setPromoteEmploymentType(typeof et === "string" && et.trim() ? et : "FULL_TIME");
+        const currentPositionId = user.positionResponse?.id ? String(user.positionResponse.id) : "";
+        setPromotePositionId(currentPositionId);
+        setPromoteEmploymentType(inferEmploymentTypeFromPositionId(currentPositionId));
         setPromoteEffectiveDate("");
     }
 
@@ -216,7 +224,7 @@ export default function EmployeesPage() {
         try {
             await JobHistoryApi.promote(promotingUser.id, {
                 position_id: Number(promotePositionId),
-                employment_type: promoteEmploymentType,
+                employment_type: inferEmploymentTypeFromPositionId(promotePositionId),
                 effective_date: promoteEffectiveDate,
             });
             toast.success("Thăng chức / điều chuyển thành công!");
@@ -385,7 +393,10 @@ export default function EmployeesPage() {
                 positionId={promotePositionId}
                 employmentType={promoteEmploymentType}
                 effectiveDate={promoteEffectiveDate}
-                onChangePosition={setPromotePositionId}
+                onChangePosition={(nextPositionId) => {
+                    setPromotePositionId(nextPositionId);
+                    setPromoteEmploymentType(inferEmploymentTypeFromPositionId(nextPositionId));
+                }}
                 onChangeEmploymentType={setPromoteEmploymentType}
                 onChangeEffectiveDate={setPromoteEffectiveDate}
                 onSave={() => void handlePromoteEmployee()}

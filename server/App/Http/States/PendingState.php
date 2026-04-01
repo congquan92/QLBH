@@ -5,6 +5,7 @@ use App\Exceptions\ErrorCode;
 use App\Http\Mapper\OrderMapper;
 use App\Http\Service\FirebaseService;
 use App\Models\Order;
+use App\Models\ProductVariant;
 use App\Enums\DeliveryStatus;
 use App\Enums\PaymentStatus;
 use App\Enums\PaymentType;
@@ -22,6 +23,18 @@ class PendingState implements OrderState
         }
 
         if ($nextStatus === DeliveryStatus::CONFIRMED) {
+            foreach ($order->orderItem as $item) {
+                $variant = ProductVariant::where('id', $item->product_variant_id)
+                    ->lockForUpdate()
+                    ->firstOrFail();
+
+                if ($variant->quantity < $item->quantity) {
+                    throw new BusinessException(ErrorCode::BAD_REQUEST, "Sản phẩm {$variant->sku} không đủ tồn kho để xác nhận đơn.");
+                }
+
+                $variant->decrement('quantity', $item->quantity);
+            }
+
             $order->order_status = $nextStatus;
             $orderResponse = OrderMapper::toOrderResponse($order);
             $firebase->sendNotification("user_{$order->user_id}", [

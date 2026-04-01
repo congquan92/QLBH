@@ -44,6 +44,19 @@ class ReviewController extends Controller
     }
 
     /**
+     * Lấy danh sách đánh giá công khai theo sản phẩm (có phân trang)
+     */
+    public function getByProduct(Request $request, int $productId): JsonResponse
+    {
+        $sort = $request->query('sort', 'id:desc');
+        $page = (int) $request->query('page', 1);
+        $size = (int) $request->query('size', 5);
+
+        $result = $this->reviewService->getReviewsByProduct($productId, $page, $size, $sort);
+        return response()->json($result);
+    }
+
+    /**
      * Lấy chi tiết một đánh giá qua ID
      */
     public function show(int $id): JsonResponse
@@ -52,14 +65,14 @@ class ReviewController extends Controller
         return response()->json($review);
     }
 
-    // /**
-    //  * Lấy các đánh giá của bản thân cho một sản phẩm cụ thể
-    //  */
-    // public function getMyReviewByProduct(int $productId): JsonResponse
-    // {
-    //     $reviews = $this->reviewService->getReviewMeByProduct($productId);
-    //     return response()->json($reviews);
-    // }
+    /**
+     * Lấy các đánh giá của bản thân cho một sản phẩm cụ thể
+     */
+    public function getMyReviewByProduct(int $productId): JsonResponse
+    {
+        $reviews = $this->reviewService->getReviewMeByProduct($productId);
+        return response()->json($reviews);
+    }
 
     // /**
     //  * Thêm ảnh vào bài review đã có (Dành cho chức năng cập nhật ảnh)

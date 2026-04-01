@@ -55,8 +55,28 @@ class SupplierService
     {
         return DB::transaction(function () use ($id, $data) {
             $supplier = Supplier::findOrFail($id);
-            $supplier->update($data);
-            return $supplier;
+
+            $location = isset($data['location']) && is_array($data['location']) ? $data['location'] : [];
+
+            $updateData = [
+                'name' => $this->resolveStringValue($data, 'name', $supplier->name),
+                'phone' => $this->resolveStringValue($data, 'phone', $supplier->phone),
+                'address' => $this->resolveStringValue($data, 'address', $supplier->address),
+                'ward' => $this->resolveStringValue($data, 'ward', $supplier->ward),
+                'district' => $this->resolveStringValue($data, 'district', $supplier->district),
+                'province' => $this->resolveStringValue($data, 'province', $supplier->province),
+                'province_id' => $this->resolveIdValue($data, $location, 'province_id', 'provinceId', $supplier->province_id),
+                'district_id' => $this->resolveIdValue($data, $location, 'district_id', 'districtId', $supplier->district_id),
+                'ward_id' => $this->resolveIdValue($data, $location, 'ward_id', 'wardId', $supplier->ward_id),
+            ];
+
+            if (array_key_exists('status', $data) && !empty($data['status'])) {
+                $updateData['status'] = $data['status'];
+            }
+
+            $supplier->update($updateData);
+
+            return SupplierMapper::toResponse($supplier->refresh());
         });
     }
     public function getSupplierById($id)
@@ -80,5 +100,32 @@ class SupplierService
                 'status' => Status::ACTIVE,
             ]);
         });
+    }
+
+    private function resolveStringValue(array $data, string $key, $fallback): string
+    {
+        if (!array_key_exists($key, $data)) {
+            return (string) $fallback;
+        }
+
+        $value = trim((string) ($data[$key] ?? ''));
+        return $value !== '' ? $value : (string) $fallback;
+    }
+
+    private function resolveIdValue(array $data, array $location, string $snakeKey, string $camelKey, $fallback)
+    {
+        if (array_key_exists($snakeKey, $data) && $data[$snakeKey] !== null && $data[$snakeKey] !== '') {
+            return $data[$snakeKey];
+        }
+
+        if (array_key_exists($camelKey, $data) && $data[$camelKey] !== null && $data[$camelKey] !== '') {
+            return $data[$camelKey];
+        }
+
+        if (array_key_exists($snakeKey, $location) && $location[$snakeKey] !== null && $location[$snakeKey] !== '') {
+            return $location[$snakeKey];
+        }
+
+        return $fallback;
     }
 }

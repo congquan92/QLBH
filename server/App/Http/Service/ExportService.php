@@ -127,7 +127,32 @@ class ExportService
         ->get();
 
     $content = $lateAttendances->map(function ($att) {
-        $startTime = Carbon::parse($att->date . ' ' . $att->shift->start_time);
+        $shift = $att->shift;
+
+        if (!$shift) {
+            // Fallback cho dữ liệu cũ chưa có shift_id do mass-assignment trước đó
+            $assignment = \App\Models\ShiftAssignment::with('shift')
+                ->where('user_id', $att->user_id)
+                ->whereDate('date', $att->date)
+                ->first();
+
+            $shift = $assignment?->shift;
+        }
+
+        if (!$shift || !$att->check_in) {
+            return [
+                'date' => $att->date,
+                'user_id' => $att->user->id,
+                'full_name' => $att->user->full_name,
+                'position' => $att->user->position->name ?? 'N/A',
+                'shift_name' => 'N/A',
+                'shift_time' => '-',
+                'check_in' => $att->check_in ? Carbon::parse($att->check_in)->format('H:i:s') : '-',
+                'late_minutes' => 'N/A'
+            ];
+        }
+
+        $startTime = Carbon::parse($att->date . ' ' . $shift->start_time);
         $checkInTime = Carbon::parse($att->check_in);
         
         // Tính số phút đi trễ
@@ -138,8 +163,8 @@ class ExportService
             'user_id' => $att->user->id,
             'full_name' => $att->user->full_name,
             'position' => $att->user->position->name ?? 'N/A',
-            'shift_name' => $att->shift->name,
-            'shift_time' => "{$att->shift->start_time} - {$att->shift->end_time}",
+            'shift_name' => $shift->name,
+            'shift_time' => "{$shift->start_time} - {$shift->end_time}",
             'check_in' => $checkInTime->format('H:i:s'),
             'late_minutes' => $diffMinutes . ' phút'
         ];

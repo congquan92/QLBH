@@ -127,7 +127,7 @@ export function WeeklyCalendarGrid({ weeklySchedule, selectedDate, onSelectDate 
     return (
         <div className="rounded-xl border bg-card overflow-hidden">
             {/* Calendar Grid */}
-            <div className="grid grid-cols-7 min-h-[520px]">
+            <div className="grid grid-cols-7 min-h-130">
                 {weeklySchedule.map((day, idx) => {
                     const isToday = day.date === today;
                     const isSelected = day.date === selectedDate;
@@ -141,7 +141,7 @@ export function WeeklyCalendarGrid({ weeklySchedule, selectedDate, onSelectDate 
                             key={day.date}
                             className={cn(
                                 "flex flex-col border-r last:border-r-0 cursor-pointer transition-colors",
-                                isSelected && "bg-primary/[0.03]",
+                                isSelected && "bg-primary/3",
                                 isWeekend && "bg-muted/30",
                                 idx < 7 && "border-b-0"
                             )}

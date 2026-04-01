@@ -1,13 +1,32 @@
 import type { ApiResponse, PageResponse } from "@/types/api";
 
+export interface ReviewImageItem {
+    id: number;
+    url: string;
+}
+
+export interface ReviewUserResponse {
+    id?: number;
+    fullName?: string;
+    username?: string;
+    avatar?: string | null;
+    [key: string]: unknown;
+}
+
 export interface Review {
     id: number;
-    rating?: number;
+    productId: number;
+    nameProduct?: string;
+    variant?: Record<string, string> | string | null;
+    rating: number;
     comment?: string | null;
-    productId?: number;
+    imageResponse?: ReviewImageItem[];
+    userResponse?: ReviewUserResponse;
+    createdAt?: string;
+    updateAt?: string;
+    // legacy/extra fields
     userId?: number;
     images?: string[];
-    createdAt?: string;
     [key: string]: unknown;
 }
 
@@ -32,3 +51,4 @@ export interface ReviewQuery {
 
 export type ReviewListResponse = ApiResponse<PageResponse<Review>>;
 export type ReviewDetailResponse = ApiResponse<Review>;
+

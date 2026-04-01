@@ -38,6 +38,16 @@ class GhnService
     }
 
     /**
+     * Tạo HTTP client với SSL verify tắt (để tương thích môi trường dev local)
+     */
+    private function makeHttpClient(int $timeout = 30): \Illuminate\Http\Client\PendingRequest
+    {
+        return Http::timeout($timeout)
+            ->withoutVerifying()
+            ->withHeaders($this->getHeaders());
+    }
+
+    /**
      * @param Order $order
      * @param string $requiredNote
      * @return array
@@ -60,8 +70,7 @@ class GhnService
         try {
             // Đảm bảo KHÔNG dùng Http::async()
             /** @var \Illuminate\Http\Client\Response $response */
-            $response = Http::timeout(30)
-                ->withHeaders($this->getHeaders())
+            $response = $this->makeHttpClient()
                 ->post($url, $this->buildGhnPayload($order, $requiredNote));
 
             // Kiểm tra Response
@@ -174,7 +183,7 @@ class GhnService
 
         Log::info("GHN Fee Payload: ", $body);
 
-        $response = Http::withHeaders($this->getHeaders())->post($url, $body);
+        $response = $this->makeHttpClient()->post($url, $body);
 
         if ($response->failed()) {
             Log::error("GHN Fee Error: " . $response->body());
@@ -197,8 +206,7 @@ class GhnService
     {
         $url = "{$this->baseUrl}/v2/shipping-order/detail";
         /** @var \Illuminate\Http\Client\Response $response */
-        $response = Http::timeout(30)
-            ->withHeaders($this->getHeaders())
+        $response = $this->makeHttpClient()
             ->post($url, ['order_code' => $orderCode]);
 
         return $response->json('data');

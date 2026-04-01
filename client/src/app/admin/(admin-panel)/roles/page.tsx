@@ -9,6 +9,7 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import type { RbacGroupPermission, RbacPageCatalogItem, RbacRole, RbacRolePayload } from "@/types/rbac";
 import { Helper } from "@/lib/helper";
+import { useAdminAuth } from "@/hooks/useAdminAuth";
 import EditGroupDialog, { type EditGroupForm } from "./_components/EditGroup-dialog";
 import { RoleFormDialog, type RoleFormState } from "./_components/RoleForm-dialog";
 import { Plus } from "lucide-react";
@@ -21,6 +22,7 @@ const emptyForm: RoleFormState = {
 };
 
 export default function RolesPage() {
+    const { refreshProfile } = useAdminAuth();
     const [roles, setRoles] = useState<RbacRole[]>([]);
     const [pages, setPages] = useState<RbacPageCatalogItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -114,6 +116,7 @@ export default function RolesPage() {
             }
             setDialogOpen(false);
             await fetchAll();
+            await refreshProfile();
         } catch (error) {
             toast.error(Helper.errorMessage(error));
         } finally {
@@ -138,6 +141,7 @@ export default function RolesPage() {
             await RbacApi.deleteRole(roleId);
             toast.success("Xóa vai trò thành công.");
             await fetchAll();
+            await refreshProfile();
         } catch (error) {
             toast.error(Helper.errorMessage(error));
         } finally {
@@ -204,6 +208,7 @@ export default function RolesPage() {
             setEditGroupOpen(false);
             setEditGroupForm(null);
             await fetchAll();
+            await refreshProfile();
         } catch (error) {
             toast.error(Helper.errorMessage(error));
         } finally {
@@ -260,6 +265,7 @@ export default function RolesPage() {
             toast.success(`Đã lưu thay đổi quyền cho ${draftGroupIds.size} vai trò.`);
             setDraftGroupIds(new Map());
             await fetchAll();
+            await refreshProfile();
         } catch (error) {
             toast.error(Helper.errorMessage(error));
         } finally {

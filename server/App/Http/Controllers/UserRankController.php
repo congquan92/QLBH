@@ -38,7 +38,14 @@ use ApiResponse;
 
     public function update(Request $request, $id): JsonResponse
     {
-        $this->userRankService->update($id, $request->all());
+        $validated = $request->validate([
+            'name' => 'sometimes|string|max:500',
+            'min_spent' => 'sometimes|numeric|min:0',
+            'minSpent' => 'sometimes|numeric|min:0',
+            'status' => 'sometimes|in:ACTIVE,INACTIVE,DISABLED',
+        ]);
+
+        $this->userRankService->update($id, $validated);
         return $this->success(null, "Cập nhật hạng người dùng");
     }
 

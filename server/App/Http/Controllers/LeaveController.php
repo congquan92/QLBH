@@ -25,11 +25,12 @@ class LeaveController extends Controller
     {
         $keyword = $request->query('keyword');
         $status = $request->query('status');
+        $leaveDate = $request->query('leave_date');
         $sort = $request->query('sort', 'leave_date:desc');
         $page = (int) $request->query('page', 1);
         $size = (int) $request->query('size', 10);
 
-        $response = $this->leaveService->findAll($keyword, $status, $sort, $page, $size);
+        $response = $this->leaveService->findAll($keyword, $status, $leaveDate, $sort, $page, $size);
 
         return $this->success($response, 'Danh sách đơn nghỉ phép.');
     }
@@ -38,13 +39,28 @@ class LeaveController extends Controller
     {
         $keyword = $request->query('keyword');
         $status = $request->query('status');
+        $leaveDate = $request->query('leave_date');
         $sort = $request->query('sort', 'leave_date:desc');
         $page = (int) $request->query('page', 1);
         $size = (int) $request->query('size', 10);
-        $data = $this->leaveService->findMyLeaves($keyword, $status, $sort, $page, $size);
+        $data = $this->leaveService->findMyLeaves($keyword, $status, $leaveDate, $sort, $page, $size);
 
         return $this->success($data,"List me leave Request");
     }
+
+    public function availableShifts(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'leave_date' => 'required|date|after:today',
+        ], [
+            'leave_date.required' => 'Ngày nghỉ không được để trống.',
+            'leave_date.after' => 'Ngày xin nghỉ phải sau ngày hôm nay.',
+        ]);
+
+        $shifts = $this->leaveService->getAvailableShiftsByDate($validated['leave_date']);
+        return $this->success($shifts, 'Danh sách ca làm việc theo ngày đã chọn.');
+    }
+
     /**
      * API Gửi đơn nghỉ phép
      */

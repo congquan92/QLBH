@@ -1,6 +1,6 @@
 import { AuthApi } from "@/api/auth";
 import { UserApi } from "@/api/user.api";
-import { UserAuthUtil, type UserSession } from "@/lib/user-auth";
+import { UserAuthUtil, type UserSession } from "@/lib/UserAuth-util";
 import { useEffect, useMemo } from "react";
 import { create } from "zustand";
 

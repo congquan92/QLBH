@@ -52,6 +52,20 @@ export function CreateEmployeeDialog({ open, form, roles, positions, isSaving, o
         onChange({ ...form, [key]: value });
     }
 
+    function inferEmploymentType(positionName: string): "FULL_TIME" | "PART_TIME" {
+        const normalized = positionName.toLowerCase();
+        if (normalized.includes("part time") || normalized.includes("part-time") || normalized.includes("bán thời gian")) {
+            return "PART_TIME";
+        }
+        return "FULL_TIME";
+    }
+
+    function handlePositionChange(positionId: string) {
+        const selected = positions.find((pos) => String(pos.id) === positionId);
+        const inferred = selected?.name ? inferEmploymentType(String(selected.name)) : "FULL_TIME";
+        onChange({ ...form, positionId, employmentType: inferred });
+    }
+
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-xl md:max-w-2xl">
@@ -173,7 +187,7 @@ export function CreateEmployeeDialog({ open, form, roles, positions, isSaving, o
                             </div>
                             <div className="space-y-1.5">
                                 <Label className="text-xs">Chức vụ *</Label>
-                                <Select value={form.positionId} onValueChange={(v) => set("positionId", v)}>
+                                <Select value={form.positionId} onValueChange={handlePositionChange}>
                                     <SelectTrigger className="h-9">
                                         <SelectValue placeholder="Chọn chức vụ" />
                                     </SelectTrigger>
@@ -188,15 +202,9 @@ export function CreateEmployeeDialog({ open, form, roles, positions, isSaving, o
                             </div>
                             <div className="space-y-1.5 sm:col-span-2">
                                 <Label className="text-xs">Loại hình làm việc *</Label>
-                                <Select value={form.employmentType} onValueChange={(v: "FULL_TIME" | "PART_TIME") => set("employmentType", v)}>
-                                    <SelectTrigger className="h-9 max-w-xs">
-                                        <SelectValue placeholder="Chọn loại" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="FULL_TIME">Full-time (Toàn thời gian)</SelectItem>
-                                        <SelectItem value="PART_TIME">Part-time (Bán thời gian)</SelectItem>
-                                    </SelectContent>
-                                </Select>
+                                <div className="h-9 max-w-xs rounded-md border border-input bg-muted/40 px-3 text-sm flex items-center font-medium">
+                                    {form.employmentType === "PART_TIME" ? "Part-time (Bán thời gian)" : "Full-time (Toàn thời gian)"}
+                                </div>
                             </div>
                         </div>
                     </section>

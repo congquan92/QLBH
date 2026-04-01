@@ -12,3 +12,5 @@ php artisan db:seed --class=fileName // chay du lieu mau trong seeder
 
 composer require predis/predis
 REDIS_CLIENT=predis
+
+php artisan reverb:start

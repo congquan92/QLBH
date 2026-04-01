@@ -320,7 +320,8 @@ class ProductService
                     continue;
                 }
 
-                $image = isset($valReq['image']) ? trim((string) $valReq['image']) : null;
+                $hasImageField = array_key_exists('image', $valReq);
+                $image = $hasImageField ? trim((string) ($valReq['image'] ?? '')) : null;
                 $valueId = isset($valReq['id']) ? (int) $valReq['id'] : 0;
 
                 $productAttributeValue = null;
@@ -332,7 +333,9 @@ class ProductService
 
                 if ($productAttributeValue instanceof ProductAttributeValue) {
                     $productAttributeValue->value = $value;
-                    $productAttributeValue->url_image = $image ?: null;
+                    if ($hasImageField) {
+                        $productAttributeValue->url_image = $image ?: null;
+                    }
                     $productAttributeValue->save();
                     continue;
                 }
@@ -636,6 +639,7 @@ class ProductService
             $newAttributeValueIds = [];
 
             foreach ($data['variantAttributes'] as $item) {
+                $hasImageField = is_array($item) && array_key_exists('image', $item);
                 $normalizedItem = $this->normalizeVariantAttributeItem($item);
 
                 if (!$normalizedItem) {
@@ -647,14 +651,17 @@ class ProductService
                     'attribute_id' => $normalizedItem['attributeId']
                 ]);
 
+                $payload = [];
+                if ($hasImageField) {
+                    $payload['url_image'] = ($normalizedItem['image'] ?? null) ?: null;
+                }
+
                 $value = ProductAttributeValue::updateOrCreate(
                     [
                         'product_attribute_id' => $productAttribute->id,
                         'value' => $normalizedItem['value']
                     ],
-                    [
-                        'url_image' => $normalizedItem['image'] ?? null
-                    ]
+                    $payload
                 );
                 
                 $newAttributeValueIds[] = $value->id;

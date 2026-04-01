@@ -1,10 +1,10 @@
 "use client";
 
 import { CartApi } from "@/api/cart.api";
-import ProductGrid from "@/components/feature/page/ProductGrid";
+import ProductCarousel from "@/components/feature/page/ProductCarousel";
 import { ProductDetail } from "@/types/product";
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ShoppingCart, Minus, Plus, Package, Truck, Shield, RefreshCw, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -16,8 +16,20 @@ import Zoom from "yet-another-react-lightbox/plugins/zoom";
 import { Product } from "@/types/product";
 import { toast } from "sonner";
 import { UserAuthStore } from "@/hooks/useClientAuth";
-import { UserAuthUtil } from "@/lib/user-auth";
+import { UserAuthUtil } from "@/lib/UserAuth-util";
 import { usePathname, useRouter } from "next/navigation";
+import ProductReviews from "@/app/(client)/san-pham/_components/ProductReviews";
+
+function sanitizeDescriptionHtml(html: string): string {
+    const normalized = String(html ?? "").trim();
+    if (!normalized) return "";
+
+    return normalized
+        .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, "")
+        .replace(/<style[\s\S]*?>[\s\S]*?<\/style>/gi, "")
+        .replace(/\son\w+=("[^"]*"|'[^']*')/gi, "")
+        .replace(/javascript:/gi, "");
+}
 
 export default function ListProductDetail({ products, relatedProducts }: { products: ProductDetail; relatedProducts: Product[] }) {
     const productImages = products.imageProduct.length > 0 ? products.imageProduct : [products.coverImage];
@@ -84,8 +96,23 @@ export default function ListProductDetail({ products, relatedProducts }: { produ
     };
 
     const [activeTab, setActiveTab] = useState<"description" | "reviews">("description");
+
+    const getAttributeValueImage = (value: { image?: string | null; urlImage?: string | null; url_image?: string | null }) => {
+        const image = String(value.image ?? "").trim();
+        if (image) return image;
+
+        const urlImage = String(value.urlImage ?? "").trim();
+        if (urlImage) return urlImage;
+
+        const urlImageSnake = String(value.url_image ?? "").trim();
+        if (urlImageSnake) return urlImageSnake;
+
+        return "";
+    };
+
     const selectedVariant = products.productVariant.find((variant) => variant.variantAttributes.every((attribute) => selectedAttributes[attribute.attribute] === attribute.value)) ?? products.productVariant[0];
     const totalStock = selectedVariant?.quantity ?? products.productVariant.reduce((sum, variant) => sum + variant.quantity, 0);
+    const descriptionHtml = useMemo(() => sanitizeDescriptionHtml(products.description), [products.description]);
 
     const handleAddToCart = async (shouldRedirect = false) => {
         if (isAuthLoading || !isAuthenticated) {
@@ -227,17 +254,30 @@ export default function ListProductDetail({ products, relatedProducts }: { produ
                                 {selectedAttributes[attribute.name] && <span className="text-sm text-gray-600">{selectedAttributes[attribute.name]}</span>}
                             </div>
                             <div className="flex flex-wrap gap-2">
-                                {attribute.attributeValue.map((value) => (
-                                    <button
-                                        key={value.id}
-                                        onClick={() => handleAttributeSelect(attribute.name, value.value)}
-                                        className={`px-4 py-2 border text-sm font-medium transition-all ${
-                                            selectedAttributes[attribute.name] === value.value ? "border-red-600 bg-red-50 text-red-600" : "border-gray-300 bg-white text-gray-700 hover:border-gray-400"
-                                        }`}
-                                    >
-                                        {value.value}
-                                    </button>
-                                ))}
+                                {attribute.attributeValue.map((value) => {
+                                    const imageUrl = getAttributeValueImage(value);
+                                    return (
+                                        <button
+                                            key={value.id}
+                                            onClick={() => handleAttributeSelect(attribute.name, value.value)}
+                                            className={`px-4 py-2 border text-sm font-medium transition-all ${selectedAttributes[attribute.name] === value.value ? "border-red-600 bg-red-50 text-red-600" : "border-gray-300 bg-white text-gray-700 hover:border-gray-400"
+                                                }`}
+                                        >
+                                            <span className="flex items-center gap-2">
+                                                {imageUrl ? (
+                                                    <Image
+                                                        src={imageUrl}
+                                                        alt={value.value}
+                                                        width={28}
+                                                        height={28}
+                                                        className="h-7 w-7 border border-gray-200 object-cover"
+                                                    />
+                                                ) : null}
+                                                <span>{value.value}</span>
+                                            </span>
+                                        </button>
+                                    );
+                                })}
                             </div>
                         </div>
                     ))}
@@ -323,10 +363,17 @@ export default function ListProductDetail({ products, relatedProducts }: { produ
                     </div>
 
                     {/* Description */}
-                    <div className="pt-4 border-t border-gray-200">
+                    {/* <div className="pt-4 border-t border-gray-200">
                         <h3 className="text-lg font-semibold text-gray-900 mb-2">Mô tả sản phẩm</h3>
-                        <p className="text-sm text-gray-600 leading-relaxed">{products.description}</p>
-                    </div>
+                        {descriptionHtml ? (
+                            <div
+                                className="prose prose-sm max-w-none text-sm text-gray-600 leading-relaxed [&_img]:h-auto [&_img]:max-w-full"
+                                dangerouslySetInnerHTML={{ __html: descriptionHtml }}
+                            />
+                        ) : (
+                            <p className="text-sm text-gray-500">Sản phẩm này hiện chưa có mô tả chi tiết.</p>
+                        )}
+                    </div> */}
                 </div>
             </div>
 
@@ -352,37 +399,29 @@ export default function ListProductDetail({ products, relatedProducts }: { produ
                 <div className="py-8">
                     {activeTab === "description" && (
                         <div className="prose max-w-none">
-                            <div className="bg-gray-50 border border-gray-200 p-6 text-center text-gray-500">
+                            <div className="bg-gray-50 border border-gray-200 p-6 text-gray-700">
                                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Mô tả sản phẩm</h3>
-                                <p>Backend hiện mới cung cấp điểm trung bình và số lượng đã bán cho trang công khai.</p>
-                                <p className="text-sm mt-2">Danh sách bình luận chi tiết sẽ hiển thị khi API công khai cho review theo sản phẩm được bổ sung.</p>
+                                {descriptionHtml ? (
+                                    <div
+                                        className="prose prose-sm max-w-none leading-relaxed [&_img]:h-auto [&_img]:max-w-full"
+                                        dangerouslySetInnerHTML={{ __html: descriptionHtml }}
+                                    />
+                                ) : (
+                                    <p className="text-sm text-gray-500">Sản phẩm này hiện chưa có mô tả chi tiết.</p>
+                                )}
                             </div>
                         </div>
                     )}
 
-                    {activeTab === "reviews" && (
-                        <div className="prose max-w-none">
-                            <div className="bg-gray-50 border border-gray-200 p-6 text-center text-gray-500">
-                                <h3 className="text-lg font-semibold text-gray-900 mb-4">Đánh giá từ khách hàng</h3>
-                                <p>Chưa có đánh giá nào cho sản phẩm này.</p>
-                                <p className="text-sm mt-2">Danh sách bình luận chi tiết sẽ hiển thị khi API công khai cho review theo sản phẩm được bổ sung.</p>
-                            </div>
-                        </div>
-                    )}
+                    {activeTab === "reviews" && <ProductReviews productId={products.id} avgRating={products.avgRating} soldQuantity={products.soldQuantity} />}
                 </div>
             </div>
 
             {/* Sản phẩm liên quan */}
-            <div className="mt-12 border-t border-gray-200 pt-8">
+            {/* <div className="mt-12 border-t border-gray-200 pt-8">
                 <h2 className="text-2xl font-bold text-gray-900 mb-6">Sản phẩm liên quan</h2>
-                {relatedProducts.length > 0 ? (
-                    <ProductGrid products={relatedProducts} />
-                ) : (
-                    <div className="bg-gray-50 border border-gray-200 p-12 text-center text-gray-500">
-                        <p className="text-lg">Không có sản phẩm liên quan.</p>
-                    </div>
-                )}
-            </div>
+                <ProductCarousel products={relatedProducts} emptyMessage="Không có sản phẩm liên quan." />
+            </div> */}
 
             {/* Lightbox */}
             <Lightbox

@@ -58,6 +58,7 @@ class UserController extends Controller
     public function createAddress(UserCreationAddressRequest $request)
     {
         $this->userService->addAddress($request);
+        return $this->success(null, 'Thêm địa chỉ thành công');
     }
 
     public function getAllAddresses(Request $request)
@@ -71,16 +72,19 @@ class UserController extends Controller
     public function updateDefaultAddress($addressId)
     {
         $this->userService->setDefaultAddress($addressId);
+        return $this->success(null, 'Cập nhật địa chỉ mặc định thành công');
     }
 
     public function updateAddress($addressId, UserUpdateAddressRequest $request)
     {
         $this->userService->updateAddress($addressId, $request);
+        return $this->success(null, 'Cập nhật địa chỉ thành công');
     }
 
     public function deleteAddress($addressId)
     {
         $this->userService->deleteAddress($addressId);
+        return $this->success(null, 'Xóa địa chỉ thành công');
     }
     public function updateUser(UserUpdateRequest $request)
     {
@@ -117,8 +121,14 @@ class UserController extends Controller
     }
 
     public function getUserByEmail(Request $request){
-        $email = $request->input('email');
-        $result = $this->userService->getAllUserByEmail($email);
+        $email = strtolower(trim((string) $request->query('email', '')));
+        $emailVerified = $request->has('email_verified')
+            ? filter_var($request->query('email_verified'), FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE)
+            : null;
+        $hasUserRole = $request->has('has_user_role')
+            ? filter_var($request->query('has_user_role'), FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE)
+            : null;
+        $result = $this->userService->getAllUserByEmail($email, $emailVerified, $hasUserRole);
          return $this->success($result, 'Get all user by email');
     }
 

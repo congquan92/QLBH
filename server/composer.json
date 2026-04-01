@@ -17,6 +17,7 @@
         "firebase/php-jwt": "^6.10",
         "getbrevo/brevo-php": "1.x.x",
         "laravel/framework": "^12.52",
+        "laravel/reverb": "^1.8",
         "laravel/socialite": "^5.24",
         "laravel/tinker": "^2.10.1",
         "maatwebsite/excel": "^3.1",

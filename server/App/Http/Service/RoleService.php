@@ -2,6 +2,7 @@
 
 namespace App\Http\Service;
 
+use App\Events\AdminPermissionSyncRequested;
 use App\Http\Mapper\RoleMapper;
 use App\Http\Responses\PageResponse;
 use App\Models\Role;
@@ -70,7 +71,11 @@ class RoleService
                 $role->groupPermissions()->sync($data['group_permission_ids']);
             }
 
-            return RoleMapper::toRoleResponse($role->load('groupPermissions'));
+            $response = RoleMapper::toRoleResponse($role->load('groupPermissions'));
+
+            AdminPermissionSyncRequested::dispatchSilently((int) $role->id, null, 'role_created');
+
+            return $response;
         });
     }
 
@@ -94,7 +99,11 @@ class RoleService
             // Nạp lại dữ liệu quan hệ đã được lọc
             $role->load('groupPermissions.page');
 
-            return RoleMapper::toRoleResponse($role);
+            $response = RoleMapper::toRoleResponse($role);
+
+            AdminPermissionSyncRequested::dispatchSilently((int) $role->id, null, 'role_permissions_updated');
+
+            return $response;
         });
     }
 
@@ -108,7 +117,11 @@ class RoleService
             $role->refresh();
             $role->load('groupPermissions.page');
 
-            return RoleMapper::toRoleResponse($role);
+            $response = RoleMapper::toRoleResponse($role);
+
+            AdminPermissionSyncRequested::dispatchSilently((int) $role->id, null, 'role_permissions_detached');
+
+            return $response;
         });
     }
 
@@ -127,7 +140,11 @@ class RoleService
         return DB::transaction(function () use ($role) {
             // THAY ĐỔI: Xóa liên kết ở bảng roles_group_permissions
             $role->groupPermissions()->detach();
-            return $role->delete();
+            $deleted = $role->delete();
+
+            AdminPermissionSyncRequested::dispatchSilently((int) $role->id, null, 'role_deleted');
+
+            return $deleted;
         });
     }
 }

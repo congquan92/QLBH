@@ -4,7 +4,7 @@ import ListProduct from "@/app/(client)/san-pham/_components/listProduct";
 import PageComingSoon from "@/components/feature/page/PageComingSoon";
 import { PUBLIC_PAGES } from "@/data/public-pages";
 import { Helper } from "@/lib/helper";
-import { findRootCategoryBySlug } from "@/lib/public-catalog";
+import { findRootCategoryBySlug } from "@/app/(client)/[category]/public-catalog";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 

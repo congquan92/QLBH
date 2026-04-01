@@ -32,6 +32,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\UserRankController;
 use App\Http\Controllers\VoucherController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\GhnController;
 use App\Http\Controllers\RoleController;
 
 
@@ -42,14 +43,14 @@ Route::post('/auth/login', [AuthController::class, 'login']);
 Route::get('/product/list', [ProductController::class, 'findAll']);
 Route::post('/auth/register', [AuthController::class, 'register']);
 Route::get('/product/detail/{productId}', [ProductController::class, 'getProductById']);
-Route::post('/order/add', [OrderController::class, 'store']);
-Route::get('/category/all', [CategoryController::class, 'findAllWithouPagination']);
+Route::get('/category/all', [CategoryController::class, 'findAllPublicWithPagination']);
 Route::get('/product/category/{id}', [ProductController::class, 'findAllByCategory']);
 Route::post('/firebase/test', [FirebaseController::class, 'test']);
 Route::post('/auth/social/google', [OAuthController::class, 'googleLogin']);
 Route::get('/voucher/list', action: [VoucherController::class, 'findAll']);
 Route::get('/voucher/detail/{id}', [VoucherController::class, 'show']);
 Route::get('/reviews/{id}', action: [ReviewController::class, 'show']);
+Route::get('/reviews/product/{productId}', [ReviewController::class, 'getByProduct']);
 Route::post('/otp/verify-otp', [BrevoController::class, 'verify']);
 Route::get('/user/email', [UserController::class, 'getUserByEmail']);
  Route::get('/payment/vnpay-return', [PaymentController::class, 'returnPayment'])->name('vnpay.return');
@@ -58,6 +59,9 @@ Route::post('/otp/send', [BrevoController::class, 'send']);
 Route::post('/user/{userId}/verify-account', [UserController::class, 'verifyAccount']);
 Route::post('/user/forgot-password', [UserController::class, 'forgotPassword']);
 // ==========================================
+Route::post('/firebase/test', [FirebaseController::class, 'test']);
+// GHN - Tính phí vận chuyển (public - không cần đăng nhập)
+Route::post('/ghn/calculate-fee', [GhnController::class, 'calculateFee']);
 // Route bảo vệ bởi JWT
 // ==========================================
 Route::middleware('auth')->group(function () {
@@ -93,6 +97,7 @@ Route::middleware('auth')->group(function () {
     // Category
     Route::prefix('category')->group(function () {
         Route::get('/list', [CategoryController::class, 'findAll']);
+        Route::get('/admin/list', [CategoryController::class, 'findAllWithouPagination'])->middleware('can:VIEW_ALL_CATEGORIES');
         Route::post('/add', [CategoryController::class, 'store'])->middleware('can:CREATE_CATEGORIES');
         Route::post('/{categoryId}/restore', [CategoryController::class, 'restoreCategory'])->middleware('can:RESTORE_CATEGORIES');
         Route::post('/move', [CategoryController::class, 'moveCategory'])->middleware('can:UPDATE_CATEGORIES');
@@ -126,6 +131,7 @@ Route::middleware('auth')->group(function () {
     });
 
     // Order
+    Route::post('/order/add', [OrderController::class, 'store']);
     Route::get("/order/list", [OrderController::class, 'findAll']);
     Route::get("/order/admin/list", [OrderController::class, 'findAllByAdmin'])->middleware('can:VIEW_ORDERS_ADMIN');
     Route::post("/order/changestatus/{id}", [OrderController::class, 'updateStatus'])->middleware('can:UPDATE_ORDER_STATUS');
@@ -153,6 +159,7 @@ Route::middleware('auth')->group(function () {
     Route::prefix('leave-requests')->group(function () {
         Route::get('/list', [LeaveController::class, 'index'])->middleware('can:VIEW_LEAVE_LIST');
         Route::get('/me', [LeaveController::class, 'myLeaves']);
+        Route::get('/available-shifts', [LeaveController::class, 'availableShifts']);
         Route::post('/', [LeaveController::class, 'store']);
         Route::post('/{id}/status', [LeaveController::class, 'updateStatus'])->middleware('can:APPROVE_LEAVE');
         Route::delete('/{id}', [LeaveController::class, 'destroy']);
@@ -164,6 +171,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/', [ShiftController::class, 'store'])->middleware('can:CREATE_SHIFT');
         Route::put('/{id}', [ShiftController::class, 'update'])->middleware('can:UPDATE_SHIFT');
         Route::delete('/{id}', [ShiftController::class, 'destroy'])->middleware('can:DELETE_SHIFT');
+        Route::post('/{id}/restore', [ShiftController::class, 'restore'])->middleware('can:UPDATE_SHIFT');
     });
 
     // Job History
@@ -177,6 +185,8 @@ Route::middleware('auth')->group(function () {
     Route::prefix('export')->group(function () {
         Route::get('/schedule', [ExportController::class, 'exportSchedule'])->middleware('can:EXPORT_DATA');
         Route::get('/my-schedule', [ExportController::class, 'exportMySchedule']);
+        Route::get('/late-arrivals/preview', [ExportController::class, 'previewLateArrivals'])
+            ->middleware('can:VIEW_STATISTICAL');
         Route::get('/late-arrivals', [ExportController::class, 'exportLateArrivals'])
             ->middleware('can:VIEW_STATISTICAL');
     });
@@ -359,9 +369,8 @@ Route::middleware('auth')->group(function () {
         Route::put('/{id}', [BonusController::class, 'update'])->middleware('can:PROMOTE_EMPLOYEE');
         Route::delete('/{id}', [BonusController::class, 'destroy'])->middleware('can:PROMOTE_EMPLOYEE');
     });
-
     // Salaries
     Route::get('salaries/all', [SalaryController::class, 'calculateAllSalaries'])->middleware('can:CALCULATE_SALARY');
-    Route::get('salaries/calculate/{userId}', [SalaryController::class, 'calculateMonthlySalary'])->middleware('can:CALCULATE_SALARY');
     Route::get('salaries/calculate/me', [SalaryController::class, 'calculateMonthlySalaryMe']);
+    Route::get('salaries/calculate/{userId}', [SalaryController::class, 'calculateMonthlySalary'])->middleware('can:CALCULATE_SALARY')->whereNumber('userId');
 });

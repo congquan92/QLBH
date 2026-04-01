@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Enums\Status;
 
 class Review extends Model
 {
@@ -20,6 +21,11 @@ class Review extends Model
         'order_item_id',
         'product_id',
         'comment',
+        'status'
+    ];
+
+    protected $casts = [
+        'status' => Status::class
     ];
 
     public function user(){

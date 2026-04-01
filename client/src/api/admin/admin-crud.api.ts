@@ -93,7 +93,7 @@ export const AdminCrudApi = {
         return res.data;
     },
 
-    getShifts: async (query?: { keyword?: string; sort?: string; page?: number; size?: number }) => {
+    getShifts: async (query?: { keyword?: string; sort?: string; page?: number; size?: number; status?: string }) => {
         try {
             const res = await axiosInstance.get("/shifts/list", { params: query });
             return normalizeList<Shift>(res.data, "Shift list fetched");
@@ -113,6 +113,10 @@ export const AdminCrudApi = {
 
     deleteShift: async (id: number) => {
         await axiosInstance.delete(`/shifts/${id}`);
+    },
+
+    restoreShift: async (id: number) => {
+        await axiosInstance.post(`/shifts/${id}/restore`);
     },
 
     getHolidays: async (query?: { keyword?: string; sort?: string; page?: number; size?: number }) => {
@@ -209,7 +213,7 @@ export const AdminCrudApi = {
         }
     },
 
-    getImportProducts: async (query?: { keyword?: string; sort?: string; page?: number; size?: number }) => {
+    getImportProducts: async (query?: { keyword?: string; sort?: string; page?: number; size?: number; supplierId?: number; deliveryStatus?: string; timeRange?: string; startDate?: string; endDate?: string }) => {
         try {
             const res = await axiosInstance.get("/import-products", { params: query });
             return normalizeList<ImportProduct>(res.data, "Import product list fetched");

@@ -7,12 +7,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Helper } from "@/lib/helper";
 import type { Supplier } from "@/types/admin-crud";
 import type { Product, ProductDetail } from "@/types/product";
+import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { ImportManagement } from "./_components/import-management";
 import { InventoryHeader } from "./_components/inventory-header";
 import { SupplierManagement } from "./_components/supplier-management";
-import type { DeliveryStatus, ImportDetailDialogData, ImportDetailRow, ImportRow, ProductOption, SupplierFormValues, SupplierRow, VariantOption } from "./_components/inventory-types";
+import type { DeliveryStatus, ImportDetailDialogData, ImportDetailRow, ImportRow, LowStockVariantRow, ProductOption, SupplierFormValues, SupplierRow, VariantOption } from "./_components/inventory-types";
+
+const LOW_STOCK_THRESHOLD = 5;
 
 function toSafeString(value: unknown): string {
     return String(value ?? "").trim();
@@ -31,6 +34,12 @@ function normalizeDeliveryStatus(value: unknown): DeliveryStatus {
         return raw;
     }
     return "PENDING";
+}
+
+function extractStreetFromFullAddress(fullAddress: string): string {
+    const normalized = toSafeString(fullAddress);
+    if (!normalized) return "";
+    return normalized.split(",")[0]?.trim() ?? "";
 }
 
 function mapSupplierRows(items: Supplier[]): SupplierRow[] {
@@ -52,7 +61,8 @@ function mapProductOptions(items: Product[], suppliers: SupplierRow[]): ProductO
         id: item.id,
         name: toSafeString(item.name) || `Product #${item.id}`,
         supplierId: Number(item.supplierId ?? 0),
-        supplierName: supplierMap.get(Number(item.supplierId ?? 0)) ?? `Supplier #${String(item.supplierId ?? "-")}`,
+        supplierName: supplierMap.get(Number(item.supplierId ?? 0)) ?? "Không có NCC hoạt động",
+        supplierActive: supplierMap.has(Number(item.supplierId ?? 0)),
     }));
 }
 
@@ -102,16 +112,99 @@ function mapVariantOptions(detail: ProductDetail): VariantOption[] {
     });
 }
 
+function parseLowStockVariantIdsParam(raw: string | null): number[] {
+    if (!raw) return [];
+    return Array.from(
+        new Set(
+            raw
+                .split(",")
+                .map((item) => Number(item.trim()))
+                .filter((item) => Number.isFinite(item) && item > 0),
+        ),
+    );
+}
+
+function mapLowStockVariants(detail: ProductDetail, productOption?: ProductOption): LowStockVariantRow[] {
+    return (detail.productVariant ?? [])
+        .map((variant) => {
+            const quantity = Number(variant.quantity ?? 0);
+            const attrs = (variant.variantAttributes ?? [])
+                .map((item) => `${toSafeString(item.attribute)}: ${toSafeString(item.value)}`)
+                .filter(Boolean)
+                .join(" | ");
+
+            return {
+                productId: Number(detail.id ?? 0),
+                productName: toSafeString(detail.name) || `Product #${String(detail.id ?? "-")}`,
+                supplierId: Number(detail.supplierId ?? productOption?.supplierId ?? 0),
+                supplierName: productOption?.supplierName ?? "-",
+                variantId: Number(variant.id ?? 0),
+                sku: toSafeString(variant.sku),
+                attributesLabel: attrs,
+                quantity,
+                unitPrice: Number(variant.price ?? detail.salePrice ?? 0),
+                suggestedQuantity: Math.max(1, LOW_STOCK_THRESHOLD - quantity + 1),
+            } satisfies LowStockVariantRow;
+        })
+        .filter((item) => item.variantId > 0 && Number.isFinite(item.quantity) && item.quantity <= LOW_STOCK_THRESHOLD)
+        .sort((a, b) => a.quantity - b.quantity);
+}
+
 export default function InventoryPage() {
+    const searchParams = useSearchParams();
     const [suppliers, setSuppliers] = useState<SupplierRow[]>([]);
     const [imports, setImports] = useState<ImportRow[]>([]);
     const [products, setProducts] = useState<ProductOption[]>([]);
+    const [lowStockVariants, setLowStockVariants] = useState<LowStockVariantRow[]>([]);
 
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
     const [activeTab, setActiveTab] = useState<"imports" | "suppliers">("imports");
     const [openCreateSupplier, setOpenCreateSupplier] = useState(false);
     const [openCreateImport, setOpenCreateImport] = useState(false);
+
+    const preselectedLowStockVariantIds = useMemo(() => parseLowStockVariantIdsParam(searchParams.get("lowStock")), [searchParams]);
+
+    const searchSuppliers = useCallback(async (params: { keyword?: string; status?: string }) => {
+        setIsLoading(true);
+        try {
+            const supplierRes = await AdminCrudApi.getSuppliers({
+                page: 1,
+                size: 400,
+                sort: "id:desc",
+                keyword: toSafeString(params.keyword) || undefined,
+                status: params.status && params.status !== "all" ? params.status : undefined,
+            });
+
+            setSuppliers(mapSupplierRows(supplierRes.data.data));
+        } catch (error) {
+            toast.error(Helper.errorMessage(error));
+            setSuppliers([]);
+        } finally {
+            setIsLoading(false);
+        }
+    }, []);
+
+    const searchImports = useCallback(async (params: { keyword?: string; supplierId?: string; deliveryStatus?: string }) => {
+        setIsLoading(true);
+        try {
+            const importRes = await AdminCrudApi.getImportProducts({
+                page: 1,
+                size: 200,
+                sort: "id:desc",
+                keyword: toSafeString(params.keyword) || undefined,
+                supplierId: params.supplierId && params.supplierId !== "all" ? Number(params.supplierId) : undefined,
+                deliveryStatus: params.deliveryStatus && params.deliveryStatus !== "all" ? params.deliveryStatus : undefined,
+            });
+
+            setImports(mapImportRows((importRes.data.data as Array<Record<string, unknown>>) ?? []));
+        } catch (error) {
+            toast.error(Helper.errorMessage(error));
+            setImports([]);
+        } finally {
+            setIsLoading(false);
+        }
+    }, []);
 
     const fetchInventoryData = useCallback(async () => {
         setIsLoading(true);
@@ -123,14 +216,29 @@ export default function InventoryPage() {
             ]);
 
             const supplierRows = mapSupplierRows(supplierRes.data.data);
+            const productOptions = mapProductOptions(productRes.data.data ?? [], supplierRows);
+
+            const detailResults = await Promise.allSettled((productRes.data.data ?? []).map((item) => ProductApi.getAdminProductDetail(item.id)));
+            const lowStockRows: LowStockVariantRow[] = [];
+
+            for (const result of detailResults) {
+                if (result.status !== "fulfilled") continue;
+
+                const detail = result.value.data;
+                const productOption = productOptions.find((item) => item.id === Number(detail.id ?? 0));
+                lowStockRows.push(...mapLowStockVariants(detail, productOption));
+            }
+
             setSuppliers(supplierRows);
             setImports(mapImportRows((importRes.data.data as Array<Record<string, unknown>>) ?? []));
-            setProducts(mapProductOptions(productRes.data.data ?? [], supplierRows));
+            setProducts(productOptions);
+            setLowStockVariants(lowStockRows);
         } catch (error) {
             toast.error(Helper.errorMessage(error));
             setSuppliers([]);
             setImports([]);
             setProducts([]);
+            setLowStockVariants([]);
         } finally {
             setIsLoading(false);
         }
@@ -161,6 +269,9 @@ export default function InventoryPage() {
                 ward: payload.ward.trim(),
                 district: payload.district.trim(),
                 province: payload.province.trim(),
+                wardId: payload.wardId,
+                districtId: payload.districtId,
+                provinceId: payload.provinceId,
             });
             toast.success("Đã tạo nhà cung cấp mới");
             await fetchInventoryData();
@@ -181,6 +292,9 @@ export default function InventoryPage() {
                 ward: payload.ward.trim(),
                 district: payload.district.trim(),
                 province: payload.province.trim(),
+                wardId: payload.wardId,
+                districtId: payload.districtId,
+                provinceId: payload.provinceId,
                 status: payload.status,
             });
             toast.success(`Đã cập nhật nhà cung cấp #${id}`);
@@ -192,11 +306,48 @@ export default function InventoryPage() {
         }
     }
 
+    async function getSupplierDetail(id: number): Promise<SupplierFormValues> {
+        const response = (await AdminCrudApi.getSupplierDetail(id)) as unknown;
+
+        const payload = response && typeof response === "object" && "data" in response ? (response as { data: unknown }).data : response;
+        const supplier = (payload ?? {}) as Record<string, unknown>;
+        const location = (supplier.location ?? {}) as Record<string, unknown>;
+        const fullAddress = toSafeString(supplier.full_address);
+        const address = toSafeString(supplier.address) || extractStreetFromFullAddress(fullAddress);
+
+        return {
+            id: Number(supplier.id ?? id),
+            name: toSafeString(supplier.name),
+            phone: toSafeString(supplier.phone),
+            address,
+            ward: toSafeString(supplier.ward),
+            district: toSafeString(supplier.district),
+            province: toSafeString(supplier.province),
+            wardId: toSafeString(location.ward_id),
+            districtId: toSafeString(location.district_id),
+            provinceId: toSafeString(location.province_id),
+            status: normalizeSupplierStatus(supplier.status),
+        };
+    }
+
     async function deleteSupplier(id: number) {
         setIsSaving(true);
         try {
             await AdminCrudApi.deleteSupplier(id);
-            toast.success(`Đã vô hiệu hóa nhà cung cấp #${id}`);
+            toast.success(`Đã tạm ngừng nhà cung cấp #${id}`);
+            await fetchInventoryData();
+        } catch (error) {
+            toast.error(Helper.errorMessage(error));
+        } finally {
+            setIsSaving(false);
+        }
+    }
+
+    async function restoreSupplier(id: number) {
+        setIsSaving(true);
+        try {
+            await AdminCrudApi.updateSupplier(id, { status: "ACTIVE" });
+            toast.success(`Đã khôi phục nhà cung cấp #${id}`);
             await fetchInventoryData();
         } catch (error) {
             toast.error(Helper.errorMessage(error));
@@ -215,6 +366,29 @@ export default function InventoryPage() {
         try {
             await AdminCrudApi.createImportProduct(payload);
             toast.success("Đã tạo phiếu nhập mới");
+            await fetchInventoryData();
+        } catch (error) {
+            toast.error(Helper.errorMessage(error));
+        } finally {
+            setIsSaving(false);
+        }
+    }
+
+    async function createImportBatch(payloads: Array<{ product_id: number; description: string; import_details: Array<{ product_variant_id: number; quantity: number; unitPrice: number }> }>) {
+        if (payloads.length === 0) return;
+
+        setIsSaving(true);
+
+        try {
+            const results = await Promise.allSettled(payloads.map((payload) => AdminCrudApi.createImportProduct(payload)));
+            const successCount = results.filter((result) => result.status === "fulfilled").length;
+            const failCount = results.length - successCount;
+
+            if (failCount === 0) {
+                toast.success(`Đã tạo ${successCount} phiếu nhập từ danh sách sắp hết hàng.`);
+            } else {
+                toast.error(`Đã tạo ${successCount} phiếu nhập, lỗi ${failCount} phiếu.`);
+            }
             await fetchInventoryData();
         } catch (error) {
             toast.error(Helper.errorMessage(error));
@@ -326,11 +500,15 @@ export default function InventoryPage() {
                             imports={imports}
                             suppliers={suppliers}
                             products={products}
+                            lowStockVariants={lowStockVariants}
+                            initialSelectedLowStockVariantIds={preselectedLowStockVariantIds}
                             isLoading={isLoading}
                             isSaving={isSaving}
                             onRefresh={fetchInventoryData}
+                            onSearch={searchImports}
                             loadVariantsForProduct={loadVariantsForProduct}
                             onCreate={createImport}
+                            onCreateBatch={createImportBatch}
                             onGetDetail={getImportDetail}
                             onConfirm={confirmImport}
                             onCancel={cancelImport}
@@ -347,9 +525,12 @@ export default function InventoryPage() {
                             isLoading={isLoading}
                             isSaving={isSaving}
                             onRefresh={fetchInventoryData}
+                            onSearch={searchSuppliers}
+                            onGetDetail={getSupplierDetail}
                             onCreate={createSupplier}
                             onUpdate={updateSupplier}
                             onDelete={deleteSupplier}
+                            onRestore={restoreSupplier}
                             createOpen={openCreateSupplier}
                             onCreateOpenChange={setOpenCreateSupplier}
                         />

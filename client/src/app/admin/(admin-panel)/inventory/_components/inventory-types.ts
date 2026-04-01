@@ -17,6 +17,7 @@ export interface ProductOption {
     name: string;
     supplierId: number;
     supplierName: string;
+    supplierActive: boolean;
 }
 
 export interface VariantOption {
@@ -25,6 +26,19 @@ export interface VariantOption {
     quantity: number;
     price: number;
     label: string;
+}
+
+export interface LowStockVariantRow {
+    productId: number;
+    productName: string;
+    supplierId: number;
+    supplierName: string;
+    variantId: number;
+    sku: string;
+    attributesLabel: string;
+    quantity: number;
+    unitPrice: number;
+    suggestedQuantity: number;
 }
 
 export interface ImportDetailRow {
@@ -62,6 +76,9 @@ export interface SupplierFormValues {
     ward: string;
     district: string;
     province: string;
+    wardId?: string;
+    districtId?: string;
+    provinceId?: string;
     status: SupplierStatus;
 }
 

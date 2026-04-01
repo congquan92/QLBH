@@ -1,6 +1,7 @@
 <?php
 namespace App\Http\Service;
 
+use App\Events\AdminPermissionSyncRequested;
 use App\Http\Mapper\PageMapper;
 use App\Http\Responses\PageResponse;
 use App\Models\GroupPermission;
@@ -72,6 +73,8 @@ class PageService
                     ->update(['page_id' => $page->id]);
             }
 
+            AdminPermissionSyncRequested::dispatchSilently(null, null, 'page_created');
+
             return $page->load('groupPermissions');
         });
     }
@@ -98,6 +101,8 @@ class PageService
                     ->update(['page_id' => $page->id]);
             }
 
+            AdminPermissionSyncRequested::dispatchSilently(null, null, 'page_updated');
+
             return $page->load('groupPermissions');
         });
     }
@@ -115,7 +120,11 @@ class PageService
             $page->roles()->detach();
 
             // 3. Xóa Page
-            return $page->delete();
+            $deleted = $page->delete();
+
+            AdminPermissionSyncRequested::dispatchSilently(null, null, 'page_deleted');
+
+            return $deleted;
         });
     }
 
@@ -138,6 +147,8 @@ class PageService
             GroupPermission::where('page_id', $page->id)
                 ->whereIn('id', $groupPermissionIds)
                 ->update(['page_id' => null]);
+
+            AdminPermissionSyncRequested::dispatchSilently(null, null, 'page_groups_detached');
 
             // 3. Trả về dữ liệu
             return PageMapper::toPageResponse($page->load('groupPermissions.permissions'));

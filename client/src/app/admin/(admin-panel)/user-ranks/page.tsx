@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import type { UserRank } from "@/types/admin-crud";
 import { Helper } from "@/lib/helper";
-import { Crown, Plus, RefreshCw } from "lucide-react";
+import { Plus, RefreshCw } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -89,7 +89,7 @@ export default function UserRanksPage() {
             } else {
                 await AdminCrudApi.createUserRank({
                     name: form.name.trim(),
-                    minSpent: Number(form.min_spent),
+                    min_spent: Number(form.min_spent),
                 });
                 toast.success("Tạo hạng thành viên thành công.");
             }

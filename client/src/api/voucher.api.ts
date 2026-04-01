@@ -1,5 +1,5 @@
 import { axiosInstance } from "@/lib/axios";
-import type { ApiResponse } from "@/types/api";
+import type { ApiResponse, PageResponse } from "@/types/api";
 import type { Voucher, VoucherQuery } from "@/types/voucher";
 
 const WARNING_PREFIX = "[WARNING][VoucherApi]";
@@ -10,7 +10,7 @@ export const VoucherApi = {
         const size = query?.size ?? 10;
         try {
             const res = await axiosInstance.get("/voucher/list", { params: { ...query, page, size } });
-            return res.data as ApiResponse<Voucher[]>;
+            return res.data as ApiResponse<PageResponse<Voucher>>;
         } catch (error) {
             console.error(`${WARNING_PREFIX} /voucher/list failed.`, error);
             throw error;
@@ -22,7 +22,7 @@ export const VoucherApi = {
         const size = query?.size ?? 10;
         try {
             const res = await axiosInstance.get("/voucher/admin/list", { params: { ...query, page, size } });
-            return res.data as ApiResponse<Voucher[]>;
+            return res.data as ApiResponse<PageResponse<Voucher>>;
         } catch (error) {
             console.error(`${WARNING_PREFIX} /voucher/admin/list failed.`, error);
             throw error;
@@ -34,7 +34,7 @@ export const VoucherApi = {
         const size = query?.size ?? 10;
         try {
             const res = await axiosInstance.get("/voucher/my-available", { params: { ...query, page, size } });
-            return res.data as ApiResponse<Voucher[]>;
+            return res.data as ApiResponse<PageResponse<Voucher>>;
         } catch (error) {
             console.error(`${WARNING_PREFIX} /voucher/my-available failed.`, error);
             throw error;

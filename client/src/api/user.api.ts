@@ -1,17 +1,23 @@
 import { axiosInstance } from "@/lib/axios";
 import type { ApiResponse, PageResponse } from "@/types/api";
-import type { ChangePasswordPayload, UserAddress, UserProfile } from "@/types/user";
+import type { ChangePasswordPayload, UserAddress, UserEmailAccount, UserProfile } from "@/types/user";
 
 const WARNING_PREFIX = "[WARNING][UserApi]";
 
 export const UserApi = {
-    getUserByEmail: async (email: string) => {
+    getUserByEmail: async (email: string, query?: { email_verified?: 0 | 1 | boolean; has_user_role?: 0 | 1 | boolean }) => {
         try {
-            const res = await axiosInstance.get("/user/email", { params: { email } });
-            return res.data;
+            const res = await axiosInstance.get("/user/email", {
+                params: {
+                    email,
+                    ...(query?.email_verified !== undefined ? { email_verified: query.email_verified } : {}),
+                    ...(query?.has_user_role !== undefined ? { has_user_role: query.has_user_role } : {}),
+                },
+            });
+            return res.data as ApiResponse<UserEmailAccount[]>;
         } catch (error) {
             console.warn(`${WARNING_PREFIX} /user/email failed.`, error);
-            return { status: 500, message: "Get user by email failed", data: null };
+            return { status: 500, message: "Get user by email failed", data: [] } as ApiResponse<UserEmailAccount[]>;
         }
     },
 
@@ -152,7 +158,7 @@ export const UserApi = {
         }
     },
 
-    forgotPassword: async (payload: { email: string; otp: string; newPassword: string; confirmPassword: string }) => {
+    forgotPassword: async (payload: { userId: number; sendEmail: boolean; otp: string; password: string; confirmPassword: string }) => {
         try {
             const res = await axiosInstance.post("/user/forgot-password", payload);
             return res.data;
@@ -162,7 +168,7 @@ export const UserApi = {
         }
     },
 
-    verifyAccount: async (userId: number, payload: { otp: string; email?: string }) => {
+    verifyAccount: async (userId: number, payload: { otp: string; isEmail?: boolean; email?: string }) => {
         try {
             const res = await axiosInstance.post(`/user/${userId}/verify-account`, payload);
             return res.data;

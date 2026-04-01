@@ -12,6 +12,7 @@ import type { Position } from "@/types/admin-crud";
 import type { UserProfile } from "@/types/user";
 import { ArrowUpCircle, Briefcase, Calendar, ChevronRight, Loader2, TrendingUp } from "lucide-react";
 import { getUsername } from "./employee-table";
+const TOMORROW_MIN_DATE = new Date(Date.now() + 86400000).toISOString().split("T")[0];
 
 type Props = {
     user: UserProfile | null;
@@ -27,19 +28,7 @@ type Props = {
     onClose: () => void;
 };
 
-export function PromoteEmployeeDialog({
-    user,
-    positions,
-    isSaving,
-    positionId,
-    employmentType,
-    effectiveDate,
-    onChangePosition,
-    onChangeEmploymentType,
-    onChangeEffectiveDate,
-    onSave,
-    onClose,
-}: Props) {
+export function PromoteEmployeeDialog({ user, positions, isSaving, positionId, employmentType, effectiveDate, onChangePosition, onChangeEmploymentType, onChangeEffectiveDate, onSave, onClose }: Props) {
     if (!user) return null;
 
     const username = getUsername(user);
@@ -58,14 +47,12 @@ export function PromoteEmployeeDialog({
             <DialogContent className="sm:max-w-lg">
                 <DialogHeader className="border-b pb-4">
                     <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-purple-100 to-indigo-100">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-linear-to-br from-purple-100 to-indigo-100">
                             <TrendingUp className="h-5 w-5 text-purple-600" />
                         </div>
                         <div>
                             <DialogTitle>Thăng chức / Điều chuyển</DialogTitle>
-                            <DialogDescription className="mt-0.5">
-                                Thay đổi chức vụ và loại hình làm việc của nhân viên.
-                            </DialogDescription>
+                            <DialogDescription className="mt-0.5">Thay đổi chức vụ và loại hình làm việc của nhân viên.</DialogDescription>
                         </div>
                     </div>
                 </DialogHeader>
@@ -75,9 +62,7 @@ export function PromoteEmployeeDialog({
                     <div className="flex items-center gap-3 rounded-xl border bg-muted/20 p-3">
                         <Avatar className="h-11 w-11">
                             <AvatarImage src={String(user.avatar ?? "")} alt={displayName} />
-                            <AvatarFallback className="text-sm font-bold bg-primary/10 text-primary">
-                                {initials}
-                            </AvatarFallback>
+                            <AvatarFallback className="text-sm font-bold bg-primary/10 text-primary">{initials}</AvatarFallback>
                         </Avatar>
                         <div className="flex-1 min-w-0">
                             <p className="font-semibold text-sm leading-none">{displayName}</p>
@@ -96,14 +81,14 @@ export function PromoteEmployeeDialog({
                         <div className="flex items-center justify-center gap-2 rounded-lg border border-dashed border-purple-200 bg-purple-50/50 p-3">
                             <div className="text-center">
                                 <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">Hiện tại</p>
-                                <Badge variant="secondary" className="text-xs">{currentPosition}</Badge>
+                                <Badge variant="secondary" className="text-xs">
+                                    {currentPosition}
+                                </Badge>
                             </div>
                             <ChevronRight className="h-4 w-4 text-purple-400 shrink-0" />
                             <div className="text-center">
                                 <p className="text-[10px] uppercase tracking-wider text-purple-600 mb-0.5 font-medium">Mới</p>
-                                <Badge className="text-xs bg-purple-100 text-purple-700 border-purple-200">
-                                    {selectedPosition.name}
-                                </Badge>
+                                <Badge className="text-xs bg-purple-100 text-purple-700 border-purple-200">{selectedPosition.name}</Badge>
                             </div>
                         </div>
                     )}
@@ -127,8 +112,7 @@ export function PromoteEmployeeDialog({
                                             <span>{pos.name}</span>
                                             {pos.base_salary && (
                                                 <span className="text-xs text-muted-foreground ml-2">
-                                                    {Number(pos.base_salary).toLocaleString("vi-VN")}đ
-                                                    {pos.salary_type === "HOURLY" ? "/giờ" : "/tháng"}
+                                                    {Number(pos.base_salary).toLocaleString("vi-VN")}đ{pos.salary_type === "HOURLY" ? "/giờ" : "/tháng"}
                                                 </span>
                                             )}
                                         </div>
@@ -144,27 +128,8 @@ export function PromoteEmployeeDialog({
                             <Briefcase className="h-3.5 w-3.5 text-blue-500" />
                             Loại hình làm việc
                         </Label>
-                        <Select value={employmentType} onValueChange={onChangeEmploymentType}>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Chọn loại hình" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="FULL_TIME">
-                                    <div className="flex items-center gap-2">
-                                        <Badge className="bg-blue-100 text-blue-700 border-blue-200 text-xs px-1.5 py-0">
-                                            Full-time
-                                        </Badge>
-                                    </div>
-                                </SelectItem>
-                                <SelectItem value="PART_TIME">
-                                    <div className="flex items-center gap-2">
-                                        <Badge className="bg-orange-100 text-orange-700 border-orange-200 text-xs px-1.5 py-0">
-                                            Part-time
-                                        </Badge>
-                                    </div>
-                                </SelectItem>
-                            </SelectContent>
-                        </Select>
+                        <div className="h-10 rounded-md border border-input bg-muted/40 px-3 text-sm flex items-center font-medium">{employmentType === "PART_TIME" ? "Part-time (Bán thời gian)" : "Full-time (Toàn thời gian)"}</div>
+                        <p className="text-[11px] text-muted-foreground">Loại hình làm việc tự động theo chức vụ để tránh lệch dữ liệu lịch và bảng lương.</p>
                     </div>
 
                     {/* Ngày hiệu lực */}
@@ -177,7 +142,7 @@ export function PromoteEmployeeDialog({
                             type="date"
                             value={effectiveDate}
                             onChange={(e) => onChangeEffectiveDate(e.target.value)}
-                            min={new Date(Date.now() + 86400000).toISOString().split("T")[0]}
+                            min={TOMORROW_MIN_DATE}
                         />
                         <p className="text-[11px] text-muted-foreground">
                             Ngày hiệu lực phải từ <strong>ngày mai</strong> trở đi. Lương mới sẽ được tính từ ngày này.
@@ -189,11 +154,7 @@ export function PromoteEmployeeDialog({
                     <Button variant="outline" onClick={onClose} disabled={isSaving}>
                         Hủy
                     </Button>
-                    <Button
-                        onClick={onSave}
-                        disabled={isSaving || !positionId || !employmentType || !effectiveDate}
-                        className="min-w-32 gap-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
-                    >
+                    <Button onClick={onSave} disabled={isSaving || !positionId || !employmentType || !effectiveDate} className="min-w-32 gap-1.5 bg-linear-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700">
                         {isSaving && <Loader2 className="h-4 w-4 animate-spin" />}
                         <TrendingUp className="h-4 w-4" />
                         Xác nhận thăng chức

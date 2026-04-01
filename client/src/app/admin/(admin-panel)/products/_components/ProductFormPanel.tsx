@@ -8,8 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator";
 import { Boxes, Check, ImagePlus, Layers3, Loader2, PackageCheck, Plus, Save, Trash2, Truck, Upload } from "lucide-react";
 import { useRef, useState } from "react";
-import type { CategoryOption, ProductAttributeInput, ProductFormValues, ProductImageItem, ProductVariantInput, SupplierOption } from "./product-types";
+import type { CategoryOption, ProductAttributeInput, ProductAttributeValueInput, ProductFormValues, ProductImageItem, ProductVariantInput, SupplierOption } from "./product-types";
 import { toast } from "sonner";
+import { RichTextEditor } from "./rich-text-editor";
 
 type ProductFormPanelProps = {
     open: boolean;
@@ -30,6 +31,7 @@ type ProductFormPanelProps = {
     onVariantsChange: (next: ProductVariantInput[]) => void;
     onCancel: () => void;
     onSubmit: () => void;
+    onUploadDescriptionImage: (file: File) => Promise<string>;
 };
 
 function createKey() {
@@ -106,31 +108,82 @@ function VideoInputField({ value, onChange }: { value: string; onChange: (url: s
     );
 }
 
-function AttributeValueChip({ value, image, onValueChange, onImageChange, onRemove }: { value: string; image: string; onValueChange: (v: string) => void; onImageChange: (url: string) => void; onRemove: () => void }) {
-    const [uploading, setUploading] = useState(false);
+function AttributeValueChip({
+    item,
+    onValueChange,
+    onImageChange,
+    onRemove,
+}: {
+    item: ProductAttributeValueInput;
+    onValueChange: (v: string) => void;
+    onImageChange: (payload: { image: string; imageDeleted?: boolean; imageFile?: File; imagePreviewUrl?: string }) => void;
+    onRemove: () => void;
+}) {
     const fileRef = useRef<HTMLInputElement>(null);
+    const [isImageLoading, setIsImageLoading] = useState(false);
 
     async function handleFile(file: File | undefined) {
-        if (!file) return;
-        setUploading(true);
+        if (!file) {
+            return;
+        }
+
+        setIsImageLoading(true);
+
         try {
-            const res = await FileUploadApi.upload(file);
-            onImageChange(res.url);
+            const oldImageUrl = String(item.image ?? "").trim();
+            if (oldImageUrl) {
+                await FileUploadApi.deleteFile(oldImageUrl);
+            }
+
+            if (item.imagePreviewUrl?.startsWith("blob:")) {
+                URL.revokeObjectURL(item.imagePreviewUrl);
+            }
+
+            const response = await FileUploadApi.upload(file);
+            const uploadedUrl = String(response.url ?? "").trim();
+
+            if (!uploadedUrl) {
+                throw new Error("Upload ảnh phân loại thất bại.");
+            }
+
+            onImageChange({ image: uploadedUrl, imageDeleted: false, imageFile: undefined, imagePreviewUrl: undefined });
         } catch {
-            // ignore
-            toast.error("Upload ảnh thất bại");
+            toast.error("Không thể cập nhật ảnh phân loại. Vui lòng thử lại.");
         } finally {
-            setUploading(false);
+            setIsImageLoading(false);
         }
     }
 
+    async function clearImage() {
+        setIsImageLoading(true);
+
+        try {
+            const oldImageUrl = String(item.image ?? "").trim();
+            if (oldImageUrl) {
+                await FileUploadApi.deleteFile(oldImageUrl);
+            }
+
+            if (item.imagePreviewUrl?.startsWith("blob:")) {
+                URL.revokeObjectURL(item.imagePreviewUrl);
+            }
+
+            onImageChange({ image: "", imageDeleted: true, imageFile: undefined, imagePreviewUrl: undefined });
+        } catch {
+            toast.error("Không thể xoá ảnh phân loại. Vui lòng thử lại.");
+        } finally {
+            setIsImageLoading(false);
+        }
+    }
+
+    const displayImage = item.imagePreviewUrl || item.image;
+
     return (
         <div className="group relative flex w-24 shrink-0 flex-col overflow-hidden rounded-lg border bg-background shadow-sm transition-shadow hover:shadow-md">
-            <div className="relative flex h-14 items-center justify-center bg-muted/40 cursor-pointer" onClick={() => fileRef.current?.click()} title="Click để chọn ảnh">
-                {image ? (
+            <div className="relative flex h-14 items-center justify-center bg-muted/40 cursor-pointer" onClick={() => !isImageLoading && fileRef.current?.click()} title="Click để chọn ảnh">
+                {displayImage ? (
                     <img
-                        src={image}
-                        alt={value}
+                        src={displayImage}
+                        alt={item.value}
                         className="h-full w-full object-cover"
                         onError={(e) => {
                             (e.currentTarget as HTMLImageElement).style.display = "none";
@@ -141,14 +194,33 @@ function AttributeValueChip({ value, image, onValueChange, onImageChange, onRemo
                 )}
 
                 <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
-                    {uploading ? <Loader2 className="h-4 w-4 animate-spin text-white" /> : <Upload className="h-4 w-4 text-white" />}
+                    <Upload className="h-4 w-4 text-white" />
                 </div>
+                {isImageLoading ? (
+                    <div className="absolute inset-0 flex items-center justify-center bg-background/70">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                    </div>
+                ) : null}
+                {displayImage ? (
+                    <button
+                        type="button"
+                        onClick={(event) => {
+                            event.stopPropagation();
+                            void clearImage();
+                        }}
+                        disabled={isImageLoading}
+                        className="absolute left-0.5 top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-background/90 text-muted-foreground opacity-0 shadow-sm transition-opacity group-hover:opacity-100 hover:bg-red-50 hover:text-red-500"
+                        title="Xoá ảnh"
+                    >
+                        <Trash2 className="h-3 w-3" />
+                    </button>
+                ) : null}
                 <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => void handleFile(e.target.files?.[0])} />
             </div>
 
             <div className="flex-1 px-1.5 py-1.5">
                 <input
-                    value={value}
+                    value={item.value}
                     onChange={(e) => onValueChange(e.target.value)}
                     placeholder="Tên..."
                     className="w-full rounded border border-transparent bg-transparent px-1 py-0.5 text-center text-xs font-medium outline-none transition-colors placeholder:text-muted-foreground/50 focus:border-orange-300 focus:bg-orange-50"
@@ -186,6 +258,7 @@ export function ProductFormPanel({
     onVariantsChange,
     onCancel,
     onSubmit,
+    onUploadDescriptionImage,
 }: ProductFormPanelProps) {
     const [bulkPrice, setBulkPrice] = useState("");
     const [bulkWeight, setBulkWeight] = useState("");
@@ -202,7 +275,7 @@ export function ProductFormPanel({
             {
                 key: createKey(),
                 name: "",
-                values: [{ key: createKey(), value: "", image: "" }],
+                values: [{ key: createKey(), value: "", image: "", imageDeleted: false }],
             },
         ]);
     }
@@ -221,20 +294,24 @@ export function ProductFormPanel({
                 attribute.key === attributeKey
                     ? {
                           ...attribute,
-                          values: [...attribute.values, { key: createKey(), value: "", image: "" }],
+                          values: [...attribute.values, { key: createKey(), value: "", image: "", imageDeleted: false }],
                       }
                     : attribute,
             ),
         );
     }
 
-    function updateAttributeValue(attributeKey: string, valueKey: string, field: "value" | "image", value: string) {
+    function updateAttributeValue(
+        attributeKey: string,
+        valueKey: string,
+        patch: Partial<Pick<ProductAttributeValueInput, "value" | "image" | "imageFile" | "imagePreviewUrl">>,
+    ) {
         onAttributesChange(
             form.attributes.map((attribute) =>
                 attribute.key === attributeKey
                     ? {
                           ...attribute,
-                          values: attribute.values.map((item) => (item.key === valueKey ? { ...item, [field]: value } : item)),
+                          values: attribute.values.map((item) => (item.key === valueKey ? { ...item, ...patch } : item)),
                       }
                     : attribute,
             ),
@@ -365,12 +442,11 @@ export function ProductFormPanel({
 
                             <div className="mt-3 space-y-2">
                                 <Label htmlFor="product-description">Mô tả</Label>
-                                <textarea
-                                    id="product-description"
+                                <RichTextEditor
                                     value={form.description}
-                                    onChange={(event) => onChange("description", event.target.value)}
-                                    placeholder="Mô tả ngắn gọn về sản phẩm"
-                                    className="min-h-28 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs outline-none transition-[color,box-shadow] placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                                    onChange={(html) => onChange("description", html)}
+                                    onUploadImage={onUploadDescriptionImage}
+                                    placeholder="Mô tả chi tiết sản phẩm. Có thể chèn ảnh, căn lề, in đậm, danh sách..."
                                 />
                             </div>
 
@@ -485,10 +561,9 @@ export function ProductFormPanel({
                                                 {attribute.values.map((item) => (
                                                     <AttributeValueChip
                                                         key={item.key}
-                                                        value={item.value}
-                                                        image={item.image}
-                                                        onValueChange={(v) => updateAttributeValue(attribute.key, item.key, "value", v)}
-                                                        onImageChange={(url) => updateAttributeValue(attribute.key, item.key, "image", url)}
+                                                        item={item}
+                                                        onValueChange={(v) => updateAttributeValue(attribute.key, item.key, { value: v })}
+                                                        onImageChange={(payload) => updateAttributeValue(attribute.key, item.key, payload)}
                                                         onRemove={() => removeAttributeValue(attribute.key, item.key)}
                                                     />
                                                 ))}
@@ -497,7 +572,7 @@ export function ProductFormPanel({
                                                 <button
                                                     type="button"
                                                     onClick={() => addAttributeValue(attribute.key)}
-                                                    className="flex h-[88px] w-24 shrink-0 flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-muted-foreground/30 text-xs text-muted-foreground transition-colors hover:border-orange-400 hover:bg-orange-50 hover:text-orange-600"
+                                                    className="flex h-22 w-24 shrink-0 flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-muted-foreground/30 text-xs text-muted-foreground transition-colors hover:border-orange-400 hover:bg-orange-50 hover:text-orange-600"
                                                 >
                                                     <Plus className="h-5 w-5" />
                                                     Thêm giá trị
@@ -550,6 +625,7 @@ export function ProductFormPanel({
                                                         <th className="px-3 py-2 text-left font-medium">Thuộc tính biến thể</th>
                                                         <th className="px-3 py-2 text-left font-medium">SKU</th>
                                                         <th className="px-3 py-2 text-left font-medium">Giá</th>
+                                                        <th className="px-3 py-2 text-left font-medium">Số lượng tồn</th>
                                                         <th className="px-3 py-2 text-left font-medium">Nặng (g)</th>
                                                         <th className="px-3 py-2 text-left font-medium">Dài</th>
                                                         <th className="px-3 py-2 text-left font-medium">Rộng</th>
@@ -584,6 +660,9 @@ export function ProductFormPanel({
                                                             </td>
                                                             <td className="px-3 py-2">
                                                                 <Input type="number" min="0" value={variant.price} onChange={(event) => updateVariantField(variant.key, "price", event.target.value)} placeholder="329000" />
+                                                            </td>
+                                                            <td className="px-3 py-2">
+                                                                <Input type="number" min="0" value={variant.quantity || "0"} readOnly disabled title="Số lượng tồn kho hiện tại của biến thể" />
                                                             </td>
                                                             <td className="px-3 py-2">
                                                                 <Input type="number" min="0" step="1" value={variant.weight} onChange={(event) => updateVariantField(variant.key, "weight", event.target.value)} placeholder="350" />

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\Status;
 use App\Http\Requests\Supplier\SupplierCreationRequest;
+use App\Http\Requests\Supplier\SupplierUpdateRequest;
 use App\Http\Service\SupplierService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -41,10 +42,9 @@ class SupplierController extends Controller
         return response()->json($supplier);
     }
 
-    public function update(Request $request, $id): JsonResponse
+    public function update(SupplierUpdateRequest $request, $id): JsonResponse
     {
-        // Bạn có thể tạo SupplierUpdateRequest nếu cần validate phức tạp hơn
-        $supplier = $this->supplierService->update($id, $request->all());
+        $supplier = $this->supplierService->update($id, $request->validated());
         return response()->json([
             'message' => 'Cập nhật thành công',
             'data' => $supplier
@@ -53,8 +53,8 @@ class SupplierController extends Controller
 
     public function destroy($id): JsonResponse
     {
-        // Chuyển sang DISABLED (Xóa mềm bằng trạng thái)
-        $this->supplierService->update($id, ['status' => Status::DISABLED]);
-        return response()->json(['message' => 'Đã vô hiệu hóa nhà cung cấp']);
+        // Xóa mềm: chuyển sang INACTIVE để vẫn có thể khôi phục lại.
+        $this->supplierService->update($id, ['status' => Status::INACTIVE]);
+        return response()->json(['message' => 'Đã tạm ngừng nhà cung cấp']);
     }
 }

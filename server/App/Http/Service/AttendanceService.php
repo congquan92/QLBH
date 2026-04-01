@@ -26,6 +26,8 @@ class AttendanceService
         $attendance = Attendance::where('user_id', $user->id)
             ->whereDate('date', $today)
             ->whereNull('check_out')
+            ->whereNotNull('check_in')
+            ->orderByDesc('check_in')
             ->first();
 
         // --- TRƯỜNG HỢP 1: CHECK-IN ---
@@ -68,15 +70,20 @@ class AttendanceService
         }
 
         // --- TRƯỜNG HỢP 2: CHECK-OUT ---
-        $checkIn = Carbon::parse($attendance->check_in);
+        $checkIn = $attendance->check_in instanceof Carbon ? $attendance->check_in->copy() : Carbon::parse($attendance->check_in);
+        $minutesSinceCheckIn = (int) $checkIn->diffInMinutes($now, false);
+
+        if ($minutesSinceCheckIn < 0) {
+            throw new Exception("Thời gian check-in không hợp lệ. Vui lòng kiểm tra giờ hệ thống và thử lại.");
+        }
         
         // Ngăn chặn check-out quá sớm (Ví dụ: bấm nhầm ngay sau khi check-in)
-        if ($now->diffInMinutes($checkIn) < 5) {
-            throw new Exception("Bạn vừa mới Check-in, vui lòng đợi ít nhất 5 phút để Check-out.");
+        if ($minutesSinceCheckIn < 3) {
+            throw new Exception("Bạn vừa mới Check-in, vui lòng đợi ít nhất 3 phút để Check-out.");
         }
 
         // Tính tổng giờ làm việc (Làm tròn 2 chữ số thập phân)
-        $totalHours = round($checkIn->diffInMinutes($now) / 60, 2);
+        $totalHours = round($minutesSinceCheckIn / 60, 2);
         
         // Kiểm tra ngày lễ
         $isHoliday = Holiday::where('holiday_date', $today)->exists();

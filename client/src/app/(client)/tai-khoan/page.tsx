@@ -1,10 +1,15 @@
 "use client";
 
 import { OrderApi } from "@/api/order.api";
+import { OtpApi } from "@/api/otp.api";
+import { PaymentApi } from "@/api/payment.api";
 import { UserApi } from "@/api/user.api";
+import { FileUploadApi } from "@/api/admin/file-upload.api";
 import { AccountSection } from "@/app/(client)/tai-khoan/_components/account-sidebar";
 import { AddressesSection } from "@/app/(client)/tai-khoan/_components/addresses-section";
 import { OrdersSection } from "@/app/(client)/tai-khoan/_components/orders-section";
+import { OrderHistorySection } from "@/app/(client)/tai-khoan/_components/order-history-section";
+import { ReviewCreateModal } from "@/app/(client)/tai-khoan/_components/review-create-modal";
 import { SecuritySection } from "@/app/(client)/tai-khoan/_components/security-section";
 import { UserRouteGate } from "@/components/feature/RouteUserGate";
 import { Button } from "@/components/ui/button";
@@ -16,17 +21,33 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ProfileSection } from "./_components/profile-section";
 
 import { ApiResponse, PageResponse } from "@/types/api";
-import { OrderSummary } from "@/types/order";
+import { OrderItem, OrderSummary } from "@/types/order";
 import { UserAddress, UserProfile } from "@/types/user";
 import {
+  ClipboardCheck,
   LogOut,
   MapPinHouse,
   PackageSearch,
   ShieldCheck,
   UserRound,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+
+function normalizeBaseUrl(url: string) {
+  return url.endsWith("/") ? url.slice(0, -1) : url;
+}
+
+const ORDER_UPDATE_STORAGE_KEY = "qlbh:orders-updated-at";
+
+type FirebaseOrderSnapshot = Record<
+  string,
+  {
+    order_id?: number;
+    status?: string;
+    payment_status?: string;
+  }
+>;
 
 type ProfileFormState = {
   fullName: string;
@@ -107,6 +128,7 @@ function isAccountSection(value: string): value is AccountSection {
   return (
     value === "profile" ||
     value === "orders" ||
+    value === "order-history" ||
     value === "addresses" ||
     value === "security"
   );
@@ -120,16 +142,34 @@ function AccountPageContent() {
   const [activeSection, setActiveSection] = useState<AccountSection>("profile");
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [orders, setOrders] = useState<OrderSummary[]>([]);
+  const [orderHistory, setOrderHistory] = useState<OrderSummary[]>([]);
   const [addresses, setAddresses] = useState<UserAddress[]>([]);
   const [orderDetails, setOrderDetails] = useState<
     Record<number, OrderSummary>
   >({});
+  const [historyDetails, setHistoryDetails] = useState<
+    Record<number, OrderSummary>
+  >({});
   const [expandedOrderId, setExpandedOrderId] = useState<number | null>(null);
+  const [expandedHistoryId, setExpandedHistoryId] = useState<number | null>(null);
   const [loadingOrderId, setLoadingOrderId] = useState<number | null>(null);
+  const [loadingHistoryId, setLoadingHistoryId] = useState<number | null>(null);
+  const [retryingOrderId, setRetryingOrderId] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [isSavingAddress, setIsSavingAddress] = useState(false);
   const [isSavingPassword, setIsSavingPassword] = useState(false);
+  const [confirmingOrderId, setConfirmingOrderId] = useState<number | null>(null);
+  const [reviewModalOpen, setReviewModalOpen] = useState(false);
+  const [selectedReviewItem, setSelectedReviewItem] = useState<OrderItem | null>(null);
+  const [verifyEmailOtp, setVerifyEmailOtp] = useState("");
+  const [isSendingVerifyOtp, setIsSendingVerifyOtp] = useState(false);
+  const [isVerifyingEmail, setIsVerifyingEmail] = useState(false);
+  const [newEmail, setNewEmail] = useState("");
+  const [changeEmailOtp, setChangeEmailOtp] = useState("");
+  const [isSendingChangeEmailOtp, setIsSendingChangeEmailOtp] = useState(false);
+  const [isChangingEmail, setIsChangingEmail] = useState(false);
   const [profileForm, setProfileForm] = useState<ProfileFormState>({
     fullName: "",
     gender: "OTHER",
@@ -143,6 +183,7 @@ function AccountPageContent() {
     password: "",
     confirmPassword: "",
   });
+  const ordersRefreshTimeoutRef = useRef<number | null>(null);
   const {
     provinces,
     districts,
@@ -160,7 +201,7 @@ function AccountPageContent() {
       ApiResponse<PageResponse<UserAddress>>,
     ] = await Promise.all([
       UserApi.getMyInfo(),
-      OrderApi.getMyOrders({ page: 1, size: 10, sort: "id:desc" }),
+      OrderApi.getMyOrders({ page: 1, size: 50, sort: "id:desc", deliveryStatus: "PENDING,CONFIRMED,PACKED,SHIPPED,CANCELLED,INACTIVE" }),
       UserApi.getMyAddresses({ page: 1, size: 20, sort: "id:desc" }),
     ]);
 
@@ -195,13 +236,76 @@ function AccountPageContent() {
     setIsLoading(false);
   }, [session?.fullName, session?.phone]);
 
+  const loadAddresses = useCallback(async () => {
+    const addressesResponse = await UserApi.getMyAddresses({
+      page: 1,
+      size: 20,
+      sort: "id:desc",
+    });
+    setAddresses(addressesResponse.data.data);
+  }, []);
+
+  const loadOrderHistory = useCallback(async () => {
+    const res = await OrderApi.getMyOrders({
+      page: 1,
+      size: 50,
+      sort: "id:desc",
+      deliveryStatus: "DELIVERED,COMPLETED",
+    });
+    setOrderHistory(res.data.data);
+  }, []);
+
+  const refreshOrderLists = useCallback(async () => {
+    const [ordersResponse, historyResponse] = await Promise.all([
+      OrderApi.getMyOrders({ page: 1, size: 50, sort: "id:desc", deliveryStatus: "PENDING,CONFIRMED,PACKED,SHIPPED,CANCELLED,INACTIVE" }),
+      OrderApi.getMyOrders({ page: 1, size: 50, sort: "id:desc", deliveryStatus: "DELIVERED,COMPLETED" }),
+    ]);
+
+    setOrders(ordersResponse.data.data);
+    setOrderHistory(historyResponse.data.data);
+  }, []);
+
+  const scheduleRefreshOrderLists = useCallback(() => {
+    if (ordersRefreshTimeoutRef.current !== null) {
+      window.clearTimeout(ordersRefreshTimeoutRef.current);
+    }
+
+    ordersRefreshTimeoutRef.current = window.setTimeout(() => {
+      void refreshOrderLists();
+    }, 250);
+  }, [refreshOrderLists]);
+
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
       void loadAccountData();
+      void loadOrderHistory();
     }, 0);
 
     return () => window.clearTimeout(timeoutId);
-  }, [loadAccountData]);
+  }, [loadAccountData, loadOrderHistory]);
+
+  useEffect(() => {
+    const onOrderCreated = () => {
+      scheduleRefreshOrderLists();
+    };
+
+    const onStorageUpdated = (event: StorageEvent) => {
+      if (event.key === ORDER_UPDATE_STORAGE_KEY && event.newValue) {
+        scheduleRefreshOrderLists();
+      }
+    };
+
+    window.addEventListener("qlbh:order-created", onOrderCreated);
+    window.addEventListener("storage", onStorageUpdated);
+
+    return () => {
+      window.removeEventListener("qlbh:order-created", onOrderCreated);
+      window.removeEventListener("storage", onStorageUpdated);
+      if (ordersRefreshTimeoutRef.current !== null) {
+        window.clearTimeout(ordersRefreshTimeoutRef.current);
+      }
+    };
+  }, [scheduleRefreshOrderLists]);
 
   useEffect(() => {
     const tab = searchParams.get("tab");
@@ -214,6 +318,7 @@ function AccountPageContent() {
     () => [
       { id: "profile" as const, label: "Thông tin cá nhân", icon: UserRound },
       { id: "orders" as const, label: "Đơn hàng", icon: PackageSearch },
+      { id: "order-history" as const, label: "Lịch sử đơn hàng", icon: ClipboardCheck },
       { id: "addresses" as const, label: "Địa chỉ", icon: MapPinHouse },
       { id: "security" as const, label: "Bảo mật", icon: ShieldCheck },
     ],
@@ -232,6 +337,210 @@ function AccountPageContent() {
     await UserAuthStore.actions.refreshProfile();
     await loadAccountData();
     toast.success(response.message || "Cập nhật thông tin cá nhân thành công.");
+  };
+
+  const handleAvatarFileUpload = async (file: File) => {
+    setIsUploadingAvatar(true);
+    try {
+      const uploadRes = await FileUploadApi.upload(file);
+      const avatarUrl = String(uploadRes.url || "");
+      if (!avatarUrl) {
+        toast.error("Upload ảnh thất bại.");
+        return;
+      }
+
+      await UserApi.updateProfile({ avatar: avatarUrl });
+      setProfileForm((current) => ({ ...current, avatar: avatarUrl }));
+      await loadAccountData();
+      toast.success("Đã cập nhật ảnh đại diện.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Không thể upload ảnh đại diện.";
+      toast.error(message);
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  };
+
+  const handleSendVerifyEmailOtp = useCallback(async () => {
+    if (!profile?.id) {
+      toast.error("Không tìm thấy tài khoản hiện tại.");
+      return;
+    }
+
+    setIsSendingVerifyOtp(true);
+    try {
+      await OtpApi.send({ userId: profile.id, otpType: "VERIFICATION", isEmail: true });
+      toast.success("Đã gửi OTP xác thực email.");
+    } catch {
+      toast.error("Không thể gửi OTP xác thực email.");
+    } finally {
+      setIsSendingVerifyOtp(false);
+    }
+  }, [profile?.id]);
+
+  useEffect(() => {
+    const base = normalizeBaseUrl(process.env.NEXT_PUBLIC_FIREBASE_DB_URL ?? "");
+    if (!base || orders.length === 0) {
+      return;
+    }
+
+    const streamUrl = `${base}/orders.json`;
+    const source = new EventSource(streamUrl);
+
+    const mergeRealtimeStatus = (snapshot: FirebaseOrderSnapshot | null | undefined) => {
+      if (!snapshot || typeof snapshot !== "object") return;
+
+      const statusByOrderId = new Map<number, { status?: string; paymentStatus?: string }>();
+      for (const raw of Object.values(snapshot)) {
+        const orderId = Number(raw?.order_id ?? 0);
+        if (!orderId) continue;
+        statusByOrderId.set(orderId, {
+          status: typeof raw?.status === "string" ? raw.status : undefined,
+          paymentStatus: typeof raw?.payment_status === "string" ? raw.payment_status : undefined,
+        });
+      }
+
+      if (statusByOrderId.size === 0) return;
+
+      const applyStatus = (item: OrderSummary): OrderSummary => {
+        const realtime = statusByOrderId.get(item.id);
+        if (!realtime) return item;
+        return {
+          ...item,
+          orderStatus: realtime.status ?? item.orderStatus,
+          deliveryStatus: realtime.status ?? item.deliveryStatus,
+          paymentStatus: realtime.paymentStatus ?? item.paymentStatus,
+        };
+      };
+
+      setOrders((current) => current.map(applyStatus));
+      setOrderHistory((current) => current.map(applyStatus));
+      setOrderDetails((current) => {
+        const next = { ...current };
+        for (const [orderId, detail] of Object.entries(next)) {
+          next[Number(orderId)] = applyStatus(detail);
+        }
+        return next;
+      });
+      setHistoryDetails((current) => {
+        const next = { ...current };
+        for (const [orderId, detail] of Object.entries(next)) {
+          next[Number(orderId)] = applyStatus(detail);
+        }
+        return next;
+      });
+    };
+
+    source.addEventListener("put", (event) => {
+      try {
+        const payload = JSON.parse(event.data) as { path?: string; data?: unknown };
+        if (!payload || typeof payload !== "object") return;
+
+        if (payload.path === "/") {
+          mergeRealtimeStatus((payload.data ?? null) as FirebaseOrderSnapshot | null);
+          return;
+        }
+
+        const path = String(payload.path ?? "");
+        const match = path.match(/^\/order_(\d+)$/);
+        if (!match || !payload.data || typeof payload.data !== "object") return;
+
+        const orderId = Number(match[1]);
+        if (!orderId) return;
+
+        scheduleRefreshOrderLists();
+
+        mergeRealtimeStatus({
+          [`order_${orderId}`]: {
+            ...(payload.data as Record<string, unknown>),
+            order_id: orderId,
+          },
+        });
+      } catch {
+        // Ignore malformed stream payload.
+      }
+    });
+
+    source.onerror = () => {
+      source.close();
+    };
+
+    return () => {
+      source.close();
+    };
+  }, [orders.length, scheduleRefreshOrderLists]);
+
+  const handleVerifyEmail = async () => {
+    if (!profile?.id) {
+      toast.error("Không tìm thấy tài khoản hiện tại.");
+      return;
+    }
+
+    if (!verifyEmailOtp.trim()) {
+      toast.error("Vui lòng nhập OTP xác thực email.");
+      return;
+    }
+
+    setIsVerifyingEmail(true);
+    try {
+      await UserApi.verifyAccount(profile.id, {
+        otp: verifyEmailOtp.trim(),
+        isEmail: true,
+      });
+      setVerifyEmailOtp("");
+      await loadAccountData();
+      toast.success("Xác thực email thành công.");
+    } catch {
+      toast.error("Xác thực email thất bại.");
+    } finally {
+      setIsVerifyingEmail(false);
+    }
+  };
+
+  const handleSendChangeEmailOtp = async () => {
+    if (!profile?.id) {
+      toast.error("Không tìm thấy tài khoản hiện tại.");
+      return;
+    }
+
+    if (!newEmail.trim()) {
+      toast.error("Vui lòng nhập email mới trước khi gửi OTP.");
+      return;
+    }
+
+    setIsSendingChangeEmailOtp(true);
+    try {
+      await OtpApi.send({ userId: profile.id, otpType: "EMAIL_RESET", isEmail: true });
+      toast.success("Đã gửi OTP đổi email vào email hiện tại.");
+    } catch {
+      toast.error("Không thể gửi OTP đổi email.");
+    } finally {
+      setIsSendingChangeEmailOtp(false);
+    }
+  };
+
+  const handleChangeEmail = async () => {
+    if (!newEmail.trim() || !changeEmailOtp.trim()) {
+      toast.error("Vui lòng nhập email mới và OTP đổi email.");
+      return;
+    }
+
+    setIsChangingEmail(true);
+    try {
+      await UserApi.changeEmail({
+        newEmail: newEmail.trim(),
+        otp: changeEmailOtp.trim(),
+      });
+
+      setChangeEmailOtp("");
+      setVerifyEmailOtp("");
+      await loadAccountData();
+      toast.success("Đã đổi email. Vui lòng nhập OTP xác thực gửi tới email mới.");
+    } catch {
+      toast.error("Đổi email thất bại.");
+    } finally {
+      setIsChangingEmail(false);
+    }
   };
 
   const handleAddAddress = async () => {
@@ -265,42 +574,70 @@ function AccountPageContent() {
     }
 
     setIsSavingAddress(true);
-    const response = await UserApi.addAddress({
-      ...addressForm,
-      province_id: provinceId,
-      district_id: districtId,
-      ward_id: wardId,
-    });
-    setIsSavingAddress(false);
+    try {
+      const response = await UserApi.addAddress({
+        ...addressForm,
+        province_id: provinceId,
+        district_id: districtId,
+        ward_id: wardId,
+      });
 
-    if (!response || response.status >= 400) {
-      toast.error(response?.message || "Không thể thêm địa chỉ.");
-      return;
+      if (!response || response.status >= 400) {
+        toast.error(response?.message || "Không thể thêm địa chỉ.");
+        return;
+      }
+
+      setAddressForm(EMPTY_ADDRESS_FORM);
+      await loadAddresses();
+      toast.success("Đã thêm địa chỉ mới.");
+    } catch (error: unknown) {
+      const axiosErr = error as { response?: { data?: { message?: string; details?: string[] } } };
+      const msg =
+        axiosErr?.response?.data?.message ||
+        axiosErr?.response?.data?.details?.[0] ||
+        "Không thể thêm địa chỉ.";
+      toast.error(msg);
+    } finally {
+      setIsSavingAddress(false);
     }
-
-    setAddressForm(EMPTY_ADDRESS_FORM);
-    await loadAccountData();
-    toast.success("Đã thêm địa chỉ mới.");
   };
 
   const handleSetDefault = async (addressId: number) => {
-    const response = await UserApi.setDefaultAddress(addressId);
-    if (!response || response.status >= 400) {
-      toast.error(response?.message || "Không thể đặt địa chỉ mặc định.");
-      return;
+    try {
+      const response = await UserApi.setDefaultAddress(addressId);
+      if (!response || response.status >= 400) {
+        toast.error(response?.message || "Không thể đặt địa chỉ mặc định.");
+        return;
+      }
+      await loadAddresses();
+      toast.success("Đã cập nhật địa chỉ mặc định.");
+    } catch (error: unknown) {
+      const axiosErr = error as { response?: { data?: { message?: string; details?: string[] } } };
+      const msg =
+        axiosErr?.response?.data?.message ||
+        axiosErr?.response?.data?.details?.[0] ||
+        "Không thể đặt địa chỉ mặc định.";
+      toast.error(msg);
     }
-    await loadAccountData();
-    toast.success("Đã cập nhật địa chỉ mặc định.");
   };
 
   const handleDeleteAddress = async (addressId: number) => {
-    const response = await UserApi.deleteAddress(addressId);
-    if (!response || response.status >= 400) {
-      toast.error(response?.message || "Không thể xóa địa chỉ.");
-      return;
+    try {
+      const response = await UserApi.deleteAddress(addressId);
+      if (!response || response.status >= 400) {
+        toast.error(response?.message || "Không thể xóa địa chỉ.");
+        return;
+      }
+      await loadAddresses();
+      toast.success("Đã xóa địa chỉ.");
+    } catch (error: unknown) {
+      const axiosErr = error as { response?: { data?: { message?: string; details?: string[] } } };
+      const msg =
+        axiosErr?.response?.data?.message ||
+        axiosErr?.response?.data?.details?.[0] ||
+        "Không thể xóa địa chỉ.";
+      toast.error(msg);
     }
-    await loadAccountData();
-    toast.success("Đã xóa địa chỉ.");
   };
 
   const handleChangePassword = async () => {
@@ -345,6 +682,102 @@ function AccountPageContent() {
       toast.error("Không thể tải chi tiết đơn hàng.");
     } finally {
       setLoadingOrderId(null);
+    }
+  };
+
+  const handleToggleHistoryDetail = async (orderId: number) => {
+    if (expandedHistoryId === orderId) {
+      setExpandedHistoryId(null);
+      return;
+    }
+
+    setExpandedHistoryId(orderId);
+
+    if (historyDetails[orderId]) {
+      return;
+    }
+
+    setLoadingHistoryId(orderId);
+    try {
+      const detailResponse = await OrderApi.getMyOrderDetail(orderId);
+      setHistoryDetails((current) => ({
+        ...current,
+        [orderId]: (detailResponse.data ?? {}) as OrderSummary,
+      }));
+    } catch {
+      toast.error("Không thể tải chi tiết đơn hàng.");
+    } finally {
+      setLoadingHistoryId(null);
+    }
+  };
+
+  const handleRetryPayment = async (orderId: number) => {
+    setRetryingOrderId(orderId);
+    try {
+      const returnUrl = `${window.location.origin}/thanh-toan/ket-qua`;
+      const response = await PaymentApi.addPayment(orderId, {
+        paymentType: "BANK_TRANSFER",
+        returnUrl,
+      });
+
+      const payload = response.data;
+      const paymentUrl =
+        typeof payload === "string"
+          ? payload
+          : typeof payload?.paymentUrl === "string"
+            ? payload.paymentUrl
+            : "";
+
+      if (!paymentUrl) {
+        toast.error("Không lấy được liên kết thanh toán. Vui lòng thử lại sau.");
+        return;
+      }
+
+      window.location.assign(paymentUrl);
+    } catch {
+      toast.error("Không thể tạo lại liên kết thanh toán.");
+    } finally {
+      setRetryingOrderId(null);
+    }
+  };
+
+  const handleConfirmOrder = async (orderId: number) => {
+    setConfirmingOrderId(orderId);
+    try {
+      await OrderApi.complete(orderId);
+      toast.success("Đã xác nhận nhận hàng thành công.");
+      await refreshOrderLists();
+      setHistoryDetails((current) => {
+        const next = { ...current };
+        if (next[orderId]) {
+          next[orderId] = { ...next[orderId], isConfirmed: true };
+        }
+        return next;
+      });
+    } catch {
+      toast.error("Không thể xác nhận đơn hàng.");
+    } finally {
+      setConfirmingOrderId(null);
+    }
+  };
+
+  const handleOpenReviewModal = (_order: OrderSummary, item: OrderItem) => {
+    setSelectedReviewItem(item);
+    setReviewModalOpen(true);
+  };
+
+  const handleReviewCreated = async () => {
+    await refreshOrderLists();
+    if (expandedHistoryId) {
+      try {
+        const detailResponse = await OrderApi.getMyOrderDetail(expandedHistoryId);
+        setHistoryDetails((current) => ({
+          ...current,
+          [expandedHistoryId]: (detailResponse.data ?? {}) as OrderSummary,
+        }));
+      } catch {
+        // Ignore detail refresh failure after successful review submission.
+      }
     }
   };
 
@@ -448,6 +881,22 @@ function AccountPageContent() {
             }
             isSaving={isSavingProfile}
             onSave={() => void handleProfileSave()}
+            verifyEmailOtp={verifyEmailOtp}
+            onVerifyEmailOtpChange={setVerifyEmailOtp}
+            isSendingVerifyOtp={isSendingVerifyOtp}
+            isVerifyingEmail={isVerifyingEmail}
+            onSendVerifyEmailOtp={() => void handleSendVerifyEmailOtp()}
+            onVerifyEmail={() => void handleVerifyEmail()}
+            newEmail={newEmail}
+            onNewEmailChange={setNewEmail}
+            changeEmailOtp={changeEmailOtp}
+            onChangeEmailOtpChange={setChangeEmailOtp}
+            isSendingChangeEmailOtp={isSendingChangeEmailOtp}
+            isChangingEmail={isChangingEmail}
+            onSendChangeEmailOtp={() => void handleSendChangeEmailOtp()}
+            onChangeEmail={() => void handleChangeEmail()}
+            isUploadingAvatar={isUploadingAvatar}
+            onAvatarFileSelected={(file) => void handleAvatarFileUpload(file)}
           />
         </TabsContent>
 
@@ -457,9 +906,28 @@ function AccountPageContent() {
             orderDetails={orderDetails}
             expandedOrderId={expandedOrderId}
             loadingOrderId={loadingOrderId}
+            retryingOrderId={retryingOrderId}
             onToggleOrderDetail={(orderId) =>
               void handleToggleOrderDetail(orderId)
             }
+            onRetryPayment={(orderId) => void handleRetryPayment(orderId)}
+          />
+        </TabsContent>
+
+        <TabsContent value="order-history" className="w-full space-y-8">
+          <OrderHistorySection
+            orders={orderHistory}
+            orderDetails={historyDetails}
+            expandedOrderId={expandedHistoryId}
+            loadingOrderId={loadingHistoryId}
+            retryingOrderId={retryingOrderId}
+            onToggleOrderDetail={(orderId) =>
+              void handleToggleHistoryDetail(orderId)
+            }
+            onRetryPayment={(orderId) => void handleRetryPayment(orderId)}
+            onConfirmOrder={(orderId) => void handleConfirmOrder(orderId)}
+            onOpenReviewModal={handleOpenReviewModal}
+            confirmingOrderId={confirmingOrderId}
           />
         </TabsContent>
 
@@ -494,6 +962,16 @@ function AccountPageContent() {
           />
         </TabsContent>
       </Tabs>
+
+      <ReviewCreateModal
+        open={reviewModalOpen}
+        orderItem={selectedReviewItem}
+        onClose={() => {
+          setReviewModalOpen(false);
+          setSelectedReviewItem(null);
+        }}
+        onSuccess={() => void handleReviewCreated()}
+      />
     </div>
   );
 }

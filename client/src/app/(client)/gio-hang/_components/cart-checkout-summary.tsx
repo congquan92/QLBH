@@ -3,7 +3,9 @@ import { Button } from "@/components/ui/button";
 import { Helper } from "@/lib/helper";
 import { CartItem } from "@/types/cart";
 import { UserAddress } from "@/types/user";
-import { Loader2 } from "lucide-react";
+import { Voucher } from "@/types/voucher";
+import { Loader2, Tag, Truck, ChevronDown, ChevronUp, X } from "lucide-react";
+import { useState } from "react";
 import { NewAddressForm, getAddressValue } from "./cart-utils";
 
 interface CartCheckoutSummaryProps {
@@ -25,6 +27,13 @@ interface CartCheckoutSummaryProps {
   paymentType: "COD" | "BANK_TRANSFER";
   note: string;
   isPlacingOrder: boolean;
+  // Voucher
+  vouchers: Voucher[];
+  selectedVoucherId: number | null;
+  voucherDiscountAmount: number;
+  // Shipping
+  shippingFee: number | null;
+  isCalculatingShipping: boolean;
   onSelectAddress: (addressId: number) => void;
   onUseNewAddressChange: (value: boolean) => void;
   onNewAddressChange: (
@@ -32,7 +41,46 @@ interface CartCheckoutSummaryProps {
   ) => void;
   onPaymentTypeChange: (value: "COD" | "BANK_TRANSFER") => void;
   onNoteChange: (value: string) => void;
+  onSelectVoucher: (id: number | null) => void;
   onCheckout: () => void;
+}
+
+function VoucherBadge({ voucher }: { voucher: Voucher }) {
+  const discount =
+    voucher.type === "PERCENTAGE"
+      ? `Giảm ${voucher.discountValue}%`
+      : `Giảm ${Helper.formatPrice(String(voucher.discountValue ?? 0))}`;
+
+  const extra =
+    voucher.maxDiscountValue != null
+      ? ` (tối đa ${Helper.formatPrice(String(voucher.maxDiscountValue))})`
+      : "";
+
+  const minOrder =
+    voucher.minDiscountValue != null && Number(voucher.minDiscountValue) > 0
+      ? ` · Đơn từ ${Helper.formatPrice(String(voucher.minDiscountValue))}`
+      : "";
+
+  const remaining = Number(voucher.remaining_quantity ?? voucher.remainingQuantity ?? 0);
+  const usageLimit = Number(voucher.usageLimitPerUser ?? voucher.usage_limit_per_user ?? 0);
+  const usedByUser = Number(voucher.currentUserUsedCount ?? voucher.current_user_used_count ?? 0);
+  const usageText = usageLimit > 0 ? ` · Lượt dùng: ${usedByUser}/${usageLimit}` : "";
+  const remainingText = ` · Còn: ${Math.max(0, remaining)}`;
+
+  return (
+    <span className="text-xs text-gray-600">
+      {voucher.isShipping ? (
+        <Truck className="mr-1 inline-block size-3 text-blue-500" />
+      ) : (
+        <Tag className="mr-1 inline-block size-3 text-red-500" />
+      )}
+      {discount}
+      {extra}
+      {minOrder}
+      {usageText}
+      {remainingText}
+    </span>
+  );
 }
 
 export function CartCheckoutSummary({
@@ -54,13 +102,28 @@ export function CartCheckoutSummary({
   paymentType,
   note,
   isPlacingOrder,
+  vouchers,
+  selectedVoucherId,
+  voucherDiscountAmount,
+  shippingFee,
+  isCalculatingShipping,
   onSelectAddress,
   onUseNewAddressChange,
   onNewAddressChange,
   onPaymentTypeChange,
   onNoteChange,
+  onSelectVoucher,
   onCheckout,
 }: CartCheckoutSummaryProps) {
+  const [showVoucherList, setShowVoucherList] = useState(false);
+
+  const selectedVoucher = vouchers.find((v) => v.id === selectedVoucherId) ?? null;
+  const isShippingVoucherSelected = Boolean(selectedVoucher?.isShipping ?? selectedVoucher?.is_shipping ?? false);
+
+  // Tổng thanh toán = hàng + ship - voucher
+  const shippingFeeValue = shippingFee ?? 0;
+  const finalTotal = Math.max(0, selectedTotalAmount + shippingFeeValue - voucherDiscountAmount);
+
   return (
     <aside className="h-fit border border-gray-200 bg-gray-50 p-6 space-y-6">
       <h2 className="text-xl font-semibold text-gray-900">Tóm tắt đơn hàng</h2>
@@ -79,15 +142,49 @@ export function CartCheckoutSummary({
             {Helper.formatPrice(String(totalAmount))}
           </span>
         </div>
+
+        {/* Phí vận chuyển */}
+        <div className="flex items-center justify-between">
+          <span className="flex items-center gap-1">
+            <Truck className="size-3.5 text-gray-400" />
+            Phí vận chuyển (GHN)
+          </span>
+          <span className="font-medium text-gray-900">
+            {isCalculatingShipping ? (
+              <span className="flex items-center gap-1 text-gray-400">
+                <Loader2 className="size-3 animate-spin" />
+                Đang tính...
+              </span>
+            ) : shippingFee != null ? (
+              Helper.formatPrice(String(shippingFee))
+            ) : (
+              <span className="text-gray-400 italic">Chọn địa chỉ</span>
+            )}
+          </span>
+        </div>
+
+        {/* Giảm giá voucher */}
+        {voucherDiscountAmount > 0 && (
+          <div className="flex items-center justify-between text-green-700">
+            <span className="flex items-center gap-1">
+              <Tag className="size-3.5" />
+              {isShippingVoucherSelected ? "Giảm phí vận chuyển" : "Giảm voucher"}
+            </span>
+            <span className="font-medium">
+              − {Helper.formatPrice(String(voucherDiscountAmount))}
+            </span>
+          </div>
+        )}
       </div>
 
       <div className="border-t border-gray-200 pt-4">
         <p className="flex items-center justify-between text-lg font-bold text-gray-900">
           <span>Tổng thanh toán</span>
-          <span>{Helper.formatPrice(String(selectedTotalAmount))}</span>
+          <span>{Helper.formatPrice(String(finalTotal))}</span>
         </p>
       </div>
 
+      {/* ── Địa chỉ giao hàng ── */}
       <section className="space-y-3 border-t border-gray-200 pt-4">
         <h3 className="text-base font-semibold text-gray-900">
           Địa chỉ giao hàng
@@ -281,6 +378,96 @@ export function CartCheckoutSummary({
         )}
       </section>
 
+      {/* ── Voucher ── */}
+      <section className="space-y-3 border-t border-gray-200 pt-4">
+        <h3 className="text-base font-semibold text-gray-900 flex items-center gap-2">
+          <Tag className="size-4 text-red-500" />
+          Voucher giảm giá
+        </h3>
+
+        {/* Voucher đã chọn */}
+        {selectedVoucher ? (
+          <div className="flex items-center justify-between border border-green-500 bg-green-50 px-3 py-2 text-sm">
+            <div className="flex flex-col gap-0.5">
+              <span className="font-semibold text-green-800">
+                {selectedVoucher.description || `Voucher #${selectedVoucher.id}`}
+              </span>
+              <VoucherBadge voucher={selectedVoucher} />
+            </div>
+            <button
+              type="button"
+              onClick={() => onSelectVoucher(null)}
+              className="ml-2 text-gray-400 hover:text-red-500"
+              title="Bỏ chọn voucher"
+            >
+              <X className="size-4" />
+            </button>
+          </div>
+        ) : null}
+
+        {/* Nút toggle danh sách */}
+        {vouchers.length > 0 ? (
+          <button
+            type="button"
+            onClick={() => setShowVoucherList((prev) => !prev)}
+            className="flex w-full items-center justify-between border border-dashed border-red-300 bg-red-50 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-100"
+          >
+            <span>{selectedVoucher ? "Đổi voucher khác" : "Chọn voucher"}</span>
+            {showVoucherList ? (
+              <ChevronUp className="size-4" />
+            ) : (
+              <ChevronDown className="size-4" />
+            )}
+          </button>
+        ) : (
+          <p className="text-xs text-gray-400 italic">
+            Bạn không có voucher khả dụng cho đơn này.
+          </p>
+        )}
+
+        {/* Danh sách voucher */}
+        {showVoucherList && vouchers.length > 0 && (
+          <div className="max-h-64 space-y-2 overflow-y-auto border border-gray-200 bg-white p-2">
+            {vouchers.map((voucher) => {
+              const isSelected = voucher.id === selectedVoucherId;
+              return (
+                <label
+                  key={voucher.id}
+                  className={`flex cursor-pointer items-start gap-3 border p-3 text-sm transition-colors ${
+                    isSelected
+                      ? "border-red-500 bg-red-50"
+                      : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="voucher"
+                    className="mt-0.5 shrink-0"
+                    checked={isSelected}
+                    onChange={() => {
+                      onSelectVoucher(isSelected ? null : voucher.id);
+                      setShowVoucherList(false);
+                    }}
+                  />
+                  <div className="flex flex-col gap-1 min-w-0">
+                    <span className="font-semibold text-gray-900 truncate">
+                      {voucher.description || `Voucher #${voucher.id}`}
+                    </span>
+                    <VoucherBadge voucher={voucher} />
+                    {voucher.endDate && (
+                      <span className="text-[11px] text-gray-400">
+                        HSD: {new Date(voucher.endDate).toLocaleDateString("vi-VN")}
+                      </span>
+                    )}
+                  </div>
+                </label>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      {/* ── Hình thức chi trả ── */}
       <section className="space-y-3 border-t border-gray-200 pt-4">
         <h3 className="text-base font-semibold text-gray-900">
           Hình thức chi trả

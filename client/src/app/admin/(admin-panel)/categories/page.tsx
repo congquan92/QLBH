@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Helper } from "@/lib/helper";
 import type { Category, CategoryChild } from "@/types/navbar";
 import { Plus } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { CategoryDialog, emptyForm, type CategoryForm } from "./_components/category-dialog";
 import { CategoryTree } from "./_components/category-tree";
@@ -19,8 +19,24 @@ type DeleteTarget = {
     name: string;
 };
 
+function normalizeCategoryList(payload: unknown): Category[] {
+    if (Array.isArray(payload)) {
+        return payload as Category[];
+    }
+
+    if (payload && typeof payload === "object") {
+        const nested = (payload as { data?: unknown }).data;
+        if (Array.isArray(nested)) {
+            return nested as Category[];
+        }
+    }
+
+    return [];
+}
+
 export default function CategoriesPage() {
     const [categories, setCategories] = useState<Category[]>([]);
+    const [treeVersion, setTreeVersion] = useState(0);
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
 
@@ -29,22 +45,22 @@ export default function CategoriesPage() {
     const [form, setForm] = useState<CategoryForm>(emptyForm);
     const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
 
-    // ──────────────────────────────────────────────
-    async function fetchData() {
+    const fetchData = useCallback(async () => {
         setIsLoading(true);
         try {
             const response = await CategoryApi.getAdminCategories({ page: 1, size: 200 });
-            setCategories(response.data);
+            setCategories(normalizeCategoryList(response.data));
+            setTreeVersion((prev) => prev + 1);
         } catch (error) {
             toast.error(Helper.errorMessage(error));
         } finally {
             setIsLoading(false);
         }
-    }
+    }, []);
 
     useEffect(() => {
         void fetchData();
-    }, []);
+    }, [fetchData]);
 
     // ── Open dialog for create ──
     function openCreateDialog() {
@@ -144,7 +160,6 @@ export default function CategoriesPage() {
         }
     }
 
-
     // Nên ta so sánh trước/sau và chỉ gọi API cho những item đổi parent
     async function handleReorder(newCategories: Category[]) {
         // Xây map parentId hiện tại trên server (categories gốc chưa sửa)
@@ -189,11 +204,15 @@ export default function CategoriesPage() {
         }
     }
 
+    const categoryTreeKey = categories
+        .map((category) => {
+            const childKey = (category.childCategory ?? []).map((child) => `${child.id}:${child.status ?? ""}`).join(",");
+            return `${category.id}:${category.status ?? ""}:${childKey}`;
+        })
+        .join("|");
+
     return (
-        <AdminPageShell
-            title="Danh mục"
-            description="Quản lý cấu trúc danh mục và phân cấp sản phẩm"
-        >
+        <AdminPageShell title="Danh mục" description="Quản lý cấu trúc danh mục và phân cấp sản phẩm">
             {/* Top action bar */}
             <div className="flex items-center justify-end mb-4">
                 <Button onClick={openCreateDialog}>
@@ -204,6 +223,7 @@ export default function CategoriesPage() {
 
             {/* Category tree */}
             <CategoryTree
+                key={`${treeVersion}-${categoryTreeKey}`}
                 categories={categories}
                 isLoading={isLoading}
                 isSaving={isSaving}
@@ -214,15 +234,7 @@ export default function CategoriesPage() {
             />
 
             {/* Create / Edit Dialog */}
-            <CategoryDialog
-                open={dialogOpen}
-                onOpenChange={closeDialog}
-                form={form}
-                onFormChange={setForm}
-                categories={categories}
-                isSaving={isSaving}
-                onSubmit={() => void submitCategory()}
-            />
+            <CategoryDialog open={dialogOpen} onOpenChange={closeDialog} form={form} onFormChange={setForm} categories={categories} isSaving={isSaving} onSubmit={() => void submitCategory()} />
 
             {/* Delete Confirm Dialog */}
             <DeleteConfirmDialog
