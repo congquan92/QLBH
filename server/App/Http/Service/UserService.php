@@ -238,11 +238,17 @@ class UserService
         }
     }
 
-   public function getAllUserByEmail($email, ?bool $emailVerified = true)
+   public function getAllUserByEmail($email, ?bool $emailVerified = null, ?bool $hasUserRole = null)
 {
     // Chỉ lấy các cột cần thiết từ DB để nhẹ memory
     $query = User::where('email', $email)
     ->where('status', UserStatus::ACTIVE);
+
+    if ($hasUserRole === true) {
+        $query->whereRelation('role', 'name', 'USER');
+    } elseif ($hasUserRole === false) {
+        $query->whereRelation('role', 'name', '!=', 'USER');
+    }
 
     if ($emailVerified !== null) {
         $query->where('email_verified', $emailVerified);

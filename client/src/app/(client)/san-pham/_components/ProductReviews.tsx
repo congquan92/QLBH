@@ -1,11 +1,10 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Star, MessageSquare, UserCircle2, ChevronDown, Loader2 } from "lucide-react";
+import { Star, MessageSquare, UserCircle2, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import Image from "next/image";
 import { ReviewApi } from "@/api/review.api";
 import type { Review } from "@/types/review";
-import type { PageResponse } from "@/types/api";
 import { Helper2 } from "@/lib/helper2";
 
 // ────────────────────────────────────────────
@@ -34,6 +33,71 @@ function getUserAvatar(review: Review): string | null {
     return review.userResponse?.avatar ?? null;
 }
 
+function extractVariantSummary(variant: unknown): { color?: string; size?: string } {
+    if (!variant) return {};
+
+    const toObj = (value: unknown): Record<string, unknown> | null => {
+        if (!value) return null;
+        if (typeof value === "string") {
+            try {
+                const parsed = JSON.parse(value) as unknown;
+                if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+                    return parsed as Record<string, unknown>;
+                }
+            } catch {
+                return null;
+            }
+            return null;
+        }
+        if (typeof value === "object" && !Array.isArray(value)) {
+            return value as Record<string, unknown>;
+        }
+        return null;
+    };
+
+    const normalized = toObj(variant);
+    if (!normalized) {
+        return {};
+    }
+
+    const variantAttributes = Array.isArray(normalized.variantAttributes)
+        ? (normalized.variantAttributes as Array<Record<string, unknown>>)
+        : Array.isArray(variant)
+            ? (variant as Array<Record<string, unknown>>)
+            : [];
+
+    let color = "";
+    let size = "";
+
+    for (const attribute of variantAttributes) {
+        const name = String(attribute.attribute ?? attribute.name ?? "").toLowerCase();
+        const value = String(attribute.value ?? "");
+        if (!value) continue;
+
+        if (!color && (name.includes("mau") || name.includes("màu") || name.includes("color"))) {
+            color = value;
+            continue;
+        }
+
+        if (!size && (name.includes("kich") || name.includes("kích") || name.includes("size"))) {
+            size = value;
+        }
+    }
+
+    return {
+        color: color || undefined,
+        size: size || undefined,
+    };
+}
+
+function formatVariantSummary(variant: unknown): string {
+    const info = extractVariantSummary(variant);
+    const chunks: string[] = [];
+    if (info.color) chunks.push(`Màu sắc: ${info.color}`);
+    if (info.size) chunks.push(`Kích thước: ${info.size}`);
+    return chunks.join(" · ");
+}
+
 // ────────────────────────────────────────────
 // Sub-components
 // ────────────────────────────────────────────
@@ -54,12 +118,13 @@ function RatingBar({ star, count, total }: { star: number; count: number; total:
     );
 }
 
-function ReviewCard({ review }: { review: Review }) {
+function ReviewCard({ review, highlighted = false }: { review: Review; highlighted?: boolean }) {
     const avatar = getUserAvatar(review);
     const name = getUserName(review);
+    const variantSummary = formatVariantSummary(review.variant);
 
     return (
-        <div className="border border-gray-200 bg-white p-4 space-y-2">
+        <div className={`border p-4 space-y-2 ${highlighted ? "border-emerald-300 bg-emerald-50/50" : "border-gray-200 bg-white"}`}>
             {/* Header */}
             <div className="flex items-center gap-3">
                 {avatar ? (
@@ -79,13 +144,15 @@ function ReviewCard({ review }: { review: Review }) {
             </div>
 
             {/* Variant tag */}
-            {review.variant && (
+            {variantSummary && (
                 <p className="text-xs text-gray-500 bg-gray-50 border border-gray-100 px-2 py-1 rounded inline-block">
-                    {typeof review.variant === "string"
-                        ? review.variant
-                        : Object.entries(review.variant as Record<string, string>)
-                              .map(([k, v]) => `${k}: ${v}`)
-                              .join(" · ")}
+                    {variantSummary}
+                </p>
+            )}
+
+            {highlighted && (
+                <p className="text-xs text-emerald-700">
+                    Bạn đã mua sản phẩm này với biến thể: {variantSummary || "Không có biến thể"}
                 </p>
             )}
 
@@ -138,76 +205,79 @@ export default function ProductReviews({ productId, avgRating, soldQuantity }: P
     const PAGE_SIZE = 5;
 
     const [page, setPage] = useState(1);
-    const [allReviews, setAllReviews] = useState<Review[]>([]);
+    const [reviews, setReviews] = useState<Review[]>([]);
+    const [myReviews, setMyReviews] = useState<Review[]>([]);
     const [totalElements, setTotalElements] = useState(0);
     const [totalPages, setTotalPages] = useState(1);
     const [loading, setLoading] = useState(true);
-    const [loadingMore, setLoadingMore] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [starFilter, setStarFilter] = useState<number | "ALL">("ALL");
 
-    const fetchReviews = useCallback(async (p: number, append: boolean) => {
-        if (append) {
-            setLoadingMore(true);
-        } else {
-            setLoading(true);
-        }
+    const fetchReviews = useCallback(async (p: number) => {
+        setLoading(true);
         setError(null);
         try {
-            const res = await ReviewApi.getByProduct(productId, p, PAGE_SIZE);
-            // Determine the actual PageResponse object.
-            // Case 1: Server returns PageResponse directly → ReviewApi returns it as-is (has totalElements at top level)
-            // Case 2: Wrapped in ApiResponse { status, message, data: PageResponse }
-            interface PageLike {
-                data?: Review[];
-                totalElements?: number;
-                totalPages?: number;
-            }
+            const [res, myRes] = await Promise.all([
+                ReviewApi.getByProduct(productId, p, PAGE_SIZE),
+                ReviewApi.getMyReviewByProduct(productId).catch(() => ({ data: [] })),
+            ]);
+
+            interface PageLike { data?: Review[]; totalElements?: number; totalPages?: number; }
             const raw = res as PageLike & { data?: PageLike };
-            let pageRes: PageLike;
-            if (raw?.totalElements !== undefined) {
-                pageRes = raw;
-            } else if (raw?.data?.totalElements !== undefined) {
-                pageRes = raw.data as PageLike;
-            } else {
-                pageRes = (raw?.data ?? raw) as PageLike;
-            }
-            const newReviews: Review[] = pageRes?.data ?? [];
+            const pageRes: PageLike = raw?.totalElements !== undefined
+                ? raw
+                : raw?.data?.totalElements !== undefined
+                    ? (raw.data as PageLike)
+                    : ((raw?.data ?? raw) as PageLike);
+
+            const allFromPage: Review[] = pageRes?.data ?? [];
+            const currentUserReviews = Array.isArray((myRes as { data?: Review[] })?.data)
+                ? ((myRes as { data: Review[] }).data ?? [])
+                : [];
+            const myReviewIds = new Set(currentUserReviews.map((r) => r.id));
+            const newReviews = allFromPage.filter((r) => !myReviewIds.has(r.id));
             const total: number = pageRes?.totalElements ?? 0;
             const pages: number = pageRes?.totalPages ?? 1;
 
-            if (append) {
-                setAllReviews((prev) => [...prev, ...newReviews]);
-            } else {
-                setAllReviews(newReviews);
-            }
+            setReviews(newReviews);
+            setMyReviews(currentUserReviews);
             setTotalElements(total);
             setTotalPages(pages);
         } catch {
             setError("Không thể tải danh sách đánh giá. Vui lòng thử lại sau.");
         } finally {
             setLoading(false);
-            setLoadingMore(false);
         }
     }, [productId]);
 
     // Load first page on mount
     useEffect(() => {
         setPage(1);
-        setAllReviews([]);
-        fetchReviews(1, false);
+        setReviews([]);
+        fetchReviews(1);
     }, [fetchReviews]);
 
-    const handleLoadMore = () => {
-        const nextPage = page + 1;
-        setPage(nextPage);
-        fetchReviews(nextPage, true);
+    const goPrev = () => {
+        if (page <= 1) return;
+        const next = page - 1;
+        setPage(next);
+        fetchReviews(next);
     };
 
-    const hasMore = page < totalPages;
+    const goNext = () => {
+        if (page >= totalPages) return;
+        const next = page + 1;
+        setPage(next);
+        fetchReviews(next);
+    };
 
-    // Compute rating distribution from all loaded reviews
+    const displayTotal = Math.max(totalElements, reviews.length + myReviews.length);
+    const filteredMyReviews = myReviews.filter((r) => (starFilter === "ALL" ? true : Math.round(r.rating) === starFilter));
+    const filteredReviews = reviews.filter((r) => (starFilter === "ALL" ? true : Math.round(r.rating) === starFilter));
+
+    // Compute rating distribution from current page and my highlighted reviews
     const distribution: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
-    allReviews.forEach((r) => {
+    [...myReviews, ...reviews].forEach((r) => {
         const star = Math.round(r.rating);
         if (star >= 1 && star <= 5) distribution[star]++;
     });
@@ -223,14 +293,14 @@ export default function ProductReviews({ productId, avgRating, soldQuantity }: P
                         <span className="text-4xl font-bold text-gray-900">{avgRating.toFixed(1)}</span>
                         <div className="space-y-1">
                             {Helper2.renderStars(avgRating)}
-                            <p className="text-xs text-gray-400">{totalElements > 0 ? `${totalElements} đánh giá` : "Chưa có đánh giá"}</p>
+                            <p className="text-xs text-gray-400">{displayTotal > 0 ? `${displayTotal} đánh giá` : "Chưa có đánh giá"}</p>
                         </div>
                     </div>
                     {/* Rating distribution */}
-                    {allReviews.length > 0 && (
+                    {[...myReviews, ...reviews].length > 0 && (
                         <div className="pt-2 space-y-1">
                             {[5, 4, 3, 2, 1].map((s) => (
-                                <RatingBar key={s} star={s} count={distribution[s]} total={allReviews.length} />
+                                <RatingBar key={s} star={s} count={distribution[s]} total={[...myReviews, ...reviews].length} />
                             ))}
                         </div>
                     )}
@@ -249,10 +319,30 @@ export default function ProductReviews({ productId, avgRating, soldQuantity }: P
                 <h4 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
                     <MessageSquare className="w-4 h-4" />
                     Danh sách đánh giá
-                    {totalElements > 0 && (
-                        <span className="ml-1 text-xs font-normal text-gray-400">({totalElements})</span>
+                    {displayTotal > 0 && (
+                        <span className="ml-1 text-xs font-normal text-gray-400">({displayTotal})</span>
                     )}
                 </h4>
+
+                <div className="flex flex-wrap gap-2">
+                    <button
+                        type="button"
+                        onClick={() => setStarFilter("ALL")}
+                        className={`rounded-full border px-3 py-1.5 text-xs ${starFilter === "ALL" ? "border-red-500 bg-red-50 text-red-700" : "border-gray-300 text-gray-600"}`}
+                    >
+                        Tất cả
+                    </button>
+                    {[5, 4, 3, 2, 1].map((star) => (
+                        <button
+                            key={star}
+                            type="button"
+                            onClick={() => setStarFilter(star)}
+                            className={`rounded-full border px-3 py-1.5 text-xs ${starFilter === star ? "border-red-500 bg-red-50 text-red-700" : "border-gray-300 text-gray-600"}`}
+                        >
+                            {star} sao
+                        </button>
+                    ))}
+                </div>
 
                 {/* Loading state (initial load) */}
                 {loading && (
@@ -267,45 +357,49 @@ export default function ProductReviews({ productId, avgRating, soldQuantity }: P
                 )}
 
                 {/* Empty state */}
-                {!loading && !error && allReviews.length === 0 && (
+                {!loading && !error && filteredMyReviews.length === 0 && filteredReviews.length === 0 && (
                     <div className="border border-dashed border-gray-300 bg-gray-50 rounded p-8 text-center">
                         <Star className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-                        <p className="text-sm font-medium text-gray-500">Sản phẩm chưa có đánh giá nào.</p>
-                        <p className="text-xs text-gray-400 mt-1">Hãy là người đầu tiên đánh giá sản phẩm này!</p>
+                        <p className="text-sm font-medium text-gray-500">Không có đánh giá phù hợp với bộ lọc sao.</p>
+                        <p className="text-xs text-gray-400 mt-1">Hãy thử đổi bộ lọc để xem thêm đánh giá khác.</p>
                     </div>
                 )}
 
                 {/* Reviews */}
-                {!loading && !error && allReviews.length > 0 && (
+                {!loading && !error && (filteredMyReviews.length > 0 || filteredReviews.length > 0) && (
                     <div className="space-y-3">
-                        {allReviews.map((review) => (
+                        {filteredMyReviews.map((review) => (
+                            <ReviewCard key={`mine-${review.id}`} review={review} highlighted />
+                        ))}
+                        {filteredReviews.map((review) => (
                             <ReviewCard key={review.id} review={review} />
                         ))}
                     </div>
                 )}
 
-                {/* Load More Button */}
-                {!loading && !error && hasMore && (
-                    <div className="flex justify-center pt-2">
+                {!loading && !error && totalPages > 1 ? (
+                    <div className="flex items-center justify-center gap-2 pt-2">
                         <button
-                            onClick={handleLoadMore}
-                            disabled={loadingMore}
-                            className="flex items-center gap-2 px-6 py-2.5 text-sm font-medium border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-gray-700"
+                            type="button"
+                            onClick={goPrev}
+                            disabled={page <= 1}
+                            className="inline-flex items-center gap-1 rounded-md border border-gray-300 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50"
                         >
-                            {loadingMore ? (
-                                <>
-                                    <Loader2 className="w-4 h-4 animate-spin" />
-                                    Đang tải...
-                                </>
-                            ) : (
-                                <>
-                                    <ChevronDown className="w-4 h-4" />
-                                    Xem thêm đánh giá
-                                </>
-                            )}
+                            <ChevronLeft className="h-4 w-4" />
+                            Trước
+                        </button>
+                        <span className="text-sm text-gray-600">Trang {page}/{totalPages}</span>
+                        <button
+                            type="button"
+                            onClick={goNext}
+                            disabled={page >= totalPages}
+                            className="inline-flex items-center gap-1 rounded-md border border-gray-300 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                            Sau
+                            <ChevronRight className="h-4 w-4" />
                         </button>
                     </div>
-                )}
+                ) : null}
             </div>
         </div>
     );

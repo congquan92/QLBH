@@ -5,12 +5,13 @@ import type { ChangePasswordPayload, UserAddress, UserEmailAccount, UserProfile 
 const WARNING_PREFIX = "[WARNING][UserApi]";
 
 export const UserApi = {
-    getUserByEmail: async (email: string, query?: { email_verified?: 0 | 1 | boolean }) => {
+    getUserByEmail: async (email: string, query?: { email_verified?: 0 | 1 | boolean; has_user_role?: 0 | 1 | boolean }) => {
         try {
             const res = await axiosInstance.get("/user/email", {
                 params: {
                     email,
                     ...(query?.email_verified !== undefined ? { email_verified: query.email_verified } : {}),
+                    ...(query?.has_user_role !== undefined ? { has_user_role: query.has_user_role } : {}),
                 },
             });
             return res.data as ApiResponse<UserEmailAccount[]>;

@@ -7,12 +7,17 @@ export interface SalaryCalculation {
     position: string;
     employment_type: string;
     base_salary: number;
+    base_salary_before_tenure?: number;
+    tenure_years?: number;
+    tenure_coefficient?: number;
+    tenure_bonus_amount?: number;
     total_holiday_bonus: number;
     total_manual_bonus: number;
     final_salary: number;
     bonus_details: Array<{
-        name?: string;
-        amount?: number;
+        date?: string;
+        hours?: number;
+        bonus?: number;
         [key: string]: unknown;
     }>;
     manual_bonus_details?: Array<{

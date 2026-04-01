@@ -121,9 +121,14 @@ class UserController extends Controller
     }
 
     public function getUserByEmail(Request $request){
-        $email = $request->input('email');
-        $emailVerified = filter_var($request->query('email_verified', true), FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
-        $result = $this->userService->getAllUserByEmail($email, $emailVerified ?? true);
+        $email = strtolower(trim((string) $request->query('email', '')));
+        $emailVerified = $request->has('email_verified')
+            ? filter_var($request->query('email_verified'), FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE)
+            : null;
+        $hasUserRole = $request->has('has_user_role')
+            ? filter_var($request->query('has_user_role'), FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE)
+            : null;
+        $result = $this->userService->getAllUserByEmail($email, $emailVerified, $hasUserRole);
          return $this->success($result, 'Get all user by email');
     }
 

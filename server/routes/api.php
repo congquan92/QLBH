@@ -97,7 +97,7 @@ Route::middleware('auth')->group(function () {
     // Category
     Route::prefix('category')->group(function () {
         Route::get('/list', [CategoryController::class, 'findAll']);
-        Route::get('/admin/list', [CategoryController::class, 'findAllWithouPagination'])->middleware('can:VIEW_CATEGORIES_ADMIN');
+        Route::get('/admin/list', [CategoryController::class, 'findAllWithouPagination'])->middleware('can:VIEW_ALL_CATEGORIES');
         Route::post('/add', [CategoryController::class, 'store'])->middleware('can:CREATE_CATEGORIES');
         Route::post('/{categoryId}/restore', [CategoryController::class, 'restoreCategory'])->middleware('can:RESTORE_CATEGORIES');
         Route::post('/move', [CategoryController::class, 'moveCategory'])->middleware('can:UPDATE_CATEGORIES');
@@ -371,6 +371,6 @@ Route::middleware('auth')->group(function () {
     });
     // Salaries
     Route::get('salaries/all', [SalaryController::class, 'calculateAllSalaries'])->middleware('can:CALCULATE_SALARY');
-    Route::get('salaries/calculate/{userId}', [SalaryController::class, 'calculateMonthlySalary'])->middleware('can:CALCULATE_SALARY');
     Route::get('salaries/calculate/me', [SalaryController::class, 'calculateMonthlySalaryMe']);
+    Route::get('salaries/calculate/{userId}', [SalaryController::class, 'calculateMonthlySalary'])->middleware('can:CALCULATE_SALARY')->whereNumber('userId');
 });

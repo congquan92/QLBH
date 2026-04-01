@@ -21,6 +21,9 @@ interface OrderHistorySectionProps {
     retryingOrderId: number | null;
     onToggleOrderDetail: (orderId: number) => void;
     onRetryPayment: (orderId: number) => void;
+    onConfirmOrder: (orderId: number) => void;
+    onOpenReviewModal: (order: OrderSummary, item: OrderItem) => void;
+    confirmingOrderId: number | null;
 }
 
 function getLineItems(order: OrderSummary): OrderItem[] {
@@ -42,7 +45,18 @@ function getVoucherTypeLabel(type?: string) {
     return raw || "Không xác định";
 }
 
-export function OrderHistorySection({ orders, orderDetails, expandedOrderId, loadingOrderId, retryingOrderId, onToggleOrderDetail, onRetryPayment }: OrderHistorySectionProps) {
+export function OrderHistorySection({
+    orders,
+    orderDetails,
+    expandedOrderId,
+    loadingOrderId,
+    retryingOrderId,
+    onToggleOrderDetail,
+    onRetryPayment,
+    onConfirmOrder,
+    onOpenReviewModal,
+    confirmingOrderId,
+}: OrderHistorySectionProps) {
     return (
         <div className="border border-gray-200 bg-white p-6">
             <div className="flex flex-wrap items-start justify-between gap-4 border-b border-gray-200 pb-5">
@@ -73,6 +87,10 @@ export function OrderHistorySection({ orders, orderDetails, expandedOrderId, loa
                         const voucherMinOrder = toNumber(voucher?.minDiscountValue ?? voucher?.min_discount_value);
                         const actualDiscount = toNumber(mergedOrder.discountValue);
                         const isShippingVoucher = Boolean(voucher?.isShipping ?? voucher?.is_shipping);
+
+                        const isCompleted = String(mergedOrder.deliveryStatus ?? mergedOrder.orderStatus ?? "").toUpperCase() === "COMPLETED";
+                        const isPaid = String(mergedOrder.paymentStatus ?? "").toUpperCase() === "PAID";
+                        const canConfirmOrder = isCompleted && isPaid && !Boolean(mergedOrder.isConfirmed);
 
                         return (
                             <article key={order.id} className="overflow-hidden border border-gray-200 bg-white">
@@ -123,6 +141,17 @@ export function OrderHistorySection({ orders, orderDetails, expandedOrderId, loa
                                                 <div className="text-left sm:text-right">
                                                     <p className="text-sm font-semibold text-gray-900">{Helper.formatPrice(String(item.finalPrice ?? item.listPriceSnapShot ?? 0))}</p>
                                                     <p className="mt-1 text-xs text-gray-500">{item.isReviewed ? "Đã đánh giá" : "Chưa đánh giá"}</p>
+
+                                                    {Boolean(mergedOrder.isConfirmed) && !item.isReviewed ? (
+                                                        <Button
+                                                            type="button"
+                                                            size="sm"
+                                                            className="mt-2 rounded-none bg-red-600 hover:bg-red-700"
+                                                            onClick={() => onOpenReviewModal(mergedOrder, item)}
+                                                        >
+                                                            Viết đánh giá
+                                                        </Button>
+                                                    ) : null}
                                                 </div>
                                             </div>
                                         );
@@ -149,6 +178,23 @@ export function OrderHistorySection({ orders, orderDetails, expandedOrderId, loa
                                             {isExpanded ? "Thu gọn" : "Xem chi tiết"}
                                         </Button>
                                     </div>
+
+                                    {canConfirmOrder ? (
+                                        <div className="mt-3 border-t border-gray-200 pt-3">
+                                            <div className="flex flex-wrap items-center justify-between gap-2">
+                                                <p className="text-xs text-gray-600">Đơn đã giao thành công. Vui lòng xác nhận đã nhận hàng để mở quyền đánh giá.</p>
+                                                <Button
+                                                    type="button"
+                                                    className="rounded-none bg-emerald-600 hover:bg-emerald-700"
+                                                    onClick={() => onConfirmOrder(mergedOrder.id)}
+                                                    disabled={confirmingOrderId === mergedOrder.id}
+                                                >
+                                                    {confirmingOrderId === mergedOrder.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                                                    Xác nhận đã nhận hàng
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    ) : null}
 
                                     {isExpanded ? (
                                         <div className="mt-4 border-t border-gray-200 pt-4 text-sm text-gray-700">

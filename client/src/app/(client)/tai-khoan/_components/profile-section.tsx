@@ -88,9 +88,6 @@ export function ProfileSection({
                         <p>
                             Đã chi tiêu: <span className="font-semibold text-gray-900">{Helper.formatPrice(String(profile?.totalSpent ?? 0))}</span>
                         </p>
-                        <p>
-                            Điểm tích lũy: <span className="font-semibold text-gray-900">{profile?.point ?? 0}</span>
-                        </p>
                     </div>
                 </div>
 

@@ -9,6 +9,7 @@ import { AccountSection } from "@/app/(client)/tai-khoan/_components/account-sid
 import { AddressesSection } from "@/app/(client)/tai-khoan/_components/addresses-section";
 import { OrdersSection } from "@/app/(client)/tai-khoan/_components/orders-section";
 import { OrderHistorySection } from "@/app/(client)/tai-khoan/_components/order-history-section";
+import { ReviewCreateModal } from "@/app/(client)/tai-khoan/_components/review-create-modal";
 import { SecuritySection } from "@/app/(client)/tai-khoan/_components/security-section";
 import { UserRouteGate } from "@/components/feature/RouteUserGate";
 import { Button } from "@/components/ui/button";
@@ -20,7 +21,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ProfileSection } from "./_components/profile-section";
 
 import { ApiResponse, PageResponse } from "@/types/api";
-import { OrderSummary } from "@/types/order";
+import { OrderItem, OrderSummary } from "@/types/order";
 import { UserAddress, UserProfile } from "@/types/user";
 import {
   ClipboardCheck,
@@ -159,6 +160,9 @@ function AccountPageContent() {
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [isSavingAddress, setIsSavingAddress] = useState(false);
   const [isSavingPassword, setIsSavingPassword] = useState(false);
+  const [confirmingOrderId, setConfirmingOrderId] = useState<number | null>(null);
+  const [reviewModalOpen, setReviewModalOpen] = useState(false);
+  const [selectedReviewItem, setSelectedReviewItem] = useState<OrderItem | null>(null);
   const [verifyEmailOtp, setVerifyEmailOtp] = useState("");
   const [isSendingVerifyOtp, setIsSendingVerifyOtp] = useState(false);
   const [isVerifyingEmail, setIsVerifyingEmail] = useState(false);
@@ -737,6 +741,46 @@ function AccountPageContent() {
     }
   };
 
+  const handleConfirmOrder = async (orderId: number) => {
+    setConfirmingOrderId(orderId);
+    try {
+      await OrderApi.complete(orderId);
+      toast.success("Đã xác nhận nhận hàng thành công.");
+      await refreshOrderLists();
+      setHistoryDetails((current) => {
+        const next = { ...current };
+        if (next[orderId]) {
+          next[orderId] = { ...next[orderId], isConfirmed: true };
+        }
+        return next;
+      });
+    } catch {
+      toast.error("Không thể xác nhận đơn hàng.");
+    } finally {
+      setConfirmingOrderId(null);
+    }
+  };
+
+  const handleOpenReviewModal = (_order: OrderSummary, item: OrderItem) => {
+    setSelectedReviewItem(item);
+    setReviewModalOpen(true);
+  };
+
+  const handleReviewCreated = async () => {
+    await refreshOrderLists();
+    if (expandedHistoryId) {
+      try {
+        const detailResponse = await OrderApi.getMyOrderDetail(expandedHistoryId);
+        setHistoryDetails((current) => ({
+          ...current,
+          [expandedHistoryId]: (detailResponse.data ?? {}) as OrderSummary,
+        }));
+      } catch {
+        // Ignore detail refresh failure after successful review submission.
+      }
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="mx-auto max-w-6xl px-4 py-16 text-center text-gray-500">
@@ -881,6 +925,9 @@ function AccountPageContent() {
               void handleToggleHistoryDetail(orderId)
             }
             onRetryPayment={(orderId) => void handleRetryPayment(orderId)}
+            onConfirmOrder={(orderId) => void handleConfirmOrder(orderId)}
+            onOpenReviewModal={handleOpenReviewModal}
+            confirmingOrderId={confirmingOrderId}
           />
         </TabsContent>
 
@@ -915,6 +962,16 @@ function AccountPageContent() {
           />
         </TabsContent>
       </Tabs>
+
+      <ReviewCreateModal
+        open={reviewModalOpen}
+        orderItem={selectedReviewItem}
+        onClose={() => {
+          setReviewModalOpen(false);
+          setSelectedReviewItem(null);
+        }}
+        onSuccess={() => void handleReviewCreated()}
+      />
     </div>
   );
 }

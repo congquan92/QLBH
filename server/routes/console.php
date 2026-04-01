@@ -2,11 +2,13 @@
 
 use App\Enums\DeliveryStatus;
 use App\Http\Service\UserService;
+use App\Enums\EmploymentType;
 use App\Models\Order;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
 use App\Models\JobHistory;
+use App\Models\SalaryScale;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -40,6 +42,61 @@ Artisan::command('employee:update-position', function () {
 
 // 2. Lập lịch chạy tự động mỗi ngày vào lúc 00:00
 Schedule::command('employee:update-position')->daily();
+
+Artisan::command('employee:sync-tenure-salary', function () {
+    $today = Carbon::today();
+
+    $activeJobs = JobHistory::with(['position'])
+        ->where('employment_type', EmploymentType::FULLTIME->value)
+        ->where('effective_date', '<=', $today->format('Y-m-d'))
+        ->where(function ($query) use ($today) {
+            $query->whereNull('end_date')
+                ->orWhere('end_date', '>=', $today->format('Y-m-d'));
+        })
+        ->get();
+
+    if ($activeJobs->isEmpty()) {
+        $this->info('Khong co ho so cong viec full-time dang hieu luc de dong bo luong.');
+        return;
+    }
+
+    $updatedCount = 0;
+
+    DB::transaction(function () use ($activeJobs, $today, &$updatedCount) {
+        foreach ($activeJobs as $job) {
+            /** @var \App\Models\JobHistory $job */
+            if (!$job->position) {
+                continue;
+            }
+
+            $firstJob = JobHistory::where('user_id', $job->user_id)
+                ->where('effective_date', '<=', $today->format('Y-m-d'))
+                ->orderBy('effective_date', 'asc')
+                ->first();
+
+            $tenureYears = $firstJob
+                ? Carbon::parse($firstJob->effective_date)->diffInYears($today)
+                : 0;
+
+            $salaryScale = SalaryScale::where('years_of_experience', '<=', $tenureYears)
+                ->orderBy('years_of_experience', 'desc')
+                ->first();
+
+            $coefficient = $salaryScale ? (float) $salaryScale->coefficient : 1.0;
+            $targetSalary = round((float) $job->position->base_salary * $coefficient, 2);
+
+            if (abs((float) $job->current_salary - $targetSalary) >= 0.01) {
+                $job->current_salary = $targetSalary;
+                $job->save();
+                $updatedCount++;
+            }
+        }
+    });
+
+    $this->info("Da dong bo current_salary cho {$updatedCount} nhan vien.");
+})->purpose('Dong bo current_salary theo tham nien cho nhan vien full-time dang hieu luc');
+
+Schedule::command('employee:sync-tenure-salary')->dailyAt('00:10');
 
 
 Artisan::command('orders:auto-confirm', function () {

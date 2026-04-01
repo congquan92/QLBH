@@ -80,13 +80,13 @@ export default function LoginPage() {
 
         setIsFindingAccounts(true);
         try {
-            const response = await UserApi.getUserByEmail(forgotEmail.trim(), { email_verified: 1 });
+            const response = await UserApi.getUserByEmail(forgotEmail.trim(), { has_user_role: false });
             const items = Array.isArray(response.data) ? response.data : [];
             setAccounts(items);
             setSelectedUserId(items[0]?.id ?? null);
 
             if (items.length === 0) {
-                toast.error("Không tìm thấy tài khoản đã xác thực email.");
+                toast.error("Không tìm thấy tài khoản quản trị với email này.");
                 return;
             }
 
@@ -201,7 +201,7 @@ export default function LoginPage() {
                             <Input type="email" value={forgotEmail} onChange={(event) => setForgotEmail(event.target.value)} placeholder="admin@example.com" />
                             <Button type="button" variant="outline" className="w-full" onClick={() => void handleSearchAccounts()} disabled={isFindingAccounts}>
                                 {isFindingAccounts ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                                Tìm tài khoản đã xác thực email
+                                Tìm tài khoản quản trị theo email
                             </Button>
                         </div>
 

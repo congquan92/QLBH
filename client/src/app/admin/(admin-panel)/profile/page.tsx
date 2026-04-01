@@ -1,6 +1,7 @@
 "use client";
 
 import { JobHistoryApi } from "@/api/admin/job-history.api";
+import { SalaryApi } from "@/api/admin/salary.api";
 import { OtpApi } from "@/api/otp.api";
 import { UserApi } from "@/api/user.api";
 import { AdminPageShell } from "@/components/feature/admin-page-shell";
@@ -15,6 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { useGhnAddressOptions } from "@/hooks/useGhnAddressOptions";
 import type { CareerPath } from "@/types/job-history";
+import type { SalaryCalculation } from "@/types/salary";
 import type { UserAddress, UserProfile } from "@/types/user";
 import { BriefcaseBusiness, CheckCircle2, Coins, History, Loader2, RefreshCcw, Save, ShieldCheck, Sparkles } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -98,6 +100,7 @@ export default function AdminProfilePage() {
     const { session } = useAdminAuth();
     const [profile, setProfile] = useState<UserProfile | null>(null);
     const [career, setCareer] = useState<CareerPath | null>(null);
+    const [currentMonthSalary, setCurrentMonthSalary] = useState<SalaryCalculation | null>(null);
     const [addresses, setAddresses] = useState<UserAddress[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
@@ -123,16 +126,26 @@ export default function AdminProfilePage() {
     const [editingAddressId, setEditingAddressId] = useState<number | null>(null);
     const [activeTab, setActiveTab] = useState<"profile" | "verification" | "security" | "address" | "career">("profile");
 
+    const now = useMemo(() => new Date(), []);
+    const currentMonth = now.getMonth() + 1;
+    const currentYear = now.getFullYear();
+
     const { provinces, districts, wards, isLoadingProvinces, isLoadingDistricts, isLoadingWards } = useGhnAddressOptions(addressForm.province_id, addressForm.district_id);
 
     const loadProfile = useCallback(async () => {
         setIsLoading(true);
         try {
-            const [profileRes, careerRes, addressRes] = await Promise.all([UserApi.getMyInfo(), JobHistoryApi.getMyCareer(), UserApi.getMyAddresses({ page: 1, size: 30, sort: "id:desc" })]);
+            const [profileRes, careerRes, addressRes, salaryRes] = await Promise.all([
+                UserApi.getMyInfo(),
+                JobHistoryApi.getMyCareer(),
+                UserApi.getMyAddresses({ page: 1, size: 30, sort: "id:desc" }),
+                SalaryApi.calculateMySalary(currentMonth, currentYear).catch(() => null),
+            ]);
 
             const nextProfile = profileRes.data ?? null;
             setProfile(nextProfile);
             setCareer(careerRes.data ?? null);
+            setCurrentMonthSalary(salaryRes?.data ?? null);
             setAddresses(addressRes.data.data ?? nextProfile?.addressResponses ?? []);
             setProfileForm({
                 fullName: String(nextProfile?.fullName ?? ""),
@@ -152,7 +165,7 @@ export default function AdminProfilePage() {
         } finally {
             setIsLoading(false);
         }
-    }, [session?.email]);
+    }, [currentMonth, currentYear, session?.email]);
 
     useEffect(() => {
         void loadProfile();
@@ -344,7 +357,15 @@ export default function AdminProfilePage() {
     }
 
     const positionSalaryType = String((profile?.positionResponse as { salary_type?: string; salaryType?: string } | undefined)?.salaryType ?? (profile?.positionResponse as { salary_type?: string; salaryType?: string } | undefined)?.salary_type ?? "-");
-    const currentSalary = Number(career?.current_position?.salary ?? 0);
+    const currentSalary = Number(currentMonthSalary?.base_salary ?? career?.current_position?.salary ?? 0);
+    const thisMonthFinalSalary = Number(currentMonthSalary?.final_salary ?? 0);
+    const thisMonthHolidayBonus = Number(currentMonthSalary?.total_holiday_bonus ?? 0);
+    const thisMonthManualBonus = Number(currentMonthSalary?.total_manual_bonus ?? 0);
+    const thisMonthTenureBonus = Number(currentMonthSalary?.tenure_bonus_amount ?? 0);
+
+    function formatMoney(value: number) {
+        return `${value.toLocaleString("vi-VN")} VND`;
+    }
 
     return (
         <AdminPageShell title="Thông tin cá nhân" description="Quản lý hồ sơ, bảo mật và địa chỉ bằng API user/me">
@@ -387,7 +408,7 @@ export default function AdminProfilePage() {
                             </div>
                             </div>
 
-                            <div className="grid gap-4 md:grid-cols-2">
+                            <div className="grid gap-4 md:grid-cols-3">
                                 <div className="rounded-xl border bg-linear-to-br from-amber-50 to-orange-50 p-4">
                                     <p className="text-xs text-muted-foreground flex items-center gap-1"><Coins className="h-3.5 w-3.5" />Mức lương hiện tại</p>
                                     <p className="mt-2 text-2xl font-bold text-amber-700">{currentSalary.toLocaleString("vi-VN")} VND</p>
@@ -397,6 +418,15 @@ export default function AdminProfilePage() {
                                     <p className="text-xs text-muted-foreground flex items-center gap-1"><BriefcaseBusiness className="h-3.5 w-3.5" />Chức vụ hiện tại</p>
                                     <p className="mt-2 text-xl font-bold text-indigo-700">{String(career?.current_position?.name ?? profile?.positionResponse?.name ?? "-")}</p>
                                     <p className="text-xs text-muted-foreground mt-1">Giới tính: {formatGender(profile?.gender)}</p>
+                                </div>
+                                <div className="rounded-xl border bg-linear-to-br from-emerald-50 to-teal-50 p-4">
+                                    <p className="text-xs text-muted-foreground">Lương tháng {currentMonth}/{currentYear}</p>
+                                    <p className="mt-2 text-2xl font-bold text-emerald-700">{formatMoney(thisMonthFinalSalary)}</p>
+                                    <div className="mt-2 space-y-1 text-xs text-muted-foreground">
+                                        <p>Bonus lễ: {formatMoney(thisMonthHolidayBonus)}</p>
+                                        <p>Bonus thêm: {formatMoney(thisMonthManualBonus)}</p>
+                                        <p>Thâm niên: +{formatMoney(thisMonthTenureBonus)}</p>
+                                    </div>
                                 </div>
                             </div>
 
@@ -594,6 +624,35 @@ export default function AdminProfilePage() {
 
                                 <TabsContent value="career" className="mt-4 rounded-xl border p-4">
                                     <h3 className="font-semibold flex items-center gap-2"><History className="h-4 w-4" />Lịch sử chức vụ và lương</h3>
+                                    <div className="mt-3 rounded-lg border bg-emerald-50/70 p-3">
+                                        <p className="text-sm font-semibold">Chi tiết lương tháng {currentMonth}/{currentYear}</p>
+                                        {currentMonthSalary ? (
+                                            <div className="mt-2 space-y-1 text-sm">
+                                                <p>Lương cơ bản trước thâm niên: {formatMoney(Number(currentMonthSalary.base_salary_before_tenure ?? currentMonthSalary.base_salary ?? 0))}</p>
+                                                <p>Hệ số thâm niên: x{Number(currentMonthSalary.tenure_coefficient ?? 1).toFixed(2)} ({Number(currentMonthSalary.tenure_years ?? 0)} năm)</p>
+                                                <p>Phần tăng do thâm niên: {formatMoney(thisMonthTenureBonus)}</p>
+                                                <p>Bonus lễ: {formatMoney(thisMonthHolidayBonus)}</p>
+                                                <p>Bonus thủ công: {formatMoney(thisMonthManualBonus)}</p>
+                                                <p className="font-semibold">Thực nhận tháng: {formatMoney(thisMonthFinalSalary)}</p>
+                                            </div>
+                                        ) : (
+                                            <p className="mt-2 text-sm text-muted-foreground">Chưa lấy được dữ liệu lương tháng hiện tại.</p>
+                                        )}
+
+                                        {Array.isArray(currentMonthSalary?.bonus_details) && currentMonthSalary.bonus_details.length > 0 ? (
+                                            <div className="mt-3 space-y-2">
+                                                <p className="text-xs font-semibold text-muted-foreground">Chi tiết tiền lễ theo ngày</p>
+                                                {currentMonthSalary.bonus_details.map((item, index) => (
+                                                    <div key={`${item.date ?? "unknown"}-${index}`} className="flex flex-wrap items-center justify-between rounded-md border bg-background p-2 text-xs">
+                                                        <span>Ngày: {String(item.date ?? "-")}</span>
+                                                        <span>Giờ: {Number(item.hours ?? 0).toFixed(2)}</span>
+                                                        <span>Tiền: {formatMoney(Number(item.bonus ?? 0))}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : null}
+                                    </div>
+
                                     <div className="mt-3 space-y-3">
                                         {Array.isArray(career?.career_history) && career.career_history.length > 0 ? (
                                             career.career_history.map((item) => (

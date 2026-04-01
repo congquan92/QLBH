@@ -418,10 +418,10 @@ export default function ListProductDetail({ products, relatedProducts }: { produ
             </div>
 
             {/* Sản phẩm liên quan */}
-            <div className="mt-12 border-t border-gray-200 pt-8">
+            {/* <div className="mt-12 border-t border-gray-200 pt-8">
                 <h2 className="text-2xl font-bold text-gray-900 mb-6">Sản phẩm liên quan</h2>
                 <ProductCarousel products={relatedProducts} emptyMessage="Không có sản phẩm liên quan." />
-            </div>
+            </div> */}
 
             {/* Lightbox */}
             <Lightbox
