@@ -185,6 +185,27 @@ export default function InventoryPage() {
         }
     }, []);
 
+    const searchImports = useCallback(async (params: { keyword?: string; supplierId?: string; deliveryStatus?: string }) => {
+        setIsLoading(true);
+        try {
+            const importRes = await AdminCrudApi.getImportProducts({
+                page: 1,
+                size: 200,
+                sort: "id:desc",
+                keyword: toSafeString(params.keyword) || undefined,
+                supplierId: params.supplierId && params.supplierId !== "all" ? Number(params.supplierId) : undefined,
+                deliveryStatus: params.deliveryStatus && params.deliveryStatus !== "all" ? params.deliveryStatus : undefined,
+            });
+
+            setImports(mapImportRows((importRes.data.data as Array<Record<string, unknown>>) ?? []));
+        } catch (error) {
+            toast.error(Helper.errorMessage(error));
+            setImports([]);
+        } finally {
+            setIsLoading(false);
+        }
+    }, []);
+
     const fetchInventoryData = useCallback(async () => {
         setIsLoading(true);
         try {
@@ -484,6 +505,7 @@ export default function InventoryPage() {
                             isLoading={isLoading}
                             isSaving={isSaving}
                             onRefresh={fetchInventoryData}
+                            onSearch={searchImports}
                             loadVariantsForProduct={loadVariantsForProduct}
                             onCreate={createImport}
                             onCreateBatch={createImportBatch}

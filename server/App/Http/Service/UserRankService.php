@@ -5,6 +5,7 @@ use App\Enums\Status;
 use App\Http\Mapper\UserRankMapper;
 use App\Http\Requests\UserRank\UserRankCreationRequest;
 use App\Http\Responses\PageResponse;
+use App\Models\User;
 use App\Models\UserRank;
 use DB;
 class UserRankService{
@@ -43,9 +44,58 @@ class UserRankService{
     }
     public function update ($id, array $data){
         return DB::transaction(function () use ($id, $data): void {
-             $userRank = UserRank::where('id',$id)->firstOrFail();
+            if (!array_key_exists('min_spent', $data) && array_key_exists('minSpent', $data)) {
+                $data['min_spent'] = $data['minSpent'];
+            }
+
+            unset($data['minSpent']);
+
+            $userRank = UserRank::where('id',$id)->firstOrFail();
             $userRank->update($data);
+
+            if (array_key_exists('min_spent', $data) || array_key_exists('status', $data)) {
+                $this->recalculateUserRanks();
+            }
         });
+    }
+
+    private function recalculateUserRanks(): void
+    {
+        $activeRanks = UserRank::query()
+            ->where('status', Status::ACTIVE->value)
+            ->orderBy('min_spent', 'asc')
+            ->get(['id', 'min_spent']);
+
+        if ($activeRanks->isEmpty()) {
+            return;
+        }
+
+        $fallbackRankId = (int) $activeRanks->first()->id;
+
+        User::query()
+            ->whereHas('role', fn($query) => $query->where('name', 'USER'))
+            ->select(['id', 'total_spent', 'user_rank_id'])
+            ->chunkById(500, function ($users) use ($activeRanks, $fallbackRankId): void {
+                foreach ($users as $user) {
+                    $totalSpent = (float) ($user->total_spent ?? 0);
+                    $targetRankId = $fallbackRankId;
+
+                    foreach ($activeRanks as $rank) {
+                        if ($totalSpent >= (float) $rank->min_spent) {
+                            $targetRankId = (int) $rank->id;
+                            continue;
+                        }
+
+                        break;
+                    }
+
+                    if ((int) $user->user_rank_id !== $targetRankId) {
+                        User::query()->where('id', (int) $user->id)->update([
+                            'user_rank_id' => $targetRankId,
+                        ]);
+                    }
+                }
+            });
     }
 
     public function getUsersByRank(?string $rankId, ?string $keyword, int $page, int $size): PageResponse

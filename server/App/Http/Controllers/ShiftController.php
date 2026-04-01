@@ -24,11 +24,12 @@ class ShiftController extends Controller
     public function index(Request $request)
     {
         $keyword = $request->query('keyword');
+        $status = $request->query('status');
         $sort = $request->query('sort', 'start_time:asc');
         $page = (int) $request->query('page', 1);
         $size = (int) $request->query('size', 10);
 
-        $response = $this->shiftService->findAll($keyword, $sort, $page, $size);
+        $response = $this->shiftService->findAll($keyword, $status, $sort, $page, $size);
 
         return $this->success($response, 'Danh sách ca làm việc.');
     }
@@ -67,7 +68,20 @@ class ShiftController extends Controller
     {
         try {
             $this->shiftService->delete($id);
-            return $this->success(null, 'Đã xóa ca làm việc thành công.');
+            return $this->success(null, 'Đã ẩn ca làm việc thành công.');
+        } catch (Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => $e->getMessage()
+            ], 400);
+        }
+    }
+
+    public function restore($id)
+    {
+        try {
+            $shift = $this->shiftService->restore($id);
+            return $this->success($shift, 'Khôi phục ca làm việc thành công.');
         } catch (Exception $e) {
             return response()->json([
                 'status' => 'error',

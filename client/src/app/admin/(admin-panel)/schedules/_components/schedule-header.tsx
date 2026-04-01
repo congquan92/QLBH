@@ -1,9 +1,9 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, Calendar, Users, Plus, BriefcaseBusiness, TriangleAlert, Fingerprint, Loader2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar, Users, Plus, BriefcaseBusiness, TriangleAlert, Fingerprint, Loader2, Clock3 } from "lucide-react";
 
-type ViewMode = "weekly-report" | "daily-staff" | "assign" | "position-default" | "late-arrivals";
+type ViewMode = "weekly-report" | "daily-staff" | "assign" | "shift-management" | "position-default" | "late-arrivals";
 
 type Props = {
     viewMode: ViewMode;
@@ -19,6 +19,7 @@ const VIEW_TABS: { key: ViewMode; label: string; icon: React.ReactNode }[] = [
     { key: "weekly-report", label: "Báo cáo tuần", icon: <Calendar className="h-4 w-4" /> },
     { key: "daily-staff", label: "Nhân viên hôm nay", icon: <Users className="h-4 w-4" /> },
     { key: "assign", label: "Phân ca", icon: <Plus className="h-4 w-4" /> },
+    { key: "shift-management", label: "Danh sách ca", icon: <Clock3 className="h-4 w-4" /> },
     { key: "position-default", label: "Lịch theo chức vụ", icon: <BriefcaseBusiness className="h-4 w-4" /> },
     { key: "late-arrivals", label: "Danh sách đi trễ", icon: <TriangleAlert className="h-4 w-4" /> },
 ];

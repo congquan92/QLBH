@@ -171,6 +171,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/', [ShiftController::class, 'store'])->middleware('can:CREATE_SHIFT');
         Route::put('/{id}', [ShiftController::class, 'update'])->middleware('can:UPDATE_SHIFT');
         Route::delete('/{id}', [ShiftController::class, 'destroy'])->middleware('can:DELETE_SHIFT');
+        Route::post('/{id}/restore', [ShiftController::class, 'restore'])->middleware('can:UPDATE_SHIFT');
     });
 
     // Job History

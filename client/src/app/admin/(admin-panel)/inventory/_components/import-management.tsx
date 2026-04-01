@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Helper } from "@/lib/helper";
 import { Eye, Loader2, Plus, RefreshCcw, Trash2 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import type { DeliveryStatus, ImportDetailDialogData, ImportFormValues, ImportRow, LowStockVariantRow, ProductOption, SupplierRow, VariantOption } from "./inventory-types";
 
@@ -30,6 +30,7 @@ type ImportManagementProps = {
     isLoading: boolean;
     isSaving: boolean;
     onRefresh: () => Promise<void>;
+    onSearch: (params: { keyword?: string; supplierId?: string; deliveryStatus?: string }) => Promise<void>;
     loadVariantsForProduct: (productId: number) => Promise<VariantOption[]>;
     onCreate: (payload: CreateImportPayload) => Promise<void>;
     onCreateBatch: (payloads: CreateImportPayload[]) => Promise<void>;
@@ -83,6 +84,7 @@ export function ImportManagement({
     isLoading,
     isSaving,
     onRefresh,
+    onSearch,
     loadVariantsForProduct,
     onCreate,
     onCreateBatch,
@@ -135,15 +137,17 @@ export function ImportManagement({
         });
     }, [lowStockVariants]);
 
-    const filtered = useMemo(() => {
-        const search = keyword.trim().toLowerCase();
-        return imports.filter((item) => {
-            const passStatus = status === "all" ? true : item.status === status;
-            const passSupplier = supplierId === "all" ? true : String(item.supplierId) === supplierId;
-            const passKeyword = search.length === 0 ? true : [item.description, item.productName, item.supplierName, String(item.id)].join(" ").toLowerCase().includes(search);
-            return passStatus && passSupplier && passKeyword;
-        });
-    }, [imports, keyword, status, supplierId]);
+    useEffect(() => {
+        const timeout = window.setTimeout(() => {
+            void onSearch({
+                keyword: keyword.trim() || undefined,
+                supplierId,
+                deliveryStatus: status,
+            });
+        }, 350);
+
+        return () => window.clearTimeout(timeout);
+    }, [keyword, status, supplierId, onSearch]);
 
     async function onProductChange(nextProductId: string) {
         const numericProductId = Number(nextProductId);
@@ -431,7 +435,7 @@ export function ImportManagement({
                             </tr>
                         </thead>
                         <tbody>
-                            {filtered.map((item) => (
+                            {imports.map((item) => (
                                 <tr key={item.id} className="border-b align-top">
                                     <td className="px-4 py-3 font-medium">#{item.id}</td>
                                     <td className="px-4 py-3">
@@ -453,7 +457,7 @@ export function ImportManagement({
                                     </td>
                                 </tr>
                             ))}
-                            {!isLoading && filtered.length === 0 && (
+                            {!isLoading && imports.length === 0 && (
                                 <tr>
                                     <td className="px-4 py-8 text-muted-foreground" colSpan={8}>
                                         Không có dữ liệu phiếu nhập.

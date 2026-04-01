@@ -313,6 +313,7 @@ export default function ProductsPage() {
     const [galleryImages, setGalleryImages] = useState<ProductImageItem[]>([]);
     const [searchKeyword, setSearchKeyword] = useState("");
     const [categoryFilter, setCategoryFilter] = useState("all");
+    const [isBootstrapReady, setIsBootstrapReady] = useState(false);
     const [deleteTarget, setDeleteTarget] = useState<Product | null>(null);
     const [originalAttributeIds, setOriginalAttributeIds] = useState<number[]>([]);
     const [originalAttributeValuePairs, setOriginalAttributeValuePairs] = useState<Array<{ id: number; attributeId: number }>>([]);
@@ -338,21 +339,47 @@ export default function ProductsPage() {
         async function bootstrap() {
             setIsLoading(true);
             try {
-                const [categoryRes, supplierRes, productRes] = await Promise.all([CategoryApi.getAdminCategories({ page: 1, size: 300 }), AdminCrudApi.getSuppliers({ page: 1, size: 200, sort: "id:desc" }), ProductApi.getAdminProducts(1, 200)]);
+                const [categoryRes, supplierRes] = await Promise.all([CategoryApi.getAdminCategories({ page: 1, size: 300 }), AdminCrudApi.getSuppliers({ page: 1, size: 200, sort: "id:desc" })]);
 
                 setCategories(flattenCategories(normalizeCategoryList(categoryRes.data)));
                 setSuppliers(normalizeSuppliers(supplierRes.data.data));
-                setProducts(productRes.data.data ?? []);
+                setIsBootstrapReady(true);
             } catch (error) {
                 toast.error(Helper.errorMessage(error));
                 setProducts([]);
-            } finally {
                 setIsLoading(false);
             }
         }
 
         void bootstrap();
     }, []);
+
+    async function fetchProductsFromApi(keyword: string) {
+        setIsLoading(true);
+        try {
+            const productRes = await ProductApi.getAdminProducts({
+                page: 1,
+                size: 200,
+                keyword: keyword.trim() || undefined,
+            });
+            setProducts(productRes.data.data ?? []);
+        } catch (error) {
+            toast.error(Helper.errorMessage(error));
+            setProducts([]);
+        } finally {
+            setIsLoading(false);
+        }
+    }
+
+    useEffect(() => {
+        if (!isBootstrapReady) return;
+
+        const timeout = window.setTimeout(() => {
+            void fetchProductsFromApi(searchKeyword);
+        }, 350);
+
+        return () => window.clearTimeout(timeout);
+    }, [isBootstrapReady, searchKeyword]);
 
     function updateFormField<K extends keyof ProductFormValues>(field: K, value: ProductFormValues[K]) {
         setForm((current) => ({ ...current, [field]: value }));
@@ -416,8 +443,7 @@ export default function ProductsPage() {
     }
 
     async function refreshProducts() {
-        const response = await ProductApi.getAdminProducts(1, 200);
-        setProducts(response.data.data);
+        await fetchProductsFromApi(searchKeyword);
     }
 
     function selectCoverImage(file: File | null) {
@@ -887,19 +913,7 @@ export default function ProductsPage() {
         }
     }
 
-    const filteredProducts = searchKeyword.trim()
-        ? products.filter(
-            (product) =>
-                String(product.name ?? "")
-                    .toLowerCase()
-                    .includes(searchKeyword.toLowerCase()) ||
-                String(product.description ?? "")
-                    .toLowerCase()
-                    .includes(searchKeyword.toLowerCase()),
-        )
-        : products;
-
-    const categoryFilteredProducts = categoryFilter === "all" ? filteredProducts : filteredProducts.filter((product) => String(product.categoryId) === categoryFilter);
+    const categoryFilteredProducts = categoryFilter === "all" ? products : products.filter((product) => String(product.categoryId) === categoryFilter);
 
     const activeProducts = products.filter((product) => product.status === "ACTIVE").length;
     const hiddenProducts = products.filter((product) => product.status === "INACTIVE").length;

@@ -19,11 +19,12 @@ import { WeeklyCalendarGrid } from "./_components/weekly-calendar-grid";
 import { DailyStaffView } from "./_components/daily-staff-view";
 import { DayDetailPanel } from "./_components/day-detail-panel";
 import { AssignShiftForm } from "./_components/assign-shift-form";
+import { ShiftManagement } from "./_components/shift-management";
 import { LateArrivalsView } from "./_components/late-arrivals-view";
 import { PositionDefaultScheduleForm } from "./_components/position-default-schedule-form";
 import { CalendarSkeleton, DailyStaffSkeleton } from "./_components/schedule-skeletons";
 
-type ViewMode = "weekly-report" | "daily-staff" | "assign" | "position-default" | "late-arrivals";
+type ViewMode = "weekly-report" | "daily-staff" | "assign" | "shift-management" | "position-default" | "late-arrivals";
 
 type LateArrivalItem = {
     date: string;
@@ -97,6 +98,7 @@ export default function SchedulePage() {
     // Assign mode
     const [assignForm, setAssignForm] = useState<AssignForm>(emptyAssignForm);
     const [shifts, setShifts] = useState<Shift[]>([]);
+    const [shiftKeyword, setShiftKeyword] = useState("");
     const [employees, setEmployees] = useState<UserProfile[]>([]);
     const [positions, setPositions] = useState<Position[]>([]);
     const [positionDefaultForm, setPositionDefaultForm] = useState<{
@@ -113,6 +115,12 @@ export default function SchedulePage() {
     const [isExportingLateArrivals, setIsExportingLateArrivals] = useState(false);
 
     const dateStr = currentDate.toISOString().split("T")[0];
+
+    const fetchShifts = useCallback(async (keyword?: string) => {
+        const shiftsRes = await AdminCrudApi.getShifts({ page: 1, size: 100, sort: "id:asc", keyword: keyword?.trim() || undefined, status: "all" });
+        const shiftsRaw = shiftsRes as unknown as { data?: { data?: Shift[] } };
+        setShifts(Array.isArray(shiftsRaw?.data?.data) ? shiftsRaw.data.data : []);
+    }, []);
 
     const fetchData = useCallback(async () => {
         setIsLoading(true);
@@ -218,6 +226,70 @@ export default function SchedulePage() {
         }
     }
 
+    const searchShifts = useCallback(async (keyword: string) => {
+        setShiftKeyword(keyword);
+        setIsLoading(true);
+        try {
+            await fetchShifts(keyword);
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : "Không thể tìm kiếm ca làm");
+        } finally {
+            setIsLoading(false);
+        }
+    }, [fetchShifts]);
+
+    const createShift = useCallback(async (payload: { name: string; start_time: string; end_time: string; grace_period?: number }) => {
+        setIsSaving(true);
+        try {
+            await AdminCrudApi.createShift(payload);
+            toast.success("Tạo ca làm thành công.");
+            await searchShifts(shiftKeyword);
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : "Không thể tạo ca làm");
+        } finally {
+            setIsSaving(false);
+        }
+    }, [searchShifts, shiftKeyword]);
+
+    const updateShift = useCallback(async (id: number, payload: { name?: string; start_time?: string; end_time?: string; grace_period?: number }) => {
+        setIsSaving(true);
+        try {
+            await AdminCrudApi.updateShift(id, payload);
+            toast.success("Cập nhật ca làm thành công.");
+            await searchShifts(shiftKeyword);
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : "Không thể cập nhật ca làm");
+        } finally {
+            setIsSaving(false);
+        }
+    }, [searchShifts, shiftKeyword]);
+
+    const deleteShift = useCallback(async (id: number) => {
+        setIsSaving(true);
+        try {
+            await AdminCrudApi.deleteShift(id);
+            toast.success("Đã ẩn ca làm thành công.");
+            await searchShifts(shiftKeyword);
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : "Không thể xóa ca làm");
+        } finally {
+            setIsSaving(false);
+        }
+    }, [searchShifts, shiftKeyword]);
+
+    const restoreShift = useCallback(async (id: number) => {
+        setIsSaving(true);
+        try {
+            await AdminCrudApi.restoreShift(id);
+            toast.success("Khôi phục ca làm thành công.");
+            await searchShifts(shiftKeyword);
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : "Không thể khôi phục ca làm");
+        } finally {
+            setIsSaving(false);
+        }
+    }, [searchShifts, shiftKeyword]);
+
     async function loadPositionDefaultSchedule(positionId: string) {
         if (!positionId) return;
 
@@ -321,7 +393,7 @@ export default function SchedulePage() {
             />
 
             {/* Main Content */}
-            {isLoading ? (
+            {isLoading && viewMode !== "shift-management" ? (
                 <>
                     {viewMode === "weekly-report" && <CalendarSkeleton />}
                     {viewMode === "daily-staff" && <DailyStaffSkeleton />}
@@ -362,6 +434,20 @@ export default function SchedulePage() {
                             isSaving={isSaving}
                             onFormChange={setAssignForm}
                             onSubmit={() => void submitAssignment()}
+                        />
+                    )}
+
+                    {viewMode === "shift-management" && (
+                        <ShiftManagement
+                            shifts={shifts}
+                            isLoading={isLoading}
+                            isSaving={isSaving}
+                            onRefresh={() => searchShifts(shiftKeyword)}
+                            onSearch={searchShifts}
+                            onCreate={createShift}
+                            onUpdate={updateShift}
+                            onDelete={deleteShift}
+                            onRestore={restoreShift}
                         />
                     )}
 

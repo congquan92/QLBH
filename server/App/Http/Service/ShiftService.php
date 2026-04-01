@@ -1,15 +1,23 @@
 <?php
 namespace App\Http\Service;
 
+use App\Enums\Status;
 use App\Models\Shift;
 use App\Http\Responses\PageResponse;
 use Exception;
 
 class ShiftService
 {
-    public function findAll(?string $keyword, ?string $sort, int $page, int $size): PageResponse
+    public function findAll(?string $keyword, ?string $status, ?string $sort, int $page, int $size): PageResponse
     {
         $query = Shift::query();
+
+        if (!empty($status) && strtoupper($status) !== 'ALL') {
+            $query->where('status', strtoupper($status));
+        } elseif (empty($status)) {
+            $query->where('status', Status::ACTIVE->value);
+        }
+
         // 1. Sắp xếp dynamic
         $column = 'start_time';
         $direction = 'asc';
@@ -33,6 +41,9 @@ class ShiftService
 
     public function create(array $data)
     {
+        if (!array_key_exists('status', $data)) {
+            $data['status'] = Status::ACTIVE->value;
+        }
         return Shift::create($data);
     }
 
@@ -51,6 +62,14 @@ class ShiftService
             throw new Exception("Không thể xóa ca '{$shift->name}' vì đang có nhân viên được phân công làm ca này.");
         }
 
-        return $shift->delete();
+        $shift->update(['status' => Status::INACTIVE->value]);
+        return $shift;
+    }
+
+    public function restore($id)
+    {
+        $shift = Shift::findOrFail($id);
+        $shift->update(['status' => Status::ACTIVE->value]);
+        return $shift;
     }
 }

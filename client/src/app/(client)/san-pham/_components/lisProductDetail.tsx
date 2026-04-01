@@ -4,7 +4,7 @@ import { CartApi } from "@/api/cart.api";
 import ProductCarousel from "@/components/feature/page/ProductCarousel";
 import { ProductDetail } from "@/types/product";
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ShoppingCart, Minus, Plus, Package, Truck, Shield, RefreshCw, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -19,6 +19,17 @@ import { UserAuthStore } from "@/hooks/useClientAuth";
 import { UserAuthUtil } from "@/lib/UserAuth-util";
 import { usePathname, useRouter } from "next/navigation";
 import ProductReviews from "@/app/(client)/san-pham/_components/ProductReviews";
+
+function sanitizeDescriptionHtml(html: string): string {
+    const normalized = String(html ?? "").trim();
+    if (!normalized) return "";
+
+    return normalized
+        .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, "")
+        .replace(/<style[\s\S]*?>[\s\S]*?<\/style>/gi, "")
+        .replace(/\son\w+=("[^"]*"|'[^']*')/gi, "")
+        .replace(/javascript:/gi, "");
+}
 
 export default function ListProductDetail({ products, relatedProducts }: { products: ProductDetail; relatedProducts: Product[] }) {
     const productImages = products.imageProduct.length > 0 ? products.imageProduct : [products.coverImage];
@@ -101,6 +112,7 @@ export default function ListProductDetail({ products, relatedProducts }: { produ
 
     const selectedVariant = products.productVariant.find((variant) => variant.variantAttributes.every((attribute) => selectedAttributes[attribute.attribute] === attribute.value)) ?? products.productVariant[0];
     const totalStock = selectedVariant?.quantity ?? products.productVariant.reduce((sum, variant) => sum + variant.quantity, 0);
+    const descriptionHtml = useMemo(() => sanitizeDescriptionHtml(products.description), [products.description]);
 
     const handleAddToCart = async (shouldRedirect = false) => {
         if (isAuthLoading || !isAuthenticated) {
@@ -351,10 +363,17 @@ export default function ListProductDetail({ products, relatedProducts }: { produ
                     </div>
 
                     {/* Description */}
-                    <div className="pt-4 border-t border-gray-200">
+                    {/* <div className="pt-4 border-t border-gray-200">
                         <h3 className="text-lg font-semibold text-gray-900 mb-2">Mô tả sản phẩm</h3>
-                        <p className="text-sm text-gray-600 leading-relaxed">{products.description}</p>
-                    </div>
+                        {descriptionHtml ? (
+                            <div
+                                className="prose prose-sm max-w-none text-sm text-gray-600 leading-relaxed [&_img]:h-auto [&_img]:max-w-full"
+                                dangerouslySetInnerHTML={{ __html: descriptionHtml }}
+                            />
+                        ) : (
+                            <p className="text-sm text-gray-500">Sản phẩm này hiện chưa có mô tả chi tiết.</p>
+                        )}
+                    </div> */}
                 </div>
             </div>
 
@@ -382,7 +401,14 @@ export default function ListProductDetail({ products, relatedProducts }: { produ
                         <div className="prose max-w-none">
                             <div className="bg-gray-50 border border-gray-200 p-6 text-gray-700">
                                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Mô tả sản phẩm</h3>
-                                {products.description?.trim() ? <p className="whitespace-pre-line leading-relaxed">{products.description}</p> : <p className="text-sm text-gray-500">Sản phẩm này hiện chưa có mô tả chi tiết.</p>}
+                                {descriptionHtml ? (
+                                    <div
+                                        className="prose prose-sm max-w-none leading-relaxed [&_img]:h-auto [&_img]:max-w-full"
+                                        dangerouslySetInnerHTML={{ __html: descriptionHtml }}
+                                    />
+                                ) : (
+                                    <p className="text-sm text-gray-500">Sản phẩm này hiện chưa có mô tả chi tiết.</p>
+                                )}
                             </div>
                         </div>
                     )}

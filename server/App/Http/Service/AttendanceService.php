@@ -78,7 +78,7 @@ class AttendanceService
         }
         
         // Ngăn chặn check-out quá sớm (Ví dụ: bấm nhầm ngay sau khi check-in)
-        if ($minutesSinceCheckIn < 5) {
+        if ($minutesSinceCheckIn < 3) {
             throw new Exception("Bạn vừa mới Check-in, vui lòng đợi ít nhất 5 phút để Check-out.");
         }
 
