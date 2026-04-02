@@ -43,11 +43,11 @@ export default async function Home() {
                         <ProductGrid products={productsCreated} emptyMessage="Chưa có sản phẩm mới để hiển thị." />
                     </div>
                 </section>
-                {/* Sản Phẩm Khuyến Mãi */}
+                {/* Sản Phẩm Giá Cao Đến Thấp */}
                 <section className="px-4 py-12 sm:px-6 lg:px-8">
                     <div className="flex items-end justify-between gap-4">
                         <div>
-                            <h2 className="mt-2 text-2xl font-bold text-gray-900 sm:text-3xl">Sản phẩm khuyến mãi</h2>
+                            <h2 className="mt-2 text-2xl font-bold text-gray-900 sm:text-3xl">Sản phẩm giá cao đến thấp</h2>
                         </div>
                         <Link href="/san-pham" className="text-sm font-semibold text-gray-700 transition-colors hover:text-gray-900 hover:underline">
                             Xem tất cả

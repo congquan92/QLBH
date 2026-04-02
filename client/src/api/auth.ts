@@ -1,5 +1,5 @@
 import { axiosInstance } from "@/lib/axios";
-import type { LoginResponse, LoginRole, RegisterPayload } from "@/types/auth";
+import type { LoginResponse, LoginRole, RegisterPayload, RegisterResponse } from "@/types/auth";
 
 type IntrospectResponse = {
     valid: boolean;
@@ -14,8 +14,9 @@ export const AuthApi = {
         return res.data;
     },
 
-    register: async (payload: RegisterPayload): Promise<void> => {
-        await axiosInstance.post("/auth/register", payload);
+    register: async (payload: RegisterPayload): Promise<RegisterResponse> => {
+        const res = await axiosInstance.post<RegisterResponse>("/auth/register", payload);
+        return res.data;
     },
 
     socialGoogleLogin: async (idToken: string): Promise<LoginResponse> => {

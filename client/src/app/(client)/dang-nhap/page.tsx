@@ -29,6 +29,16 @@ const loginSchema = z.object({
 
 type LoginFormData = z.infer<typeof loginSchema>;
 
+type LoginErrorPayload = {
+    message?: string;
+    data?: {
+        requiresVerification?: boolean;
+        userId?: number;
+        email?: string;
+        isEmail?: boolean;
+    };
+};
+
 export default function StoreLoginPage() {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -47,6 +57,11 @@ export default function StoreLoginPage() {
     const [isFindingAccounts, setIsFindingAccounts] = useState(false);
     const [isSendingOtp, setIsSendingOtp] = useState(false);
     const [isResettingPassword, setIsResettingPassword] = useState(false);
+    const [unverifiedUserId, setUnverifiedUserId] = useState<number | null>(null);
+    const [unverifiedEmail, setUnverifiedEmail] = useState("");
+    const [verificationOtp, setVerificationOtp] = useState("");
+    const [isSendingVerificationOtp, setIsSendingVerificationOtp] = useState(false);
+    const [isVerifyingAccount, setIsVerifyingAccount] = useState(false);
 
     const isAuthenticated = UserAuthUtil.isSessionValid(session);
 
@@ -66,19 +81,71 @@ export default function StoreLoginPage() {
 
     const onSubmit = async (data: LoginFormData) => {
         setIsSubmitting(true);
+        setUnverifiedUserId(null);
+        setUnverifiedEmail("");
+        setVerificationOtp("");
 
         try {
             await UserAuthStore.actions.login(data.username, data.password);
             toast.success("Đăng nhập thành công.");
             router.replace(redirectPath);
         } catch (error) {
-            const axiosError = error as AxiosError<{ message?: string }>;
+            const axiosError = error as AxiosError<LoginErrorPayload>;
             const message = axiosError.response?.data?.message ?? (error instanceof Error ? error.message : "Đăng nhập thất bại.");
+
+            const payload = axiosError.response?.data?.data;
+            if (payload?.requiresVerification && payload.userId) {
+                setUnverifiedUserId(payload.userId);
+                setUnverifiedEmail(String(payload.email ?? ""));
+            }
+
             toast.error(message);
         } finally {
             setIsSubmitting(false);
         }
     };
+
+    async function handleSendVerificationOtp() {
+        if (!unverifiedUserId) {
+            toast.error("Không tìm thấy tài khoản để gửi OTP xác thực.");
+            return;
+        }
+
+        setIsSendingVerificationOtp(true);
+        try {
+            await OtpApi.send({ userId: unverifiedUserId, otpType: "VERIFICATION", isEmail: true });
+            toast.success("Đã gửi lại OTP xác thực tài khoản qua email.");
+        } catch (error) {
+            toast.error(Helper.errorMessage(error));
+        } finally {
+            setIsSendingVerificationOtp(false);
+        }
+    }
+
+    async function handleVerifyAccountOtp() {
+        if (!unverifiedUserId) {
+            toast.error("Không tìm thấy tài khoản cần xác thực.");
+            return;
+        }
+
+        if (verificationOtp.trim().length !== 6) {
+            toast.error("Mã OTP xác thực phải gồm 6 ký tự.");
+            return;
+        }
+
+        setIsVerifyingAccount(true);
+        try {
+            await UserApi.verifyAccount(unverifiedUserId, { otp: verificationOtp.trim(), isEmail: true });
+            toast.success("Xác thực tài khoản thành công. Bạn có thể đăng nhập lại ngay.");
+            setUnverifiedUserId(null);
+            setUnverifiedEmail("");
+            setVerificationOtp("");
+        } catch (error) {
+            toast.error(Helper.errorMessage(error));
+        } finally {
+            setIsVerifyingAccount(false);
+        }
+    }
 
     const selectedAccount = accounts.find((account) => account.id === selectedUserId) ?? null;
 
@@ -217,6 +284,24 @@ export default function StoreLoginPage() {
                                 <Button type="button" variant="link" className="h-auto w-full py-0 text-red-600" onClick={() => setMode("forgot")}>
                                     Quên mật khẩu?
                                 </Button>
+
+                                {unverifiedUserId ? (
+                                    <div className="space-y-2 rounded-none border border-amber-200 bg-amber-50 p-3">
+                                        <p className="text-sm font-medium text-amber-900">Tài khoản chưa được xác thực</p>
+                                        <p className="text-xs text-amber-800">{unverifiedEmail ? `Email xác thực: ${unverifiedEmail}` : "Vui lòng xác thực OTP qua email để kích hoạt tài khoản."}</p>
+                                        <div className="grid gap-2 sm:grid-cols-2">
+                                            <Button type="button" variant="outline" onClick={() => void handleSendVerificationOtp()} disabled={isSendingVerificationOtp}>
+                                                {isSendingVerificationOtp ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                                                Gửi lại OTP
+                                            </Button>
+                                            <Input value={verificationOtp} onChange={(event) => setVerificationOtp(event.target.value)} maxLength={6} placeholder="Nhập OTP" />
+                                        </div>
+                                        <Button type="button" className="w-full rounded-none bg-red-600 hover:bg-red-700" onClick={() => void handleVerifyAccountOtp()} disabled={isVerifyingAccount}>
+                                            {isVerifyingAccount ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                                            Xác thực tài khoản
+                                        </Button>
+                                    </div>
+                                ) : null}
                             </form>
                         ) : (
                             <div className="space-y-4">

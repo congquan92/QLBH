@@ -27,7 +27,7 @@ class RegisterRequest extends FormRequest
                 'string',
                 'regex:/^(0[0-9]{9}|\+84[0-9]{9})$/',
             ],
-            'username' => 'required|string|max:100|unique:users,username',
+            'username' => 'required|string|max:100',
             'password' => ['required', 'string', 'min:8'],
         ];
     }

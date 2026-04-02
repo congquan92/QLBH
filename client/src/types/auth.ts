@@ -48,6 +48,13 @@ export interface RegisterPayload {
     dateOfBirth: string;
 }
 
+export interface RegisterResponse {
+    message: string;
+    userId: number;
+    requiresVerification: boolean;
+    isExistingUnverified: boolean;
+}
+
 export interface AuthData {
     token: string;
     role: UserRole | string;

@@ -18,7 +18,6 @@ use App\Models\Role;
 use App\Models\UserRank;
 use Carbon\Carbon;
 use DB;
-use Exception;
 use Hash;
 use Tymon\JWTAuth\JWTGuard;
 use App\Models\User;
@@ -40,12 +39,7 @@ class AuthService
     {
         /** @var JWTGuard $guard */
         $guard = auth('api');
-
-
         $user = User::where('username', $request->username())->first();
-        if(!$user){
-            throw new Exception("huyasc");
-        }
 
         if (!$user || !Hash::check($request->password, $user->password)) {
             throw new BusinessException(
@@ -57,9 +51,15 @@ class AuthService
 
         if ($user->status == UserStatus::NONE) {
             throw new BusinessException(
-                ErrorCode::UNAUTHENTICATED
+                ErrorCode::NOT_VERIFY
                 ,
-                "Tài khoản chưa được xác thực"
+                "Tài khoản chưa được xác thực",
+                [
+                    'requiresVerification' => true,
+                    'userId' => $user->id,
+                    'email' => $user->email,
+                    'isEmail' => true,
+                ]
             );
         }
 
@@ -98,21 +98,51 @@ class AuthService
     /**
      * Đăng kí người dùng
      */
-    public function register(RegisterRequest $request): string
+    public function register(RegisterRequest $request): array
     {
 
         return DB::transaction(function () use ($request) {
-            if (User::where('username', $request['username'])->exists()) {
+            $normalizedEmail = strtolower(trim((string) $request['email']));
+            $normalizedUsername = trim((string) $request['username']);
+
+            $existingUser = User::query()
+                ->where('username', $normalizedUsername)
+                ->first();
+
+            if ($existingUser) {
+                if ((bool) $existingUser->email_verified === false) {
+                    $existingUser->fill([
+                        'full_name' => $request['fullName'],
+                        'phone' => $request['phone'],
+                        'gender' => $request['gender'],
+                        'date_of_birth' => $request['dateOfBirth'],
+                        'password' => bcrypt($request['password']),
+                        'email' => $normalizedEmail,
+                        'status' => UserStatus::NONE,
+                    ]);
+                    $existingUser->save();
+
+                    $this->brevoService->sendTransacNotifications($existingUser, OTPType::VERIFICATION, true);
+
+                    return [
+                        'message' => 'Tài khoản chưa xác thực. OTP đã được gửi lại đến email của bạn.',
+                        'userId' => $existingUser->id,
+                        'requiresVerification' => true,
+                        'isExistingUnverified' => true,
+                    ];
+                }
+
                 throw new BusinessException(
                     ErrorCode::EXISTED,
                     MessageError::USERNAME_EXISTED
                 );
             }
+
             $userRank = UserRank::where('name', Rank::BRONZE->value)->firstOrFail();
             $role = Role::where('name', RoleType::USER->value)->firstOrFail();
             $user = User::create([
-                'username' => $request['username'],
-                'email' => $request['email'],
+                'username' => $normalizedUsername,
+                'email' => $normalizedEmail,
                 'password' => bcrypt($request['password']),
                 'full_name' => $request['fullName'],
                 'phone' => $request['phone'],
@@ -124,7 +154,12 @@ class AuthService
             ]);
 
             $this->brevoService->sendTransacNotifications($user, OTPType::VERIFICATION, true);
-            return "Đăng ký thành công, OTP đã được gửi!";
+            return [
+                'message' => 'Đăng ký thành công. OTP đã được gửi đến email của bạn.',
+                'userId' => $user->id,
+                'requiresVerification' => true,
+                'isExistingUnverified' => false,
+            ];
         });
     }
 

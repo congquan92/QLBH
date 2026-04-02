@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Helper } from "@/lib/helper";
@@ -60,23 +60,23 @@ export function TopCustomersCard({ customers, loading, sort, onSortChange }: Top
                     ) : (
                         <div className="space-y-3">
                             {sortedCustomers.map((customer, index) => (
-                                <div key={`${customer.userId ?? "guest"}-${customer.customerPhone ?? customer.customerName}-${index}`} className="flex flex-col gap-3 rounded-xl border p-4 md:flex-row md:items-center md:justify-between">
-                                    <div className="space-y-1">
+                                <div key={`${customer.userId ?? "guest"}-${customer.customerPhone ?? customer.customerName}-${index}`} className="flex flex-col gap-3 rounded-xl border p-4 lg:flex-row lg:items-center lg:justify-between">
+                                    <div className="min-w-0 flex-1 space-y-1">
                                         <div className="flex items-center gap-2">
                                             <Badge variant="outline">#{index + 1}</Badge>
                                             <p className="text-sm font-semibold">{customer.customerName}</p>
                                         </div>
                                         <p className="text-xs text-muted-foreground">{customer.customerPhone ? `SĐT: ${customer.customerPhone}` : "Không có SĐT"}</p>
-                                        <p className="text-xs text-muted-foreground">{customer.customerEmail ? `Email: ${customer.customerEmail}` : "Không có Email"}</p>
+                                        <p className="break-all text-xs text-muted-foreground">{customer.customerEmail ? `Email: ${customer.customerEmail}` : "Không có Email"}</p>
                                     </div>
 
-                                    <div className="flex items-center gap-4 md:gap-8">
+                                    <div className="flex flex-wrap items-center justify-between gap-3 lg:w-auto lg:flex-nowrap lg:justify-end lg:gap-8">
                                         <div className="text-right">
                                             <p className="text-xs text-muted-foreground">Tổng mua</p>
                                             <p className="text-base font-semibold text-emerald-600">{Helper.formatCurrency(Number(customer.totalPurchase || 0))}</p>
                                             <p className="text-xs text-muted-foreground">{Helper.formatNumber(customer.orderCount || 0)} đơn hàng</p>
                                         </div>
-                                        <Button onClick={() => setSelectedCustomer(customer)}>Xem đơn hàng</Button>
+                                        <Button className="w-full sm:w-auto" onClick={() => setSelectedCustomer(customer)}>Xem đơn hàng</Button>
                                     </div>
                                 </div>
                             ))}
