@@ -115,7 +115,14 @@ export function getCartItemAttributes(item: CartItem) {
 }
 
 export function isCartItemAvailable(item: CartItem) {
-    return Boolean(item.is_available ?? true) && (item.status ?? "ACTIVE") === "ACTIVE";
+    if (typeof item.is_available === "boolean") {
+        return item.is_available && (item.status ?? "ACTIVE") === "ACTIVE";
+    }
+
+    const stock = getCartItemStock(item);
+    const hasStock = stock === undefined ? true : stock > 0;
+
+    return hasStock && (item.status ?? "ACTIVE") === "ACTIVE";
 }
 
 export function getCartLineTotal(item: CartItem) {
@@ -123,12 +130,21 @@ export function getCartLineTotal(item: CartItem) {
 }
 
 export function getCartItemStock(item: CartItem) {
+    const stockFromAvailability = Number(item.available_stock);
+    if (Number.isFinite(stockFromAvailability) && stockFromAvailability >= 0) {
+        return stockFromAvailability;
+    }
+
     const stock = Number(item.product_variant?.quantity);
     if (!Number.isFinite(stock) || stock < 0) {
         return undefined;
     }
 
     return stock;
+}
+
+export function getCartItemUnavailableReason(item: CartItem) {
+    return typeof item.unavailable_reason === "string" && item.unavailable_reason.trim() ? item.unavailable_reason : "Tạm hết khả dụng";
 }
 
 export function getOrderItemsFromCart(cartItems: CartItem[]) {

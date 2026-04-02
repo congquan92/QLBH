@@ -3,7 +3,7 @@ import { Helper } from "@/lib/helper";
 import { CartItem } from "@/types/cart";
 import { AlertCircle, Minus, Plus, Trash2 } from "lucide-react";
 import Image from "next/image";
-import { getCartItemAttributes, getCartItemImage, getCartItemName, getCartItemPrice, getCartLineTotal, isCartItemAvailable } from "./cart-utils";
+import { getCartItemAttributes, getCartItemImage, getCartItemName, getCartItemPrice, getCartItemStock, getCartItemUnavailableReason, getCartLineTotal, isCartItemAvailable } from "./cart-utils";
 
 interface CartItemListProps {
     cartItems: CartItem[];
@@ -32,6 +32,8 @@ export function CartItemList({ cartItems, selectedItemIds, onToggleSelectItem, o
                 const attributes = getCartItemAttributes(item);
                 const available = isCartItemAvailable(item);
                 const isSelected = selectedItemIds.includes(item.id);
+                const maxStock = getCartItemStock(item);
+                const cannotIncrease = !available || (typeof maxStock === "number" && item.quantity >= maxStock);
 
                 return (
                     <article key={item.id} className="grid gap-4 border border-gray-200 bg-white p-4 sm:grid-cols-[120px_1fr]">
@@ -51,10 +53,13 @@ export function CartItemList({ cartItems, selectedItemIds, onToggleSelectItem, o
                                         <h2 className="text-lg font-semibold text-gray-900">{getCartItemName(item)}</h2>
                                     </div>
                                     {!available ? (
-                                        <span className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-2 py-1 text-xs font-semibold text-red-700">
-                                            <AlertCircle className="h-3.5 w-3.5" />
-                                            Tạm hết khả dụng
-                                        </span>
+                                        <div className="inline-flex flex-col gap-1">
+                                            <span className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-2 py-1 text-xs font-semibold text-red-700">
+                                                <AlertCircle className="h-3.5 w-3.5" />
+                                                Tạm hết khả dụng
+                                            </span>
+                                            <p className="text-xs text-red-600">{getCartItemUnavailableReason(item)}</p>
+                                        </div>
                                     ) : null}
                                 </div>
 
@@ -78,7 +83,7 @@ export function CartItemList({ cartItems, selectedItemIds, onToggleSelectItem, o
                                         <Minus className="size-4" />
                                     </button>
                                     <span className="min-w-12 border-x border-gray-300 px-4 py-2 text-center text-sm font-medium">{item.quantity}</span>
-                                    <button onClick={() => onQuantityChange(item, item.quantity + 1)} className="p-2 transition-colors hover:bg-gray-100" disabled={!available}>
+                                    <button onClick={() => onQuantityChange(item, item.quantity + 1)} className="p-2 transition-colors hover:bg-gray-100" disabled={cannotIncrease}>
                                         <Plus className="size-4" />
                                     </button>
                                 </div>

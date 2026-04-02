@@ -13,6 +13,37 @@ use Exception;
 
 class CartService
 {
+    private function syncCartWithLatestData(Cart $cart): void
+    {
+        $cart->loadMissing('productVariant.product', 'productVariant.attributeValues');
+
+        $variant = $cart->productVariant;
+        $product = $variant?->product;
+
+        if (!$variant || !$product) {
+            return;
+        }
+
+        $nextQuantity = (int) $cart->quantity;
+        $currentStock = max(0, (int) $variant->quantity);
+
+        if ($currentStock > 0 && $nextQuantity > $currentStock) {
+            $nextQuantity = $currentStock;
+        }
+
+        $cart->fill([
+            'quantity' => $nextQuantity,
+            'list_price_snapshot' => $variant->price,
+            'url_image_snapshot' => $product->url_image_cover,
+            'name_product_snapshot' => $product->name,
+            'variant_attributes_snapshot' => ProductVariantMapper::toVariantResponse($variant),
+        ]);
+
+        if ($cart->isDirty()) {
+            $cart->save();
+        }
+    }
+
     /**
      * Lấy danh sách giỏ hàng (Phân trang + Sort)
      */
@@ -21,7 +52,8 @@ class CartService
     $user = auth()->user();
 
     $query = Cart::where('user_id', $user->id)
-        ->where('status', Status::ACTIVE->value);
+        ->where('status', Status::ACTIVE->value)
+        ->with(['productVariant.product', 'productVariant.attributeValues']);
 
     // Thêm điều kiện tìm kiếm
     if (!empty($keyword)) {
@@ -39,7 +71,10 @@ class CartService
     $paginator = $query->orderBy($column, $direction)
         ->paginate($size, ['*'], 'page', $page);
 
-    $dtoItems = $paginator->getCollection()->map(fn($cart) => CartMapper::toResponse($cart));
+    $dtoItems = $paginator->getCollection()->map(function ($cart) {
+        $this->syncCartWithLatestData($cart);
+        return CartMapper::toResponse($cart);
+    });
     $paginator->setCollection($dtoItems);
 
     return PageResponse::fromLaravelPaginator($paginator);

@@ -253,6 +253,16 @@ class OrderService
             }
 
             if ($order->order_status === DeliveryStatus::PENDING) {
+                foreach ($order->orderItem as $item) {
+                    $variant = ProductVariant::where('id', $item->product_variant_id)
+                        ->lockForUpdate()
+                        ->first();
+
+                    if ($variant) {
+                        $variant->increment('quantity', (int) $item->quantity);
+                    }
+                }
+
                 $order->order_status = DeliveryStatus::CANCELLED;
                 $order->save();
                 return $order;
@@ -380,6 +390,9 @@ class OrderService
                     "height" => (int) $productVariant->height,
                     "length" => (int) $productVariant->length,
                 ];
+
+                // Trừ kho ngay khi đặt đơn để tồn kho luôn theo dữ liệu thực.
+                $productVariant->decrement('quantity', $totalQuantity);
             }
             $order->weight = ShippingHelper::calculateTotalWeight($packages);
             $order->length = ShippingHelper::calculateAverageLength($packages);

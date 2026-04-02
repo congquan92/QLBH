@@ -37,7 +37,6 @@ class VoucherService
     {
         $user = auth()->user();
 
-        // 1. Chặn Guest ngay lập tức
         if (!$user) {
             throw new BusinessException(ErrorCode::BAD_REQUEST, "Vui lòng đăng nhập để hiển thị voucher khả dụng!");
         }
