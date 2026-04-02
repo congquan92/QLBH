@@ -2,6 +2,7 @@ import { ProductApi } from "@/api/product.api";
 import BannerCarousel from "@/components/feature/page/bannerCarousel";
 import HomeCategory from "@/components/feature/page/homeCategory";
 import ImgPage from "@/components/feature/page/ImgPage";
+import PhoneContact from "@/components/feature/page/phoneContact";
 import ProductCarousel from "@/components/feature/page/ProductCarousel";
 import ProductGrid from "@/components/feature/page/ProductGrid";
 import { data_banner } from "@/data/banner";
@@ -80,6 +81,7 @@ export default async function Home() {
                     <HomeCategory />
                 </section>
             </div>
+            <PhoneContact />
         </div>
     );
 }

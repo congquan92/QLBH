@@ -31,8 +31,11 @@ export default function Topbar() {
                     </div>
 
                     <div className="flex items-center gap-2">
-                        <Link href="/huong-dan" className="hover:text-yellow-300 hover:underline">
+                        {/* <Link href="/huong-dan" className="hover:text-yellow-300 hover:underline">
                             <span>Hướng dẫn cách đổi</span>
+                        </Link> */}
+                        <Link href="/cloth-size" className="hover:text-yellow-300 hover:underline">
+                            <span>Hướng dẫn chọn kích thước</span>
                         </Link>
                         <button onClick={() => setIsVisible(false)} className="p-0.5 hover:bg-white/20 rounded cursor-pointer" aria-label="Close banner">
                             <X className="size-4" />
