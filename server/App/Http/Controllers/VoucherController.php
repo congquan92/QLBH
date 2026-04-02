@@ -18,7 +18,6 @@ class VoucherController extends Controller
         $this->voucherService = $voucherService;
     }
 
-    // Lấy danh sách cho User (Yêu cầu đăng nhập bên trong Service đã throw exception)
     public function findAll(Request $request): JsonResponse
     {
         $sort = $request->query('sort');

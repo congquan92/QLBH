@@ -398,13 +398,36 @@ export default function CartPage() {
             return;
         }
 
-        const orderItems = getOrderItemsFromCart(selectedItems.filter((item) => isCartItemAvailable(item)));
-        if (orderItems.length !== selectedItems.length) {
+        let latestCartItems: CartItem[] = [];
+        try {
+            const latestCartResponse = await CartApi.getMyCart({ page: 1, size: 50, sort: "id:desc" });
+            latestCartItems = Array.isArray(latestCartResponse.data) ? latestCartResponse.data : [];
+        } catch {
+            toast.error("Không thể đồng bộ giỏ hàng mới nhất. Vui lòng thử lại.");
+            return;
+        }
+
+        setCartItems(latestCartItems);
+
+        const latestSelectableIds = latestCartItems.filter((item) => isCartItemAvailable(item)).map((item) => item.id);
+        const nextSelectedIds = selectedItemIds.filter((id) => latestSelectableIds.includes(id));
+        setSelectedItemIds(nextSelectedIds);
+
+        const latestSelectedItems = latestCartItems.filter((item) => nextSelectedIds.includes(item.id));
+
+        if (latestSelectedItems.length === 0) {
+            toast.error("Sản phẩm đã chọn không còn khả dụng. Giỏ hàng đã được cập nhật lại dữ liệu mới nhất.");
+            return;
+        }
+
+        const orderItems = getOrderItemsFromCart(latestSelectedItems.filter((item) => isCartItemAvailable(item)));
+        if (orderItems.length !== latestSelectedItems.length) {
             toast.error("Có sản phẩm đã chọn thiếu biến thể hoặc không còn khả dụng. Vui lòng kiểm tra lại sản phẩm.");
             return;
         }
 
-        setLastCheckoutAmount(selectedTotalAmount);
+        const latestSelectedTotalAmount = latestSelectedItems.reduce((sum, item) => sum + getCartItemPrice(item) * item.quantity, 0);
+        setLastCheckoutAmount(latestSelectedTotalAmount);
 
         setIsPlacingOrder(true);
         setInvoice(null);
@@ -435,7 +458,7 @@ export default function CartPage() {
                 throw new Error("Không thể xác định mã đơn hàng vừa tạo.");
             }
 
-            const selectedIdsSnapshot = selectedItems.map((item) => item.id);
+            const selectedIdsSnapshot = latestSelectedItems.map((item) => item.id);
 
             if (paymentType === "BANK_TRANSFER") {
                 const returnUrl = `${window.location.origin}/thanh-toan/ket-qua`;
@@ -460,7 +483,7 @@ export default function CartPage() {
             const detailResponse = await OrderApi.getMyOrderDetail(createdOrderId);
             setInvoice((detailResponse.data ?? null) as OrderSummary | null);
 
-            await clearCartAfterOrder(selectedItems);
+            await clearCartAfterOrder(latestSelectedItems);
             setCartItems((current) => current.filter((item) => !selectedIdsSnapshot.includes(item.id)));
             setSelectedItemIds([]);
             setNote("");

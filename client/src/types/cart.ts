@@ -33,6 +33,8 @@ export interface CartItem {
     attributes?: Record<string, string>;
     status?: string;
     is_available?: boolean;
+    available_stock?: number;
+    unavailable_reason?: string;
     [key: string]: unknown;
 }
 

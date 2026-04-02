@@ -269,7 +269,6 @@ Route::middleware('auth')->group(function () {
         Route::put('/update/{id}', [VoucherController::class, 'update'])
             ->middleware('can:UPDATE_VOUCHER');
 
-        // Route dành cho User kiểm tra voucher của mình (nếu cần alias riêng)
         Route::get('/my-available', [VoucherController::class, 'findAll']);
     });
 
