@@ -25,7 +25,7 @@ export default function Topbar() {
                 <div className="flex justify-between items-center">
                     <div className="flex items-center gap-2">
                         <span>09:00-21:00. Tất cả các ngày trong tuần!</span>
-                        <Link href="/lien-he" className=" hover:text-yellow-300 hover:underline">
+                        <Link href="/gioi-thieu" className=" hover:text-yellow-300 hover:underline">
                             Tìm hiểu
                         </Link>
                     </div>

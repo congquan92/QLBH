@@ -24,6 +24,10 @@ const nextConfig: NextConfig = {
                 protocol: "https",
                 hostname: "product.hstatic.net",
             },
+            {
+                protocol: "https",
+                hostname: "theme.hstatic.net",
+            },
         ],
     },
 };

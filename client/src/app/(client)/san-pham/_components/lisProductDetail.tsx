@@ -260,19 +260,12 @@ export default function ListProductDetail({ products, relatedProducts }: { produ
                                         <button
                                             key={value.id}
                                             onClick={() => handleAttributeSelect(attribute.name, value.value)}
-                                            className={`px-4 py-2 border text-sm font-medium transition-all ${selectedAttributes[attribute.name] === value.value ? "border-red-600 bg-red-50 text-red-600" : "border-gray-300 bg-white text-gray-700 hover:border-gray-400"
-                                                }`}
+                                            className={`px-4 py-2 border text-sm font-medium transition-all ${
+                                                selectedAttributes[attribute.name] === value.value ? "border-red-600 bg-red-50 text-red-600" : "border-gray-300 bg-white text-gray-700 hover:border-gray-400"
+                                            }`}
                                         >
                                             <span className="flex items-center gap-2">
-                                                {imageUrl ? (
-                                                    <Image
-                                                        src={imageUrl}
-                                                        alt={value.value}
-                                                        width={28}
-                                                        height={28}
-                                                        className="h-7 w-7 border border-gray-200 object-cover"
-                                                    />
-                                                ) : null}
+                                                {imageUrl ? <Image src={imageUrl} alt={value.value} width={28} height={28} className="h-7 w-7 border border-gray-200 object-cover" /> : null}
                                                 <span>{value.value}</span>
                                             </span>
                                         </button>
@@ -402,10 +395,7 @@ export default function ListProductDetail({ products, relatedProducts }: { produ
                             <div className="bg-gray-50 border border-gray-200 p-6 text-gray-700">
                                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Mô tả sản phẩm</h3>
                                 {descriptionHtml ? (
-                                    <div
-                                        className="prose prose-sm max-w-none leading-relaxed [&_img]:h-auto [&_img]:max-w-full"
-                                        dangerouslySetInnerHTML={{ __html: descriptionHtml }}
-                                    />
+                                    <div className="prose prose-sm max-w-none leading-relaxed [&_img]:h-auto [&_img]:max-w-full" dangerouslySetInnerHTML={{ __html: descriptionHtml }} />
                                 ) : (
                                     <p className="text-sm text-gray-500">Sản phẩm này hiện chưa có mô tả chi tiết.</p>
                                 )}

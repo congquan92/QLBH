@@ -21,7 +21,7 @@ export default async function ProductDetailPage({ params }: ProductDetailProps) 
 
     const relatedResponse = await ProductApi.getProductsByCategory(data.categoryId, { page: 1, size: 10 });
     const relatedProducts: Product[] = relatedResponse.data.data.filter((product) => product.id !== data.id).slice(0, 8);
-    console.log(relatedProducts);
+    // console.log(relatedProducts);
 
     return (
         <div className="min-h-screen bg-white">
