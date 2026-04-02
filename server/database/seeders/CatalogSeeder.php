@@ -16,7 +16,8 @@ class CatalogSeeder extends Seeder
         DB::transaction(function (): void {
             $this->seedSuppliers();
             $this->seedCategories();
-            $this->seedProducts();
+            // Tam khoa tao product mau de tranh anh huong thong ke.
+            // $this->seedProducts();
         });
     }
 

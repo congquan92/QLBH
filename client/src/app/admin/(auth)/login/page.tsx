@@ -125,6 +125,14 @@ export default function LoginPage() {
             toast.error("Vui lòng nhập đầy đủ OTP và mật khẩu mới.");
             return;
         }
+        if (newPassword.trim().length < 8 || confirmPassword.trim().length < 8) {
+            toast.error("Mật khẩu phải ít nhất 8 ký tự.");
+            return;
+        }
+        if (newPassword !== confirmPassword) {
+            toast.error("Mật khẩu xác nhận không khớp.");
+            return;
+        }
 
         setIsResettingPassword(true);
         try {

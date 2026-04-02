@@ -43,6 +43,11 @@ class PositionSeeder extends Seeder
                 'salary_type' => 'MONTHLY',
             ],
             [
+                'name'        => 'Nhân viên(Part-Time)',
+                'base_salary' => 30000,
+                'salary_type' => 'HOURLY',
+            ],
+            [
                 'name'        => 'Nhân viên kho',
                 'base_salary' => 8_500_000,
                 'salary_type' => 'MONTHLY',

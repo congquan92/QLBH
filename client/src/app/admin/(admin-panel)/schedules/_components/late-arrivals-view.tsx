@@ -12,7 +12,7 @@ type LateArrivalItem = {
     shift_name: string;
     shift_time: string;
     check_in: string;
-    late_minutes: string;
+    late_minutes: string | number;
 };
 
 type TimeRange = "THIS_WEEK" | "LAST_WEEK" | "THIS_MONTH" | "LAST_MONTH";
@@ -36,6 +36,29 @@ export function LateArrivalsView({
     onTimeRangeChange,
     onExport,
 }: Props) {
+    const formatLateMinutesVi = (value: string | number): string => {
+        const raw = String(value ?? "").trim();
+        if (!raw) return "0 phút";
+
+        const match = raw.match(/-?\d+(?:\.\d+)?/);
+        if (!match) return raw;
+
+        const numeric = Number(match[0]);
+        if (!Number.isFinite(numeric)) return raw;
+
+        const totalSeconds = Math.max(0, Math.round(Math.abs(numeric) * 60));
+        const hours = Math.floor(totalSeconds / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        const seconds = totalSeconds % 60;
+
+        const parts: string[] = [];
+        if (hours > 0) parts.push(`${hours} giờ`);
+        if (minutes > 0) parts.push(`${minutes} phút`);
+        if (hours === 0 && minutes === 0) parts.push(`${seconds} giây`);
+
+        return parts.join(" ");
+    };
+
     return (
         <div className="rounded-xl border bg-card overflow-hidden">
             <div className="flex flex-wrap items-center justify-between gap-3 p-4 border-b bg-muted/30">
@@ -103,7 +126,7 @@ export function LateArrivalsView({
                                             <td className="px-4 py-3">{item.shift_name}</td>
                                             <td className="px-4 py-3">{item.shift_time}</td>
                                             <td className="px-4 py-3">{item.check_in}</td>
-                                            <td className="px-4 py-3 text-amber-600 font-semibold">{item.late_minutes}</td>
+                                            <td className="px-4 py-3 text-amber-600 font-semibold">{formatLateMinutesVi(item.late_minutes)}</td>
                                         </tr>
                                     ))
                                 )}

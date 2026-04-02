@@ -30,4 +30,9 @@ class ProductAttribute extends Model
     {
         return $this->hasMany(ProductAttributeValue::class);
     }
+
+    public function attributeValues()
+    {
+        return $this->values();
+    }
 }

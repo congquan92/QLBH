@@ -96,12 +96,27 @@ export default function EmployeesPage() {
 
     // ── Create ────────────────────────────────────────────────────────────────
     async function handleCreateEmployee() {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        const phoneRegex = /^(0[0-9]{9}|\+84[0-9]{9})$/;
+
         if (!createForm.fullName.trim() || !createForm.username.trim() || !createForm.password.trim()) {
             toast.error("Vui lòng nhập họ tên, username và mật khẩu.");
             return;
         }
+        if (createForm.password.trim().length < 8) {
+            toast.error("Mật khẩu phải ít nhất 8 ký tự.");
+            return;
+        }
         if (!createForm.roleId || !createForm.positionId || !createForm.dateOfBirth || !createForm.email || !createForm.phone) {
             toast.error("Vui lòng nhập đủ thông tin bắt buộc.");
+            return;
+        }
+        if (!emailRegex.test(createForm.email.trim())) {
+            toast.error("Email không hợp lệ.");
+            return;
+        }
+        if (!phoneRegex.test(createForm.phone.trim())) {
+            toast.error("Số điện thoại không hợp lệ.");
             return;
         }
 

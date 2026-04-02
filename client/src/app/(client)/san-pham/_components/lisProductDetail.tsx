@@ -188,12 +188,12 @@ export default function ListProductDetail({ products, relatedProducts }: { produ
                     </div>
 
                     {/* Thumbnail Images */}
-                    <div className="grid grid-cols-4 gap-2">
+                    <div className="flex gap-2 overflow-x-auto pb-2 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                         {productImages.map((img, index) => (
                             <button
                                 key={index}
                                 onClick={() => setSelectedImage(index)}
-                                className={`relative aspect-square border-2 overflow-hidden transition-all ${selectedImage === index ? "border-red-600" : "border-gray-200 hover:border-gray-400"}`}
+                                className={`relative size-20 shrink-0 snap-start border-2 overflow-hidden transition-all ${selectedImage === index ? "border-red-600" : "border-gray-200 hover:border-gray-400"}`}
                             >
                                 <Image src={img} alt={`${products.name} ${index + 1}`} fill className="object-cover" sizes="25vw" />
                             </button>

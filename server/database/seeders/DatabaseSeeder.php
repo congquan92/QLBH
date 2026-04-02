@@ -33,10 +33,10 @@ class DatabaseSeeder extends Seeder
 
             // 6. Sales: customers → orders → vouchers → reviews → imports
             CustomerSeeder::class,
-            OrderSeeder::class,
+            // OrderSeeder::class,
             VoucherSeeder::class,
-            ReviewSeeder::class,
-            ImportSeeder::class,
+            // ReviewSeeder::class,
+            // ImportSeeder::class,
 
             // 7. HR activity: shift assignments + attendances
             WorkforceSeeder::class,

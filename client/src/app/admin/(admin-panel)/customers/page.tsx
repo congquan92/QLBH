@@ -76,8 +76,19 @@ export default function CustomersPage() {
     }, [fetchUsers]);
 
     async function handleRegisterUser() {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        const phoneRegex = /^(0[0-9]{9}|\+84[0-9]{9})$/;
+
         if (!registerForm.fullName.trim() || !registerForm.username.trim() || !registerForm.password.trim() || !registerForm.confirmPassword.trim()) {
             toast.error("Vui lòng nhập đủ thông tin đăng ký.");
+            return;
+        }
+        if (registerForm.password.trim().length < 8) {
+            toast.error("Mật khẩu phải ít nhất 8 ký tự.");
+            return;
+        }
+        if (registerForm.confirmPassword.trim().length < 8) {
+            toast.error("Mật khẩu xác nhận phải ít nhất 8 ký tự.");
             return;
         }
         if (registerForm.password !== registerForm.confirmPassword) {
@@ -86,6 +97,14 @@ export default function CustomersPage() {
         }
         if (!registerForm.dateOfBirth || !registerForm.email || !registerForm.phone) {
             toast.error("Vui lòng nhập đủ email, số điện thoại và ngày sinh.");
+            return;
+        }
+        if (!emailRegex.test(registerForm.email.trim())) {
+            toast.error("Email không hợp lệ.");
+            return;
+        }
+        if (!phoneRegex.test(registerForm.phone.trim())) {
+            toast.error("Số điện thoại không hợp lệ.");
             return;
         }
 

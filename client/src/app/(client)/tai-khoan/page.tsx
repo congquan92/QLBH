@@ -641,6 +641,19 @@ function AccountPageContent() {
   };
 
   const handleChangePassword = async () => {
+    if (!passwordForm.oldPassword.trim() || !passwordForm.password.trim() || !passwordForm.confirmPassword.trim()) {
+      toast.error("Vui lòng nhập đầy đủ mật khẩu cũ, mật khẩu mới và xác nhận mật khẩu.");
+      return;
+    }
+    if (passwordForm.password.trim().length < 8 || passwordForm.confirmPassword.trim().length < 8) {
+      toast.error("Mật khẩu phải ít nhất 8 ký tự.");
+      return;
+    }
+    if (passwordForm.password !== passwordForm.confirmPassword) {
+      toast.error("Mật khẩu xác nhận không khớp.");
+      return;
+    }
+
     setIsSavingPassword(true);
     const response = await UserApi.changePassword(passwordForm);
     setIsSavingPassword(false);
