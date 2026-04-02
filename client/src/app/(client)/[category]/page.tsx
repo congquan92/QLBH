@@ -8,6 +8,14 @@ import { findRootCategoryBySlug } from "@/app/(client)/[category]/public-catalog
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+const MIN_SEARCH_KEYWORD_LENGTH = 2;
+
+function normalizeSearchKeyword(keyword?: string) {
+    const cleaned = keyword?.trim() || "";
+    if (!cleaned) return undefined;
+    return cleaned.length >= MIN_SEARCH_KEYWORD_LENGTH ? cleaned : undefined;
+}
+
 interface CategoryPageProps {
     params: Promise<{ category: string }>;
     searchParams: Promise<{ page?: string; pageSize?: string; keyword?: string; sort?: string }>;
@@ -24,7 +32,7 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
     const query = await searchParams;
     const currentPage = Number(query.page) || 1;
     const pageSize = Number(query.pageSize) || 10;
-    const keyword = query.keyword?.trim() || undefined;
+    const keyword = normalizeSearchKeyword(query.keyword);
     const sort = query.sort?.trim() || undefined;
 
     const categoriesResponse = await CategoryApi.getPublicCategories();

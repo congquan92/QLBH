@@ -5,6 +5,14 @@ import { findChildCategoryBySlugs } from "@/app/(client)/[category]/public-catal
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+const MIN_SEARCH_KEYWORD_LENGTH = 2;
+
+function normalizeSearchKeyword(keyword?: string) {
+    const cleaned = keyword?.trim() || "";
+    if (!cleaned) return undefined;
+    return cleaned.length >= MIN_SEARCH_KEYWORD_LENGTH ? cleaned : undefined;
+}
+
 interface ChildCategoryPageProps {
     params: Promise<{ category: string; subCategory: string }>;
     searchParams: Promise<{ page?: string; pageSize?: string; keyword?: string; sort?: string }>;
@@ -15,7 +23,7 @@ export default async function ChildCategoryPage({ params, searchParams }: ChildC
     const query = await searchParams;
     const currentPage = Number(query.page) || 1;
     const pageSize = Number(query.pageSize) || 10;
-    const keyword = query.keyword?.trim() || undefined;
+    const keyword = normalizeSearchKeyword(query.keyword);
     const sort = query.sort?.trim() || undefined;
 
     const categoriesResponse = await CategoryApi.getPublicCategories();

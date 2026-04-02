@@ -6,7 +6,7 @@ import ProductGrid from "@/components/feature/page/ProductGrid";
 import { Category } from "@/types/navbar";
 import { Product, ProductListResponse } from "@/types/product";
 import { Loader2, Search, SlidersHorizontal } from "lucide-react";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import ProductPagination from "./ProductPagination";
 
@@ -38,7 +38,16 @@ function parsePrice(value: string) {
     return parsed;
 }
 
+function normalizeSearchKeyword(value: string, minLength: number) {
+    const cleaned = value.trim();
+    if (!cleaned) return undefined;
+    return cleaned.length >= minLength ? cleaned : undefined;
+}
+
 export default function ListProduct({ products, data, categoryId, initialKeyword = "", allowAdvancedFilter = false }: ListProductProps) {
+    const MIN_AUTO_SEARCH_KEYWORD = 2;
+    const AUTO_SEARCH_DEBOUNCE_MS = 450;
+
     const pageSize = data.data.pageSize || 10;
     const [items, setItems] = useState<Product[]>(products);
     const [currentPage, setCurrentPage] = useState(data.data.pageNumber || 1);
@@ -47,12 +56,14 @@ export default function ListProduct({ products, data, categoryId, initialKeyword
     const [isFetching, setIsFetching] = useState(false);
 
     const [keyword, setKeyword] = useState(initialKeyword);
+    const [debouncedKeyword, setDebouncedKeyword] = useState(initialKeyword.trim());
     const [sort, setSort] = useState("id:desc");
     const [minPrice, setMinPrice] = useState("");
     const [maxPrice, setMaxPrice] = useState("");
     const [selectedCategoryId, setSelectedCategoryId] = useState<string>(categoryId ? String(categoryId) : "");
 
     const [categoryOptions, setCategoryOptions] = useState<CategoryOption[]>([]);
+    const skipFirstAutoSearch = useRef(true);
 
     useEffect(() => {
         setItems(products);
@@ -60,7 +71,29 @@ export default function ListProduct({ products, data, categoryId, initialKeyword
         setTotalPages(data.data.totalPages || 1);
         setTotalElements(data.data.totalElements || products.length);
         setKeyword(initialKeyword);
+        setDebouncedKeyword(initialKeyword.trim());
     }, [products, data]);
+
+    useEffect(() => {
+        const timer = window.setTimeout(() => {
+            setDebouncedKeyword(keyword.trim());
+        }, AUTO_SEARCH_DEBOUNCE_MS);
+
+        return () => window.clearTimeout(timer);
+    }, [keyword]);
+
+    useEffect(() => {
+        if (skipFirstAutoSearch.current) {
+            skipFirstAutoSearch.current = false;
+            return;
+        }
+
+        if (debouncedKeyword.length > 0 && debouncedKeyword.length < MIN_AUTO_SEARCH_KEYWORD) {
+            return;
+        }
+
+        void loadProducts(1);
+    }, [debouncedKeyword]);
 
     useEffect(() => {
         if (!allowAdvancedFilter || categoryId) {
@@ -100,10 +133,12 @@ export default function ListProduct({ products, data, categoryId, initialKeyword
 
         try {
             const activeCategoryId = categoryId ?? (selectedCategoryId ? Number(selectedCategoryId) : undefined);
+            const normalizedKeyword = normalizeSearchKeyword(keyword, MIN_AUTO_SEARCH_KEYWORD);
+
             const query = {
                 page,
                 size: pageSize,
-                keyword: keyword.trim() || undefined,
+                keyword: normalizedKeyword,
                 sort,
                 minPrice: normalizedMin,
                 maxPrice: normalizedMax,
@@ -124,6 +159,12 @@ export default function ListProduct({ products, data, categoryId, initialKeyword
 
     const handleSearchSubmit = (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
+
+        if (keyword.trim().length > 0 && keyword.trim().length < MIN_AUTO_SEARCH_KEYWORD) {
+            toast.info(`Vui lòng nhập ít nhất ${MIN_AUTO_SEARCH_KEYWORD} ký tự để tìm kiếm.`);
+            return;
+        }
+
         void loadProducts(1);
     };
 
@@ -162,6 +203,7 @@ export default function ListProduct({ products, data, categoryId, initialKeyword
                                         className="h-10 w-full border border-gray-300 bg-white pl-9 pr-3 text-sm outline-none transition focus:border-red-500"
                                     />
                                 </div>
+                                <p className="mt-1 text-xs text-gray-500">Tự tìm kiếm khi nhập từ 2 ký tự trở lên.</p>
                             </div>
 
                             {allowAdvancedFilter && (
@@ -236,7 +278,7 @@ export default function ListProduct({ products, data, categoryId, initialKeyword
                     </form>
                 </aside>
 
-                <section>
+                <section id="product-results" className="scroll-mt-24">
                     <div className="text-sm text-gray-600">
                         Hiển thị <span className="font-semibold text-gray-900">{visibleCount}</span> sản phẩm trên tổng <span className="font-semibold text-gray-900">{totalElements}</span> kết quả.
                     </div>

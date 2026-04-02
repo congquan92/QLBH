@@ -1,20 +1,28 @@
 "use client";
 
+import { ProductApi } from "@/api/product.api";
 import Link from "next/link";
-import { FormEvent, useRef, useState } from "react";
-import { ChevronDown, Menu, Search, ShoppingCart, User, X } from "lucide-react";
+import { FormEvent, useEffect, useRef, useState } from "react";
+import { ChevronDown, Loader2, Menu, Search, ShoppingCart, User, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { UserAuthUtil } from "@/lib/UserAuth-util";
+import { Helper } from "@/lib/helper";
 
 import { NavigationItem } from "@/types/navbar";
 import { useRouter } from "next/navigation";
 import { UserAuthStore } from "@/hooks/useClientAuth";
+import { toast } from "sonner";
+import type { Product } from "@/types/product";
 
 interface NavbarClientProps {
     navItems: NavigationItem[];
 }
+
+const MIN_SEARCH_KEYWORD_LENGTH = 2;
+const SEARCH_SUGGEST_DEBOUNCE_MS = 350;
+const SEARCH_SUGGEST_LIMIT = 6;
 
 export default function NavbarClient({ navItems }: NavbarClientProps) {
     const [openDropdown, setOpenDropdown] = useState<string | null>(null);
@@ -22,24 +30,107 @@ export default function NavbarClient({ navItems }: NavbarClientProps) {
     const [mobileDropdown, setMobileDropdown] = useState<string | null>(null);
     const [keyword, setKeyword] = useState("");
     const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+    const [suggestions, setSuggestions] = useState<Product[]>([]);
+    const [isSearching, setIsSearching] = useState(false);
+    const [showSuggestions, setShowSuggestions] = useState(false);
     const mobileInputRef = useRef<HTMLInputElement>(null);
+    const desktopSearchRef = useRef<HTMLFormElement>(null);
+    const activeSearchRequestId = useRef(0);
     const router = useRouter();
     const session = UserAuthStore.useStore((state) => state.session);
     const isLoading = UserAuthStore.useStore((state) => state.isLoading);
 
     const isAuthenticated = UserAuthUtil.isSessionValid(session);
 
+    useEffect(() => {
+        const handleOutsideClick = (event: MouseEvent) => {
+            const target = event.target as Node;
+            if (desktopSearchRef.current?.contains(target)) {
+                return;
+            }
+
+            setShowSuggestions(false);
+        };
+
+        document.addEventListener("mousedown", handleOutsideClick);
+        return () => document.removeEventListener("mousedown", handleOutsideClick);
+    }, []);
+
+    useEffect(() => {
+        const q = keyword.trim();
+
+        if (q.length < MIN_SEARCH_KEYWORD_LENGTH) {
+            setSuggestions([]);
+            setIsSearching(false);
+            return;
+        }
+
+        const timer = window.setTimeout(async () => {
+            const requestId = activeSearchRequestId.current + 1;
+            activeSearchRequestId.current = requestId;
+            setIsSearching(true);
+
+            try {
+                const response = await ProductApi.getAllProducts({
+                    page: 1,
+                    size: SEARCH_SUGGEST_LIMIT,
+                    keyword: q,
+                });
+
+                if (activeSearchRequestId.current !== requestId) {
+                    return;
+                }
+
+                setSuggestions(response.data.data ?? []);
+            } catch {
+                if (activeSearchRequestId.current === requestId) {
+                    setSuggestions([]);
+                }
+            } finally {
+                if (activeSearchRequestId.current === requestId) {
+                    setIsSearching(false);
+                }
+            }
+        }, SEARCH_SUGGEST_DEBOUNCE_MS);
+
+        return () => window.clearTimeout(timer);
+    }, [keyword]);
+
+    const buildProductSearchPath = (rawKeyword: string) => {
+        const query = rawKeyword.trim();
+        if (!query) {
+            return "/san-pham#product-results";
+        }
+
+        if (query.length < MIN_SEARCH_KEYWORD_LENGTH) {
+            toast.info(`Nhập ít nhất ${MIN_SEARCH_KEYWORD_LENGTH} ký tự để tìm sản phẩm.`);
+            return null;
+        }
+
+        return `/san-pham?keyword=${encodeURIComponent(query)}#product-results`;
+    };
+
     const handleSearch = (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
-        const query = keyword.trim();
-        router.push(query ? `/san-pham?keyword=${encodeURIComponent(query)}` : "/san-pham");
+        const path = buildProductSearchPath(keyword);
+        if (!path) return;
+        setShowSuggestions(false);
+        router.push(path);
     };
 
     const handleMobileSearch = (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
-        const query = keyword.trim();
+        const path = buildProductSearchPath(keyword);
+        if (!path) return;
         setMobileSearchOpen(false);
-        router.push(query ? `/san-pham?keyword=${encodeURIComponent(query)}` : "/san-pham");
+        setShowSuggestions(false);
+        router.push(path);
+    };
+
+    const handleSuggestionClick = (product: Product) => {
+        setShowSuggestions(false);
+        setKeyword(product.name);
+        router.push(`/san-pham/${product.id}/${encodeURIComponent(product.name)}`);
     };
 
     const openMobileSearch = () => {
@@ -92,15 +183,55 @@ export default function NavbarClient({ navItems }: NavbarClientProps) {
 
                     <div className="flex items-center gap-2">
                         {/* Desktop search */}
-                        <form onSubmit={handleSearch} className="relative hidden md:block">
+                        <form ref={desktopSearchRef} onSubmit={handleSearch} className="relative hidden md:block">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-gray-400" />
                             <input
                                 value={keyword}
-                                onChange={(event) => setKeyword(event.target.value)}
+                                onChange={(event) => {
+                                    setKeyword(event.target.value);
+                                    setShowSuggestions(true);
+                                }}
+                                onFocus={() => setShowSuggestions(true)}
                                 type="text"
                                 placeholder="Tìm kiếm sản phẩm..."
-                                className="pl-10 pr-4 py-2 w-64 border border-gray-300 rounded-none text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                                className="w-56 border border-gray-300 py-2 pl-10 pr-4 text-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-red-500 lg:w-64 xl:w-72"
                             />
+
+                            {showSuggestions && (
+                                <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-50 border border-gray-200 bg-white shadow-lg">
+                                    {keyword.trim().length < MIN_SEARCH_KEYWORD_LENGTH ? (
+                                        <div className="px-3 py-2 text-xs text-gray-500">Nhập ít nhất {MIN_SEARCH_KEYWORD_LENGTH} ký tự để tìm sản phẩm.</div>
+                                    ) : isSearching ? (
+                                        <div className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600">
+                                            <Loader2 className="size-4 animate-spin" />
+                                            Đang tìm sản phẩm...
+                                        </div>
+                                    ) : suggestions.length === 0 ? (
+                                        <div className="px-3 py-2 text-sm text-gray-600">Không có sản phẩm phù hợp.</div>
+                                    ) : (
+                                        <div className="max-h-96 overflow-y-auto">
+                                            {suggestions.map((product) => (
+                                                <button
+                                                    key={product.id}
+                                                    type="button"
+                                                    onClick={() => handleSuggestionClick(product)}
+                                                    className="flex w-full items-center gap-3 border-b border-gray-100 px-3 py-2 text-left transition hover:bg-gray-50 last:border-b-0"
+                                                >
+                                                    <div className="h-12 w-12 shrink-0 overflow-hidden border border-gray-200 bg-gray-100">
+                                                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                                                        <img src={product.urlImageCover} alt={product.name} className="h-full w-full object-cover" />
+                                                    </div>
+
+                                                    <div className="min-w-0 flex-1">
+                                                        <p className="line-clamp-1 text-sm font-medium text-gray-900">{product.name}</p>
+                                                        <p className="mt-0.5 text-sm font-semibold text-red-600">{Helper.formatCurrency(product.salePrice)}</p>
+                                                    </div>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </form>
 
                         {/* Mobile search icon */}
@@ -186,33 +317,78 @@ export default function NavbarClient({ navItems }: NavbarClientProps) {
 
             {/* Mobile search bar */}
             {mobileSearchOpen && (
-                <div className="md:hidden border-t border-gray-200 bg-white px-4 py-3 animate-in slide-in-from-top-2 duration-200">
-                    <form onSubmit={handleMobileSearch} className="flex items-center gap-2">
-                        <div className="relative flex-1">
+                <div className="animate-in slide-in-from-top-2 border-t border-gray-200 bg-white px-4 py-3 duration-200 md:hidden">
+                    <form onSubmit={handleMobileSearch} className="space-y-2">
+                        <div className="flex items-center gap-2">
+                            <div className="relative flex-1">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-gray-400" />
                             <input
                                 ref={mobileInputRef}
                                 value={keyword}
-                                onChange={(e) => setKeyword(e.target.value)}
+                                onChange={(e) => {
+                                    setKeyword(e.target.value);
+                                    setShowSuggestions(true);
+                                }}
                                 type="text"
                                 placeholder="Tìm kiếm sản phẩm..."
-                                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-none text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                                className="w-full border border-gray-300 py-2.5 pl-10 pr-4 text-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-red-500"
                             />
+                            </div>
+                            <button type="submit" className="bg-red-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-red-700">
+                                Tìm
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setMobileSearchOpen(false);
+                                    setShowSuggestions(false);
+                                    setKeyword("");
+                                }}
+                                className="rounded-full p-2 transition-colors hover:bg-gray-100"
+                                aria-label="Đóng tìm kiếm"
+                            >
+                                <X className="size-5 text-gray-500" />
+                            </button>
                         </div>
-                        <button type="submit" className="px-4 py-2.5 bg-red-600 text-white text-sm font-medium rounded-none hover:bg-red-700 transition-colors">
-                            Tìm
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => {
-                                setMobileSearchOpen(false);
-                                setKeyword("");
-                            }}
-                            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-                            aria-label="Đóng tìm kiếm"
-                        >
-                            <X className="size-5 text-gray-500" />
-                        </button>
+
+                        {showSuggestions && (
+                            <div className="max-h-80 overflow-y-auto border border-gray-200 bg-white shadow-sm">
+                                {keyword.trim().length < MIN_SEARCH_KEYWORD_LENGTH ? (
+                                    <div className="px-3 py-2 text-xs text-gray-500">Nhập ít nhất {MIN_SEARCH_KEYWORD_LENGTH} ký tự để tìm sản phẩm.</div>
+                                ) : isSearching ? (
+                                    <div className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600">
+                                        <Loader2 className="size-4 animate-spin" />
+                                        Đang tìm sản phẩm...
+                                    </div>
+                                ) : suggestions.length === 0 ? (
+                                    <div className="px-3 py-2 text-sm text-gray-600">Không có sản phẩm phù hợp.</div>
+                                ) : (
+                                    <div>
+                                        {suggestions.map((product) => (
+                                            <button
+                                                key={`mobile-${product.id}`}
+                                                type="button"
+                                                onClick={() => {
+                                                    handleSuggestionClick(product);
+                                                    setMobileSearchOpen(false);
+                                                }}
+                                                className="flex w-full items-center gap-3 border-b border-gray-100 px-3 py-2 text-left transition hover:bg-gray-50 last:border-b-0"
+                                            >
+                                                <div className="h-12 w-12 shrink-0 overflow-hidden border border-gray-200 bg-gray-100">
+                                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                                    <img src={product.urlImageCover} alt={product.name} className="h-full w-full object-cover" />
+                                                </div>
+
+                                                <div className="min-w-0 flex-1">
+                                                    <p className="line-clamp-1 text-sm font-medium text-gray-900">{product.name}</p>
+                                                    <p className="mt-0.5 text-sm font-semibold text-red-600">{Helper.formatCurrency(product.salePrice)}</p>
+                                                </div>
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </form>
                 </div>
             )}

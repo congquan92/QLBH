@@ -4,6 +4,14 @@ import ListProduct from "@/app/(client)/san-pham/_components/listProduct";
 import { ProductListResponse } from "@/types/product";
 import Link from "next/link";
 
+const MIN_SEARCH_KEYWORD_LENGTH = 2;
+
+function normalizeSearchKeyword(keyword?: string) {
+    const cleaned = keyword?.trim() || "";
+    if (!cleaned) return undefined;
+    return cleaned.length >= MIN_SEARCH_KEYWORD_LENGTH ? cleaned : undefined;
+}
+
 async function getAllProducts(query: { page: number; size: number; keyword?: string; sort?: string }) {
     return ProductApi.getAllProducts(query);
 }
@@ -16,7 +24,7 @@ export default async function ProductPage({ searchParams }: PageProps) {
     const params = await searchParams;
     const currentPage = Number(params.page) || 1;
     const pageSize = Number(params.pageSize) || 10;
-    const keyword = params.keyword?.trim() || undefined;
+    const keyword = normalizeSearchKeyword(params.keyword);
     const sort = params.sort?.trim() || undefined;
 
     const data: ProductListResponse = await getAllProducts({
