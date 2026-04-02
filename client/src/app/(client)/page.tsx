@@ -55,7 +55,7 @@ export default async function Home() {
                         </Link>
                     </div>
                     <div className="mt-8 w-full">
-                        <ImgPage url="/sale.gif" />
+                        <ImgPage url="/1.png" />
                         <ProductCarousel products={productsSalePrice} emptyMessage="Chưa có sản phẩm khuyến mãi để hiển thị." />
                     </div>
                 </section>

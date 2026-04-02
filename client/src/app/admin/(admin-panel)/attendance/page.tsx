@@ -88,8 +88,8 @@ export default function AttendancePage() {
         }
     };
 
-    const hasCheckedIn = todayRecord && todayRecord.check_in;
-    const hasCheckedOut = todayRecord && todayRecord.check_out;
+    const hasCheckedIn = Boolean(todayRecord?.check_in);
+    const hasCheckedOut = Boolean(todayRecord?.check_out);
 
     return (
         <div className="space-y-4">
@@ -113,11 +113,11 @@ export default function AttendancePage() {
                     <div className="grid grid-cols-2 gap-4">
                         <div className="rounded-lg border p-4">
                             <div className="text-sm text-muted-foreground mb-1">Check-in</div>
-                            <div className="text-2xl font-bold">{hasCheckedIn ? todayRecord.check_in : "--:--:--"}</div>
+                            <div className="text-2xl font-bold">{hasCheckedIn ? (todayRecord?.check_in ?? "--:--:--") : "--:--:--"}</div>
                         </div>
                         <div className="rounded-lg border p-4">
                             <div className="text-sm text-muted-foreground mb-1">Check-out</div>
-                            <div className="text-2xl font-bold">{hasCheckedOut ? todayRecord.check_out : "--:--:--"}</div>
+                            <div className="text-2xl font-bold">{hasCheckedOut ? (todayRecord?.check_out ?? "--:--:--") : "--:--:--"}</div>
                         </div>
                     </div>
 

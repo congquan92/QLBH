@@ -60,11 +60,7 @@ function extractVariantSummary(variant: unknown): { color?: string; size?: strin
         return {};
     }
 
-    const variantAttributes = Array.isArray(normalized.variantAttributes)
-        ? (normalized.variantAttributes as Array<Record<string, unknown>>)
-        : Array.isArray(variant)
-            ? (variant as Array<Record<string, unknown>>)
-            : [];
+    const variantAttributes = Array.isArray(normalized.variantAttributes) ? (normalized.variantAttributes as Array<Record<string, unknown>>) : Array.isArray(variant) ? (variant as Array<Record<string, unknown>>) : [];
 
     let color = "";
     let size = "";
@@ -108,10 +104,7 @@ function RatingBar({ star, count, total }: { star: number; count: number; total:
             <span className="w-4 text-right text-gray-600 font-medium">{star}</span>
             <Star className="w-3.5 h-3.5 fill-yellow-400 text-yellow-400 shrink-0" />
             <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
-                <div
-                    className="h-full bg-yellow-400 rounded-full transition-all duration-500"
-                    style={{ width: `${pct}%` }}
-                />
+                <div className="h-full bg-yellow-400 rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
             </div>
             <span className="w-8 text-right text-gray-500 text-xs">{count}</span>
         </div>
@@ -138,28 +131,16 @@ function ReviewCard({ review, highlighted = false }: { review: Review; highlight
                     <p className="text-sm font-semibold text-gray-900 truncate">{name}</p>
                     <p className="text-xs text-gray-400">{formatDate(review.createdAt)}</p>
                 </div>
-                <div className="flex items-center gap-1">
-                    {Helper2.renderStars(review.rating)}
-                </div>
+                <div className="flex items-center gap-1">{Helper2.renderStars(review.rating)}</div>
             </div>
 
             {/* Variant tag */}
-            {variantSummary && (
-                <p className="text-xs text-gray-500 bg-gray-50 border border-gray-100 px-2 py-1 rounded inline-block">
-                    {variantSummary}
-                </p>
-            )}
+            {variantSummary && <p className="text-xs text-gray-500 bg-gray-50 border border-gray-100 px-2 py-1 rounded inline-block">{variantSummary}</p>}
 
-            {highlighted && (
-                <p className="text-xs text-emerald-700">
-                    Bạn đã mua sản phẩm này với biến thể: {variantSummary || "Không có biến thể"}
-                </p>
-            )}
+            {highlighted && <p className="text-xs text-emerald-700">Bạn đã mua sản phẩm này với biến thể: {variantSummary || "Không có biến thể"}</p>}
 
             {/* Comment */}
-            {review.comment && (
-                <p className="text-sm text-gray-700 leading-relaxed">{review.comment}</p>
-            )}
+            {review.comment && <p className="text-sm text-gray-700 leading-relaxed">{review.comment}</p>}
 
             {/* Images */}
             {review.imageResponse && review.imageResponse.length > 0 && (
@@ -213,42 +194,40 @@ export default function ProductReviews({ productId, avgRating, soldQuantity }: P
     const [error, setError] = useState<string | null>(null);
     const [starFilter, setStarFilter] = useState<number | "ALL">("ALL");
 
-    const fetchReviews = useCallback(async (p: number) => {
-        setLoading(true);
-        setError(null);
-        try {
-            const [res, myRes] = await Promise.all([
-                ReviewApi.getByProduct(productId, p, PAGE_SIZE),
-                ReviewApi.getMyReviewByProduct(productId).catch(() => ({ data: [] })),
-            ]);
+    const fetchReviews = useCallback(
+        async (p: number) => {
+            setLoading(true);
+            setError(null);
+            try {
+                const [res, myRes] = await Promise.all([ReviewApi.getByProduct(productId, p, PAGE_SIZE), ReviewApi.getMyReviewByProduct(productId).catch(() => ({ data: [] }))]);
 
-            interface PageLike { data?: Review[]; totalElements?: number; totalPages?: number; }
-            const raw = res as PageLike & { data?: PageLike };
-            const pageRes: PageLike = raw?.totalElements !== undefined
-                ? raw
-                : raw?.data?.totalElements !== undefined
-                    ? (raw.data as PageLike)
-                    : ((raw?.data ?? raw) as PageLike);
+                interface PageLike {
+                    data?: Review[];
+                    totalElements?: number;
+                    totalPages?: number;
+                }
+                const raw = res as unknown as PageLike & { data?: PageLike };
+                const pageRes: PageLike = raw?.totalElements !== undefined ? raw : raw?.data?.totalElements !== undefined ? (raw.data as PageLike) : ((raw?.data ?? raw) as PageLike);
 
-            const allFromPage: Review[] = pageRes?.data ?? [];
-            const currentUserReviews = Array.isArray((myRes as { data?: Review[] })?.data)
-                ? ((myRes as { data: Review[] }).data ?? [])
-                : [];
-            const myReviewIds = new Set(currentUserReviews.map((r) => r.id));
-            const newReviews = allFromPage.filter((r) => !myReviewIds.has(r.id));
-            const total: number = pageRes?.totalElements ?? 0;
-            const pages: number = pageRes?.totalPages ?? 1;
+                const allFromPage: Review[] = pageRes?.data ?? [];
+                const currentUserReviews = Array.isArray((myRes as { data?: Review[] })?.data) ? ((myRes as { data: Review[] }).data ?? []) : [];
+                const myReviewIds = new Set(currentUserReviews.map((r) => r.id));
+                const newReviews = allFromPage.filter((r) => !myReviewIds.has(r.id));
+                const total: number = pageRes?.totalElements ?? 0;
+                const pages: number = pageRes?.totalPages ?? 1;
 
-            setReviews(newReviews);
-            setMyReviews(currentUserReviews);
-            setTotalElements(total);
-            setTotalPages(pages);
-        } catch {
-            setError("Không thể tải danh sách đánh giá. Vui lòng thử lại sau.");
-        } finally {
-            setLoading(false);
-        }
-    }, [productId]);
+                setReviews(newReviews);
+                setMyReviews(currentUserReviews);
+                setTotalElements(total);
+                setTotalPages(pages);
+            } catch {
+                setError("Không thể tải danh sách đánh giá. Vui lòng thử lại sau.");
+            } finally {
+                setLoading(false);
+            }
+        },
+        [productId],
+    );
 
     // Load first page on mount
     useEffect(() => {
@@ -319,26 +298,15 @@ export default function ProductReviews({ productId, avgRating, soldQuantity }: P
                 <h4 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
                     <MessageSquare className="w-4 h-4" />
                     Danh sách đánh giá
-                    {displayTotal > 0 && (
-                        <span className="ml-1 text-xs font-normal text-gray-400">({displayTotal})</span>
-                    )}
+                    {displayTotal > 0 && <span className="ml-1 text-xs font-normal text-gray-400">({displayTotal})</span>}
                 </h4>
 
                 <div className="flex flex-wrap gap-2">
-                    <button
-                        type="button"
-                        onClick={() => setStarFilter("ALL")}
-                        className={`rounded-full border px-3 py-1.5 text-xs ${starFilter === "ALL" ? "border-red-500 bg-red-50 text-red-700" : "border-gray-300 text-gray-600"}`}
-                    >
+                    <button type="button" onClick={() => setStarFilter("ALL")} className={`rounded-full border px-3 py-1.5 text-xs ${starFilter === "ALL" ? "border-red-500 bg-red-50 text-red-700" : "border-gray-300 text-gray-600"}`}>
                         Tất cả
                     </button>
                     {[5, 4, 3, 2, 1].map((star) => (
-                        <button
-                            key={star}
-                            type="button"
-                            onClick={() => setStarFilter(star)}
-                            className={`rounded-full border px-3 py-1.5 text-xs ${starFilter === star ? "border-red-500 bg-red-50 text-red-700" : "border-gray-300 text-gray-600"}`}
-                        >
+                        <button key={star} type="button" onClick={() => setStarFilter(star)} className={`rounded-full border px-3 py-1.5 text-xs ${starFilter === star ? "border-red-500 bg-red-50 text-red-700" : "border-gray-300 text-gray-600"}`}>
                             {star} sao
                         </button>
                     ))}
@@ -347,14 +315,14 @@ export default function ProductReviews({ productId, avgRating, soldQuantity }: P
                 {/* Loading state (initial load) */}
                 {loading && (
                     <div className="space-y-3">
-                        {Array.from({ length: 3 }).map((_, i) => <ReviewSkeleton key={i} />)}
+                        {Array.from({ length: 3 }).map((_, i) => (
+                            <ReviewSkeleton key={i} />
+                        ))}
                     </div>
                 )}
 
                 {/* Error state */}
-                {!loading && error && (
-                    <div className="border border-red-200 bg-red-50 rounded p-4 text-sm text-red-600">{error}</div>
-                )}
+                {!loading && error && <div className="border border-red-200 bg-red-50 rounded p-4 text-sm text-red-600">{error}</div>}
 
                 {/* Empty state */}
                 {!loading && !error && filteredMyReviews.length === 0 && filteredReviews.length === 0 && (
@@ -379,22 +347,14 @@ export default function ProductReviews({ productId, avgRating, soldQuantity }: P
 
                 {!loading && !error && totalPages > 1 ? (
                     <div className="flex items-center justify-center gap-2 pt-2">
-                        <button
-                            type="button"
-                            onClick={goPrev}
-                            disabled={page <= 1}
-                            className="inline-flex items-center gap-1 rounded-md border border-gray-300 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50"
-                        >
+                        <button type="button" onClick={goPrev} disabled={page <= 1} className="inline-flex items-center gap-1 rounded-md border border-gray-300 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50">
                             <ChevronLeft className="h-4 w-4" />
                             Trước
                         </button>
-                        <span className="text-sm text-gray-600">Trang {page}/{totalPages}</span>
-                        <button
-                            type="button"
-                            onClick={goNext}
-                            disabled={page >= totalPages}
-                            className="inline-flex items-center gap-1 rounded-md border border-gray-300 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50"
-                        >
+                        <span className="text-sm text-gray-600">
+                            Trang {page}/{totalPages}
+                        </span>
+                        <button type="button" onClick={goNext} disabled={page >= totalPages} className="inline-flex items-center gap-1 rounded-md border border-gray-300 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50">
                             Sau
                             <ChevronRight className="h-4 w-4" />
                         </button>
