@@ -163,13 +163,24 @@ class OrderService
         return DB::transaction(function () use ($orderId, $status) {
             $order = Order::where('id', $orderId)
                 ->firstOrFail();
+
+            if ($order->order_status === DeliveryStatus::CANCELLED) {
+                throw new BusinessException(ErrorCode::BAD_REQUEST, 'Đơn đã hủy, không thể cập nhật trạng thái');
+            }
+
             if ($order->payment_type == PaymentType::BANK_TRANSFER && $order->payment_status == PaymentStatus::UNPAID) {
                 throw new BusinessException(ErrorCode::BAD_REQUEST, 'Không thể chuyển trạng thái cho đơn chưa thanh toán !');
             }
+
             $nextStatus = DeliveryStatus::tryFrom($status);
             if (!$nextStatus) {
                 throw new BusinessException(ErrorCode::BAD_REQUEST, 'Trạng thái đơn hàng không hợp lệ');
             }
+
+            if ($nextStatus === DeliveryStatus::CANCELLED) {
+                throw new BusinessException(ErrorCode::BAD_REQUEST, 'Vui lòng sử dụng thao tác hủy đơn hàng');
+            }
+
             $previousStatus = $order->order_status->value;
             $currentState = OrderStateFactory::getState($order->order_status);
             $currentState->changeState($order, $nextStatus, $this->firebaseService);
@@ -242,33 +253,78 @@ class OrderService
         });
 
     }
+
+    private function isPrivilegedOrderCanceller(): bool
+    {
+        $currentUser = auth()->user();
+        $roleName = strtoupper((string) ($currentUser?->role?->name ?? ''));
+
+        return in_array($roleName, [RoleType::ADMIN->value, RoleType::ORDER_STAFF->value], true);
+    }
+
+    private function restoreOrderInventory(Order $order): void
+    {
+        foreach ($order->orderItem as $item) {
+            $variant = ProductVariant::where('id', $item->product_variant_id)
+                ->lockForUpdate()
+                ->first();
+
+            if ($variant) {
+                $variant->increment('quantity', (int) $item->quantity);
+            }
+        }
+    }
+
     public function cancelOrder(int $orderId)
     {
         return DB::transaction(function () use ($orderId) {
             $currentUser = auth()->user();
             $order = Order::where('id', $orderId)->firstOrFail();
 
-            if ($order->user_id !== $currentUser->id) {
-                throw new BusinessException(ErrorCode::UNAUTHORIZED, "Đơn hàng này không phải của bạn");
+            $isPrivilegedUser = $this->isPrivilegedOrderCanceller();
+            if (!$isPrivilegedUser && $order->user_id !== $currentUser->id) {
+                throw new BusinessException(ErrorCode::UNAUTHORIZED, 'Đơn hàng này không phải của bạn');
             }
 
-            if ($order->order_status === DeliveryStatus::PENDING) {
-                foreach ($order->orderItem as $item) {
-                    $variant = ProductVariant::where('id', $item->product_variant_id)
-                        ->lockForUpdate()
-                        ->first();
-
-                    if ($variant) {
-                        $variant->increment('quantity', (int) $item->quantity);
-                    }
-                }
-
-                $order->order_status = DeliveryStatus::CANCELLED;
-                $order->save();
-                return $order;
-            } else {
-                throw new BusinessException(ErrorCode::BAD_REQUEST, "Không thể hủy đơn hàng ở trạng thái này");
+            if ($order->order_status !== DeliveryStatus::PENDING) {
+                throw new BusinessException(ErrorCode::BAD_REQUEST, 'Chỉ có thể hủy đơn ở trạng thái chờ xác nhận');
             }
+
+            $this->restoreOrderInventory($order);
+
+            $order->order_status = DeliveryStatus::CANCELLED;
+            $order->save();
+
+            $this->firebaseService->updateOrderStatus($order);
+
+            $orderPayload = json_encode(OrderMapper::toOrderResponse($order));
+            $statusMessage = "Đơn #{$order->id} đã được hủy";
+
+            $this->firebaseService->sendNotification("user_{$order->user_id}", [
+                'title' => '❌ Đơn hàng đã bị hủy',
+                'body' => "{$statusMessage}. Tồn kho đã được hoàn lại.",
+                'order_id' => $order->id,
+                'type' => 'order_status',
+                'order_data' => $orderPayload,
+            ]);
+
+            $this->firebaseService->sendNotification('role_' . strtolower(RoleType::ORDER_STAFF->value), [
+                'title' => 'Đơn hàng đã hủy',
+                'body' => $statusMessage,
+                'order_id' => $order->id,
+                'type' => 'order_status_admin',
+                'order_data' => $orderPayload,
+            ]);
+
+            $this->firebaseService->sendNotification('role_' . strtolower(RoleType::ADMIN->value), [
+                'title' => 'Đơn hàng đã hủy',
+                'body' => $statusMessage,
+                'order_id' => $order->id,
+                'type' => 'order_status_admin',
+                'order_data' => $orderPayload,
+            ]);
+
+            return $order;
         });
     }
     public function completePayment(int $orderId)

@@ -4,6 +4,7 @@ import { OrderApi } from "@/api/order.api";
 import { OtpApi } from "@/api/otp.api";
 import { PaymentApi } from "@/api/payment.api";
 import { UserApi } from "@/api/user.api";
+import { CartApi } from "@/api/cart.api";
 import { FileUploadApi } from "@/api/admin/file-upload.api";
 import { AccountSection } from "@/app/(client)/tai-khoan/_components/account-sidebar";
 import { AddressesSection } from "@/app/(client)/tai-khoan/_components/addresses-section";
@@ -155,6 +156,8 @@ function AccountPageContent() {
   const [loadingOrderId, setLoadingOrderId] = useState<number | null>(null);
   const [loadingHistoryId, setLoadingHistoryId] = useState<number | null>(null);
   const [retryingOrderId, setRetryingOrderId] = useState<number | null>(null);
+  const [cancellingOrderId, setCancellingOrderId] = useState<number | null>(null);
+  const [reorderingOrderId, setReorderingOrderId] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
@@ -754,6 +757,91 @@ function AccountPageContent() {
     }
   };
 
+  const handleCancelOrder = async (orderId: number) => {
+    setCancellingOrderId(orderId);
+    try {
+      await OrderApi.cancel(orderId);
+      toast.success("Đã hủy đơn hàng thành công.");
+      await refreshOrderLists();
+      setOrderDetails((current) => {
+        const next = { ...current };
+        if (next[orderId]) {
+          next[orderId] = {
+            ...next[orderId],
+            orderStatus: "CANCELLED",
+            deliveryStatus: "CANCELLED",
+          };
+        }
+        return next;
+      });
+    } catch {
+      toast.error("Không thể hủy đơn hàng. Bạn chỉ có thể hủy đơn ở trạng thái chờ xác nhận.");
+    } finally {
+      setCancellingOrderId(null);
+    }
+  };
+
+  const handleReorderOrder = async (orderId: number) => {
+    setReorderingOrderId(orderId);
+    try {
+      let detail = orderDetails[orderId];
+      if (!detail) {
+        const detailResponse = await OrderApi.getMyOrderDetail(orderId);
+        detail = (detailResponse.data ?? {}) as OrderSummary;
+        setOrderDetails((current) => ({
+          ...current,
+          [orderId]: detail as OrderSummary,
+        }));
+      }
+
+      const lineItems = Array.isArray(detail?.orderItemResponses)
+        ? detail.orderItemResponses
+        : Array.isArray(detail?.orderItem)
+          ? detail.orderItem
+          : [];
+
+      const payloads = lineItems
+        .map((item) => ({
+          productVariantId: Number(item.productVariantId ?? item.product_variant_id ?? 0),
+          quantity: Number(item.quantity ?? 0),
+        }))
+        .filter((item) => item.productVariantId > 0 && item.quantity > 0);
+
+      if (payloads.length === 0) {
+        toast.error("Không tìm thấy sản phẩm hợp lệ để mua lại.");
+        return;
+      }
+
+      const tasks = payloads.map((item) =>
+        CartApi.addItem({
+          product_variant_id: item.productVariantId,
+          quantity: item.quantity,
+        }),
+      );
+
+      const results = await Promise.allSettled(tasks);
+      const successCount = results.filter((result) => result.status === "fulfilled").length;
+      const failedCount = results.length - successCount;
+
+      if (successCount === 0) {
+        toast.error("Không thể mua lại đơn hàng này do tồn kho hoặc sản phẩm đã thay đổi.");
+        return;
+      }
+
+      if (failedCount > 0) {
+        toast.warning(`Đã thêm ${successCount}/${results.length} sản phẩm vào giỏ. Một số sản phẩm không còn đủ tồn kho.`);
+      } else {
+        toast.success("Đã thêm lại sản phẩm của đơn vào giỏ hàng.");
+      }
+
+      router.push("/gio-hang");
+    } catch {
+      toast.error("Không thể mua lại đơn hàng này.");
+    } finally {
+      setReorderingOrderId(null);
+    }
+  };
+
   const handleConfirmOrder = async (orderId: number) => {
     setConfirmingOrderId(orderId);
     try {
@@ -920,10 +1008,14 @@ function AccountPageContent() {
             expandedOrderId={expandedOrderId}
             loadingOrderId={loadingOrderId}
             retryingOrderId={retryingOrderId}
+            cancellingOrderId={cancellingOrderId}
+            reorderingOrderId={reorderingOrderId}
             onToggleOrderDetail={(orderId) =>
               void handleToggleOrderDetail(orderId)
             }
             onRetryPayment={(orderId) => void handleRetryPayment(orderId)}
+            onCancelOrder={(orderId) => void handleCancelOrder(orderId)}
+            onReorderOrder={(orderId) => void handleReorderOrder(orderId)}
           />
         </TabsContent>
 

@@ -2,7 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Helper } from "@/lib/helper";
 import { OrderItem, OrderSummary } from "@/types/order";
-import { ChevronDown, ChevronUp, Loader2, Receipt, TicketPercent, Truck } from "lucide-react";
+import { ChevronDown, ChevronUp, Loader2, Receipt, RotateCcw, TicketPercent, Truck, XCircle } from "lucide-react";
 import Image from "next/image";
 import { formatDate, formatDateTime, getDeliveryStatusMeta, getPaymentStatusMeta, parseVariantSnapshot } from "./account-utils";
 
@@ -19,8 +19,12 @@ interface OrdersSectionProps {
     expandedOrderId: number | null;
     loadingOrderId: number | null;
     retryingOrderId: number | null;
+    cancellingOrderId: number | null;
+    reorderingOrderId: number | null;
     onToggleOrderDetail: (orderId: number) => void;
     onRetryPayment: (orderId: number) => void;
+    onCancelOrder: (orderId: number) => void;
+    onReorderOrder: (orderId: number) => void;
 }
 
 function getLineItems(order: OrderSummary): OrderItem[] {
@@ -42,7 +46,19 @@ function getVoucherTypeLabel(type?: string) {
     return raw || "Không xác định";
 }
 
-export function OrdersSection({ orders, orderDetails, expandedOrderId, loadingOrderId, retryingOrderId, onToggleOrderDetail, onRetryPayment }: OrdersSectionProps) {
+export function OrdersSection({
+    orders,
+    orderDetails,
+    expandedOrderId,
+    loadingOrderId,
+    retryingOrderId,
+    cancellingOrderId,
+    reorderingOrderId,
+    onToggleOrderDetail,
+    onRetryPayment,
+    onCancelOrder,
+    onReorderOrder,
+}: OrdersSectionProps) {
     return (
         <div className="border border-gray-200 bg-white p-6">
             <div className="flex flex-wrap items-start justify-between gap-4 border-b border-gray-200 pb-5">
@@ -70,6 +86,11 @@ export function OrdersSection({ orders, orderDetails, expandedOrderId, loadingOr
                         const voucherMinOrder = toNumber(voucher?.minDiscountValue ?? voucher?.min_discount_value);
                         const actualDiscount = toNumber(mergedOrder.discountValue);
                         const isShippingVoucher = Boolean(voucher?.isShipping ?? voucher?.is_shipping);
+                        const currentStatus = String(mergedOrder.deliveryStatus || mergedOrder.orderStatus || "").toUpperCase();
+                        const canCancelOrder = currentStatus === "PENDING";
+                        const canReorderOrder = currentStatus === "CANCELLED";
+                        const isCancellingOrder = cancellingOrderId === mergedOrder.id;
+                        const isReorderingOrder = reorderingOrderId === mergedOrder.id;
 
                         return (
                             <article key={order.id} className="overflow-hidden border border-gray-200 bg-white">
@@ -138,10 +159,34 @@ export function OrdersSection({ orders, orderDetails, expandedOrderId, loadingOr
                                                 </span>
                                             ) : null}
                                         </div>
-                                        <Button variant="outline" className="rounded-none" onClick={() => onToggleOrderDetail(order.id)}>
-                                            {isExpanded ? <ChevronUp className="mr-2 h-4 w-4" /> : <ChevronDown className="mr-2 h-4 w-4" />}
-                                            {isExpanded ? "Thu gọn" : "Xem chi tiết"}
-                                        </Button>
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            {canCancelOrder ? (
+                                                <Button
+                                                    variant="outline"
+                                                    className="rounded-none border-red-200 text-red-700 hover:border-red-600 hover:text-red-700"
+                                                    onClick={() => onCancelOrder(mergedOrder.id)}
+                                                    disabled={isCancellingOrder}
+                                                >
+                                                    {isCancellingOrder ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <XCircle className="mr-2 h-4 w-4" />}
+                                                    Hủy đơn
+                                                </Button>
+                                            ) : null}
+                                            {canReorderOrder ? (
+                                                <Button
+                                                    variant="outline"
+                                                    className="rounded-none"
+                                                    onClick={() => onReorderOrder(mergedOrder.id)}
+                                                    disabled={isReorderingOrder}
+                                                >
+                                                    {isReorderingOrder ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RotateCcw className="mr-2 h-4 w-4" />}
+                                                    Mua lại
+                                                </Button>
+                                            ) : null}
+                                            <Button variant="outline" className="rounded-none" onClick={() => onToggleOrderDetail(order.id)}>
+                                                {isExpanded ? <ChevronUp className="mr-2 h-4 w-4" /> : <ChevronDown className="mr-2 h-4 w-4" />}
+                                                {isExpanded ? "Thu gọn" : "Xem chi tiết"}
+                                            </Button>
+                                        </div>
                                     </div>
 
                                     {isExpanded ? (

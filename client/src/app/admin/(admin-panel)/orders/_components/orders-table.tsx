@@ -19,6 +19,7 @@ type OrdersTableProps = {
     isLoading: boolean;
     updatingOrderId: number | null;
     onChangeStatus: (orderId: number, nextStatus: string) => Promise<void>;
+    onCancelOrder: (orderId: number) => Promise<void>;
 };
 
 function getPaymentTypeLabel(value: unknown) {
@@ -28,7 +29,7 @@ function getPaymentTypeLabel(value: unknown) {
     return String(value ?? "-");
 }
 
-export function OrdersTable({ orders, isLoading, updatingOrderId, onChangeStatus }: OrdersTableProps) {
+export function OrdersTable({ orders, isLoading, updatingOrderId, onChangeStatus, onCancelOrder }: OrdersTableProps) {
     const [selectedOrder, setSelectedOrder] = useState<OrderSummary | null>(null);
 
     function handleSelectStatus(orderId: number, currentStatus: DeliveryStatusValue, selectedStatus: string) {
@@ -41,6 +42,15 @@ export function OrdersTable({ orders, isLoading, updatingOrderId, onChangeStatus
 
         if (currentStatus === "COMPLETED" || currentStatus === "CANCELLED") {
             toast.warning("Đơn đã ở trạng thái cuối, không thể chuyển thêm");
+            return;
+        }
+
+        if (targetStatus === "CANCELLED") {
+            if (currentStatus !== "PENDING") {
+                toast.warning("Chỉ có thể hủy đơn ở trạng thái chờ xác nhận");
+                return;
+            }
+            void onCancelOrder(orderId);
             return;
         }
 
@@ -124,7 +134,7 @@ export function OrdersTable({ orders, isLoading, updatingOrderId, onChangeStatus
                                                     {DELIVERY_STATUSES.map((status) => {
                                                         const targetIndex = getProgressIndex(status.value);
                                                         const isPassedOrCurrent = targetIndex !== -1 && targetIndex <= currentIndex;
-                                                        const isCancelledOption = status.value === "CANCELLED";
+                                                        const isCancelledOption = status.value === "CANCELLED" && currentStatus !== "PENDING";
 
                                                         return (
                                                             <SelectItem key={status.value} value={status.value} disabled={isPassedOrCurrent || isCancelledOption}>
