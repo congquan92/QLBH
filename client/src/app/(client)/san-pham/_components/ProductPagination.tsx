@@ -17,9 +17,9 @@ export default function ProductPagination({ currentPage, totalPages, onPageChang
     const pathname = usePathname();
 
     // Không hiển thị pagination nếu chỉ có 1 trang
-    // if (totalPages <= 1) {
-    //     return null;
-    // }
+    if (totalPages <= 1) {
+        return null;
+    }
 
     const handlePageChange = (page: number) => {
         if (onPageChange) {
