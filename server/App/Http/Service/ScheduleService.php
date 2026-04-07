@@ -170,6 +170,28 @@ class ScheduleService
         $date = $data['date'];
         $newShift = Shift::findOrFail($data['shift_id']);
 
+        $user = User::with(['position.defaultSchedules.shift'])->findOrFail($userId);
+        $dayOfWeek = Carbon::parse($date)->dayOfWeek;
+
+        $defaultSchedules = collect($user->position?->defaultSchedules ?? [])->where('day_of_week', $dayOfWeek);
+        foreach ($defaultSchedules as $defaultSchedule) {
+            $defaultShift = $defaultSchedule->shift;
+            if (!$defaultShift) {
+                continue;
+            }
+
+            $isOverlappingWithDefault = ($newShift->start_time < $defaultShift->end_time) &&
+                ($newShift->end_time > $defaultShift->start_time);
+
+            if ($isOverlappingWithDefault) {
+                throw new Exception(
+                    "Không thể phân ca. Nhân viên đã có ca mặc định '{$defaultShift->name}' " .
+                    "({$defaultShift->start_time}-{$defaultShift->end_time}) trong ngày này, " .
+                    "khung giờ mới {$newShift->start_time}-{$newShift->end_time} bị chồng lấn."
+                );
+            }
+        }
+
         $existingAssignments = ShiftAssignment::where('user_id', $userId)
             ->where('date', $date)
             ->with('shift')
@@ -183,8 +205,10 @@ class ScheduleService
 
             if ($isOverlapping) {
                 throw new Exception(
-                    "Trùng lịch! Khung giờ {$newShift->start_time}-{$newShift->end_time} " .
-                    "đã bị chồng lấn bởi ca '{$old->name}' ({$old->start_time}-{$old->end_time})."
+                    "Không thể phân ca. Nhân viên đã có ca đặc biệt '{$old->name}' " .
+                    "({$old->start_time}-{$old->end_time}) trong ngày này, " .
+                    "khung giờ mới {$newShift->start_time}-{$newShift->end_time} bị chồng lấn. " .
+                    "Bạn có thể thu hồi ca đặc biệt hiện tại để phân ca mới."
                 );
             }
         }

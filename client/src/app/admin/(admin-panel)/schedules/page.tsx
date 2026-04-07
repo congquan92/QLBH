@@ -45,6 +45,13 @@ type AssignForm = {
     date: string;
 };
 
+type AssignDayShift = {
+    shift_id: number | null;
+    shift_name: string;
+    time: string;
+    type: string;
+};
+
 const emptyAssignForm: AssignForm = {
     user_id: "",
     shift_id: "",
@@ -100,6 +107,8 @@ export default function SchedulePage() {
     const [shifts, setShifts] = useState<Shift[]>([]);
     const [shiftKeyword, setShiftKeyword] = useState("");
     const [employees, setEmployees] = useState<UserProfile[]>([]);
+    const [assignDayShifts, setAssignDayShifts] = useState<AssignDayShift[]>([]);
+    const [isLoadingAssignDayShifts, setIsLoadingAssignDayShifts] = useState(false);
     const [positions, setPositions] = useState<Position[]>([]);
     const [positionDefaultForm, setPositionDefaultForm] = useState<{
         position_id: string;
@@ -210,6 +219,48 @@ export default function SchedulePage() {
             return;
         }
 
+        const selectedShift = shifts.find((shift) => String(shift.id) === assignForm.shift_id);
+        if (!selectedShift) {
+            toast.error("Không tìm thấy thông tin ca đã chọn.");
+            return;
+        }
+
+        const toMinutes = (time: string) => {
+            const [h, m] = String(time).split(":");
+            return Number(h || 0) * 60 + Number(m || 0);
+        };
+
+        const parseRange = (range: string) => {
+            const [startRaw, endRaw] = String(range).split("-").map((part) => part.trim());
+            if (!startRaw || !endRaw) return null;
+            return {
+                start: toMinutes(startRaw),
+                end: toMinutes(endRaw),
+            };
+        };
+
+        const nextRange = {
+            start: toMinutes(String(selectedShift.start_time ?? "00:00")),
+            end: toMinutes(String(selectedShift.end_time ?? "00:00")),
+        };
+
+        const conflict = assignDayShifts.find((existing) => {
+            const existingRange = parseRange(existing.time);
+            if (!existingRange || existing.shift_id === null) return false;
+            return nextRange.start < existingRange.end && nextRange.end > existingRange.start;
+        });
+
+        if (conflict) {
+            const typeLabel = String(conflict.type || "Ca hiện có");
+            const canRevoke = typeLabel.toLowerCase().includes("đặc biệt");
+            toast.error(
+                canRevoke
+                    ? `Không thể phân ca: trùng với ${typeLabel.toLowerCase()} '${conflict.shift_name}' (${conflict.time}). Hãy thu hồi ca đặc biệt trước khi phân ca mới.`
+                    : `Không thể phân ca: trùng với ${typeLabel.toLowerCase()} '${conflict.shift_name}' (${conflict.time}).`
+            );
+            return;
+        }
+
         setIsSaving(true);
         try {
             await ScheduleApi.createAssignment({
@@ -218,13 +269,72 @@ export default function SchedulePage() {
                 date: assignForm.date,
             });
             toast.success("Phân ca thành công.");
-            setAssignForm(emptyAssignForm);
+            const currentDate = assignForm.date;
+            const currentUserId = assignForm.user_id;
+            setAssignForm((current) => ({ ...current, shift_id: "" }));
+            if (currentUserId && currentDate) {
+                void loadAssignDayShifts(currentUserId, currentDate);
+            }
         } catch (error) {
             toast.error(error instanceof Error ? error.message : "Phân ca thất bại");
         } finally {
             setIsSaving(false);
         }
     }
+
+    const loadAssignDayShifts = useCallback(async (userId: string, date: string) => {
+        if (!userId || !date) {
+            setAssignDayShifts([]);
+            return;
+        }
+
+        setIsLoadingAssignDayShifts(true);
+        try {
+            const res = await ScheduleApi.getWeeklyEmployee(Number(userId), date);
+            const raw = res as unknown as {
+                week_schedule?: AssignDayShift[];
+                data?: {
+                    week_schedule?: AssignDayShift[];
+                };
+            };
+
+            const weekSchedule = Array.isArray(raw?.week_schedule)
+                ? raw.week_schedule
+                : Array.isArray(raw?.data?.week_schedule)
+                    ? raw.data.week_schedule
+                    : [];
+
+            const selectedDay = weekSchedule.find((item: unknown) => {
+                const day = item as { date?: string };
+                return day?.date === date;
+            }) as { shifts?: AssignDayShift[] } | undefined;
+
+            setAssignDayShifts(Array.isArray(selectedDay?.shifts) ? selectedDay.shifts : []);
+        } catch {
+            setAssignDayShifts([]);
+        } finally {
+            setIsLoadingAssignDayShifts(false);
+        }
+    }, []);
+
+    const revokeSpecialShift = useCallback(async (shiftId: number) => {
+        if (!assignForm.user_id || !assignForm.date) return;
+
+        setIsSaving(true);
+        try {
+            await ScheduleApi.deleteAssignment({
+                user_id: Number(assignForm.user_id),
+                date: assignForm.date,
+                shift_id: shiftId,
+            });
+            toast.success("Đã thu hồi ca đặc biệt. Bạn có thể phân ca mới.");
+            await loadAssignDayShifts(assignForm.user_id, assignForm.date);
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : "Không thể thu hồi ca đặc biệt.");
+        } finally {
+            setIsSaving(false);
+        }
+    }, [assignForm.date, assignForm.user_id, loadAssignDayShifts]);
 
     const searchShifts = useCallback(async (keyword: string) => {
         setShiftKeyword(keyword);
@@ -250,6 +360,16 @@ export default function SchedulePage() {
             setIsSaving(false);
         }
     }, [searchShifts, shiftKeyword]);
+
+    useEffect(() => {
+        if (viewMode !== "assign") return;
+        if (!assignForm.user_id || !assignForm.date) {
+            setAssignDayShifts([]);
+            return;
+        }
+
+        void loadAssignDayShifts(assignForm.user_id, assignForm.date);
+    }, [assignForm.date, assignForm.user_id, loadAssignDayShifts, viewMode]);
 
     const updateShift = useCallback(async (id: number, payload: { name?: string; start_time?: string; end_time?: string; grace_period?: number }) => {
         setIsSaving(true);
@@ -431,8 +551,11 @@ export default function SchedulePage() {
                             assignForm={assignForm}
                             shifts={shifts}
                             employees={employees}
+                            dayShifts={assignDayShifts}
+                            isLoadingDayShifts={isLoadingAssignDayShifts}
                             isSaving={isSaving}
                             onFormChange={setAssignForm}
+                            onRevokeSpecialShift={(shiftId) => void revokeSpecialShift(shiftId)}
                             onSubmit={() => void submitAssignment()}
                         />
                     )}

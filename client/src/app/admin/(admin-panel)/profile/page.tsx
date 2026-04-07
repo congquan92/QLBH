@@ -18,7 +18,7 @@ import { useGhnAddressOptions } from "@/hooks/useGhnAddressOptions";
 import type { CareerPath } from "@/types/job-history";
 import type { SalaryCalculation } from "@/types/salary";
 import type { UserAddress, UserProfile } from "@/types/user";
-import { BriefcaseBusiness, CheckCircle2, Coins, History, Loader2, RefreshCcw, Save, ShieldCheck, Sparkles } from "lucide-react";
+import { BriefcaseBusiness, CheckCircle2, Coins, History, Loader2, Printer, RefreshCcw, Save, ShieldCheck, Sparkles } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Helper } from "@/lib/helper";
@@ -124,11 +124,16 @@ export default function AdminProfilePage() {
     const [passwordForm, setPasswordForm] = useState<PasswordFormState>({ oldPassword: "", password: "", confirmPassword: "" });
     const [addressForm, setAddressForm] = useState<AddressFormState>(EMPTY_ADDRESS_FORM);
     const [editingAddressId, setEditingAddressId] = useState<number | null>(null);
-    const [activeTab, setActiveTab] = useState<"profile" | "verification" | "security" | "address" | "career">("profile");
+    const [activeTab, setActiveTab] = useState<"profile" | "verification" | "security" | "address" | "career" | "salary-guide">("profile");
 
     const now = useMemo(() => new Date(), []);
     const currentMonth = now.getMonth() + 1;
     const currentYear = now.getFullYear();
+    const [salaryViewMonth, setSalaryViewMonth] = useState(currentMonth);
+    const [salaryViewYear, setSalaryViewYear] = useState(currentYear);
+    const [salaryYearSummary, setSalaryYearSummary] = useState<Array<{ month: number; final_salary: number; base_salary: number; total_bonus: number }>>([]);
+    const [isLoadingSalaryDetail, setIsLoadingSalaryDetail] = useState(false);
+    const [isLoadingSalaryYear, setIsLoadingSalaryYear] = useState(false);
 
     const { provinces, districts, wards, isLoadingProvinces, isLoadingDistricts, isLoadingWards } = useGhnAddressOptions(addressForm.province_id, addressForm.district_id);
 
@@ -367,6 +372,121 @@ export default function AdminProfilePage() {
         return `${value.toLocaleString("vi-VN")} VND`;
     }
 
+    async function loadSalaryByMonthYear(month: number, year: number) {
+        setIsLoadingSalaryDetail(true);
+        try {
+            const res = await SalaryApi.calculateMySalary(month, year);
+            setCurrentMonthSalary(res.data ?? null);
+            setSalaryViewMonth(month);
+            setSalaryViewYear(year);
+        } catch (error) {
+            setCurrentMonthSalary(null);
+            toast.error(Helper.errorMessage(error));
+        } finally {
+            setIsLoadingSalaryDetail(false);
+        }
+    }
+
+    async function loadSalaryYearSummary(year: number) {
+        setIsLoadingSalaryYear(true);
+        try {
+            const rows = await Promise.all(
+                Array.from({ length: 12 }).map(async (_, idx) => {
+                    const month = idx + 1;
+                    try {
+                        const res = await SalaryApi.calculateMySalary(month, year);
+                        const data = res.data;
+                        return {
+                            month,
+                            final_salary: Number(data?.final_salary ?? 0),
+                            base_salary: Number(data?.base_salary ?? 0),
+                            total_bonus: Number(data?.total_holiday_bonus ?? 0) + Number(data?.total_manual_bonus ?? 0),
+                        };
+                    } catch {
+                        return {
+                            month,
+                            final_salary: 0,
+                            base_salary: 0,
+                            total_bonus: 0,
+                        };
+                    }
+                })
+            );
+            setSalaryYearSummary(rows);
+            toast.success(`Đã tải bảng lương năm ${year}.`);
+        } catch (error) {
+            toast.error(Helper.errorMessage(error));
+        } finally {
+            setIsLoadingSalaryYear(false);
+        }
+    }
+
+    function printMonthlySalary() {
+        if (!currentMonthSalary) {
+            toast.error("Chưa có dữ liệu lương tháng để in.");
+            return;
+        }
+
+        const html = `
+            <html>
+            <head><title>Bang luong thang ${salaryViewMonth}/${salaryViewYear}</title></head>
+            <body style="font-family: Arial, sans-serif; padding: 20px;">
+                <h2>Bang luong thang ${salaryViewMonth}/${salaryViewYear}</h2>
+                <p>Nhan vien: ${String(profile?.fullName ?? "-")}</p>
+                <p>Luong co ban truoc tham nien: ${formatMoney(Number(currentMonthSalary.base_salary_before_tenure ?? currentMonthSalary.base_salary ?? 0))}</p>
+                <p>He so tham nien: x${Number(currentMonthSalary.tenure_coefficient ?? 1).toFixed(2)}</p>
+                <p>Thuong le: ${formatMoney(Number(currentMonthSalary.total_holiday_bonus ?? 0))}</p>
+                <p>Thuong them: ${formatMoney(Number(currentMonthSalary.total_manual_bonus ?? 0))}</p>
+                <p><strong>Thuc nhan: ${formatMoney(Number(currentMonthSalary.final_salary ?? 0))}</strong></p>
+                <hr />
+                <p><strong>Cach tinh he thong:</strong> Luong thuc nhan = Luong co ban sau tham nien + Thuong le + Thuong thu cong.</p>
+            </body>
+            </html>
+        `;
+
+        const printWindow = window.open("", "_blank", "width=900,height=700");
+        if (!printWindow) return;
+        printWindow.document.write(html);
+        printWindow.document.close();
+        printWindow.focus();
+        printWindow.print();
+    }
+
+    function printYearlySalary() {
+        if (salaryYearSummary.length === 0) {
+            toast.error("Chưa có dữ liệu lương năm để in.");
+            return;
+        }
+
+        const rows = salaryYearSummary
+            .map((row) => `<tr><td>Thang ${row.month}</td><td>${formatMoney(row.base_salary)}</td><td>${formatMoney(row.total_bonus)}</td><td>${formatMoney(row.final_salary)}</td></tr>`)
+            .join("");
+
+        const total = salaryYearSummary.reduce((sum, row) => sum + row.final_salary, 0);
+
+        const html = `
+            <html>
+            <head><title>Bang luong nam ${salaryViewYear}</title></head>
+            <body style="font-family: Arial, sans-serif; padding: 20px;">
+                <h2>Bang luong nam ${salaryViewYear}</h2>
+                <p>Nhan vien: ${String(profile?.fullName ?? "-")}</p>
+                <table border="1" cellspacing="0" cellpadding="6" style="border-collapse: collapse; width: 100%;">
+                    <thead><tr><th>Thang</th><th>Luong co ban</th><th>Tong thuong</th><th>Thuc nhan</th></tr></thead>
+                    <tbody>${rows}</tbody>
+                </table>
+                <p style="margin-top: 12px;"><strong>Tong thuc nhan nam: ${formatMoney(total)}</strong></p>
+            </body>
+            </html>
+        `;
+
+        const printWindow = window.open("", "_blank", "width=1000,height=760");
+        if (!printWindow) return;
+        printWindow.document.write(html);
+        printWindow.document.close();
+        printWindow.focus();
+        printWindow.print();
+    }
+
     return (
         <AdminPageShell title="Thông tin cá nhân" description="Quản lý hồ sơ, bảo mật và địa chỉ bằng API user/me">
             <Card>
@@ -430,13 +550,14 @@ export default function AdminProfilePage() {
                                 </div>
                             </div>
 
-                            <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "profile" | "verification" | "security" | "address" | "career")}>
+                            <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "profile" | "verification" | "security" | "address" | "career" | "salary-guide")}>
                                 <TabsList className="h-auto w-full flex flex-wrap items-center justify-start gap-2 rounded-xl bg-muted/40 p-2">
                                     <TabsTrigger value="profile" className="rounded-lg px-4">Hồ sơ</TabsTrigger>
                                     <TabsTrigger value="verification" className="rounded-lg px-4">Xác thực</TabsTrigger>
                                     <TabsTrigger value="security" className="rounded-lg px-4">Bảo mật</TabsTrigger>
                                     <TabsTrigger value="address" className="rounded-lg px-4">Địa chỉ</TabsTrigger>
                                     <TabsTrigger value="career" className="rounded-lg px-4">Lịch sử lương</TabsTrigger>
+                                    <TabsTrigger value="salary-guide" className="rounded-lg px-4">Công thức lương hệ thống</TabsTrigger>
                                 </TabsList>
 
                                 <TabsContent value="profile" className="mt-4 rounded-xl border p-4 space-y-3">
@@ -624,8 +745,55 @@ export default function AdminProfilePage() {
 
                                 <TabsContent value="career" className="mt-4 rounded-xl border p-4">
                                     <h3 className="font-semibold flex items-center gap-2"><History className="h-4 w-4" />Lịch sử chức vụ và lương</h3>
+                                    <div className="mt-3 rounded-lg border p-3 space-y-3">
+                                        <p className="text-sm font-semibold">Xem/In bảng lương tháng - năm</p>
+                                        <div className="grid gap-3 md:grid-cols-4">
+                                            <div className="space-y-2">
+                                                <Label>Tháng</Label>
+                                                <Select value={String(salaryViewMonth)} onValueChange={(value) => setSalaryViewMonth(Number(value))}>
+                                                    <SelectTrigger><SelectValue /></SelectTrigger>
+                                                    <SelectContent>
+                                                        {Array.from({ length: 12 }).map((_, index) => (
+                                                            <SelectItem key={index + 1} value={String(index + 1)}>Tháng {index + 1}</SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label>Năm</Label>
+                                                <Select value={String(salaryViewYear)} onValueChange={(value) => setSalaryViewYear(Number(value))}>
+                                                    <SelectTrigger><SelectValue /></SelectTrigger>
+                                                    <SelectContent>
+                                                        {Array.from({ length: 6 }).map((_, index) => {
+                                                            const value = String(currentYear - index);
+                                                            return <SelectItem key={value} value={value}>{value}</SelectItem>;
+                                                        })}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                            <div className="md:col-span-2 flex flex-wrap items-end gap-2">
+                                                <Button variant="outline" onClick={() => void loadSalaryByMonthYear(salaryViewMonth, salaryViewYear)} disabled={isLoadingSalaryDetail}>
+                                                    {isLoadingSalaryDetail ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                                                    Xem lương tháng
+                                                </Button>
+                                                <Button variant="outline" onClick={() => void loadSalaryYearSummary(salaryViewYear)} disabled={isLoadingSalaryYear}>
+                                                    {isLoadingSalaryYear ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                                                    Tải bảng lương năm
+                                                </Button>
+                                                <Button onClick={printMonthlySalary} disabled={!currentMonthSalary}>
+                                                    <Printer className="mr-2 h-4 w-4" />In lương tháng
+                                                </Button>
+                                                <Button onClick={printYearlySalary} disabled={salaryYearSummary.length === 0}>
+                                                    <Printer className="mr-2 h-4 w-4" />In lương năm
+                                                </Button>
+                                            </div>
+                                        </div>
+                                        <p className="text-xs text-muted-foreground">
+                                            Cong thuc he thong: Luong thuc nhan = Luong co ban sau tham nien + Thuong le + Thuong thu cong.
+                                        </p>
+                                    </div>
                                     <div className="mt-3 rounded-lg border bg-emerald-50/70 p-3">
-                                        <p className="text-sm font-semibold">Chi tiết lương tháng {currentMonth}/{currentYear}</p>
+                                        <p className="text-sm font-semibold">Chi tiết lương tháng {salaryViewMonth}/{salaryViewYear}</p>
                                         {currentMonthSalary ? (
                                             <div className="mt-2 space-y-1 text-sm">
                                                 <p>Lương cơ bản trước thâm niên: {formatMoney(Number(currentMonthSalary.base_salary_before_tenure ?? currentMonthSalary.base_salary ?? 0))}</p>
@@ -636,7 +804,7 @@ export default function AdminProfilePage() {
                                                 <p className="font-semibold">Thực nhận tháng: {formatMoney(thisMonthFinalSalary)}</p>
                                             </div>
                                         ) : (
-                                            <p className="mt-2 text-sm text-muted-foreground">Chưa lấy được dữ liệu lương tháng hiện tại.</p>
+                                            <p className="mt-2 text-sm text-muted-foreground">Chưa lấy được dữ liệu lương tháng đã chọn.</p>
                                         )}
 
                                         {Array.isArray(currentMonthSalary?.bonus_details) && currentMonthSalary.bonus_details.length > 0 ? (
@@ -653,6 +821,23 @@ export default function AdminProfilePage() {
                                         ) : null}
                                     </div>
 
+                                    {salaryYearSummary.length > 0 ? (
+                                        <div className="mt-3 rounded-lg border p-3">
+                                            <p className="text-sm font-semibold">Tổng hợp lương năm {salaryViewYear}</p>
+                                            <div className="mt-2 space-y-1 text-sm">
+                                                {salaryYearSummary.map((row) => (
+                                                    <div key={row.month} className="flex items-center justify-between rounded-md border p-2">
+                                                        <span>Tháng {row.month}</span>
+                                                        <span>{formatMoney(row.final_salary)}</span>
+                                                    </div>
+                                                ))}
+                                                <p className="pt-2 font-semibold">
+                                                    Tổng năm: {formatMoney(salaryYearSummary.reduce((sum, row) => sum + row.final_salary, 0))}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    ) : null}
+
                                     <div className="mt-3 space-y-3">
                                         {Array.isArray(career?.career_history) && career.career_history.length > 0 ? (
                                             career.career_history.map((item) => (
@@ -668,6 +853,46 @@ export default function AdminProfilePage() {
                                         ) : (
                                             <p className="text-sm text-muted-foreground">Chưa có dữ liệu lịch sử chức vụ.</p>
                                         )}
+                                    </div>
+                                </TabsContent>
+
+                                <TabsContent value="salary-guide" className="mt-4 rounded-xl border p-4 space-y-4">
+                                    <h3 className="font-semibold flex items-center gap-2"><Coins className="h-4 w-4" />Trang tĩnh: Cách tính lương hệ thống</h3>
+                                    <div className="rounded-lg border bg-blue-50/60 p-3 text-sm space-y-2">
+                                        <p className="font-medium">1) Công thức tổng quát</p>
+                                        <p>Lương thực nhận = Lương cơ bản sau thâm niên + Tổng thưởng ngày lễ + Tổng thưởng thủ công.</p>
+                                        <p>Lương cơ bản sau thâm niên = Lương cơ bản trước thâm niên x Hệ số thâm niên.</p>
+                                    </div>
+
+                                    <div className="rounded-lg border p-3 text-sm space-y-2">
+                                        <p className="font-medium">2) Thâm niên</p>
+                                        <p>Hệ số thâm niên tăng theo số năm công tác. Ví dụ hồ sơ đang hiển thị:</p>
+                                        <p>- Lương cơ bản trước thâm niên: {formatMoney(Number(currentMonthSalary?.base_salary_before_tenure ?? currentMonthSalary?.base_salary ?? career?.current_position?.salary ?? 0))}</p>
+                                        <p>- Hệ số thâm niên hiện tại: x{Number(currentMonthSalary?.tenure_coefficient ?? 1).toFixed(2)} ({Number(currentMonthSalary?.tenure_years ?? 0)} năm)</p>
+                                        <p>- Phần cộng do thâm niên tháng đang xem: {formatMoney(Number(currentMonthSalary?.tenure_bonus_amount ?? 0))}</p>
+                                    </div>
+
+                                    <div className="rounded-lg border p-3 text-sm space-y-2">
+                                        <p className="font-medium">3) Thưởng ngày lễ (holiday)</p>
+                                        <p>Hệ thống tính dựa trên số giờ làm trong ngày lễ và hệ số nhân ngày lễ của ca làm việc.</p>
+                                        <p>Ví dụ minh họa:</p>
+                                        <p>- Nhân viên làm 8 giờ vào ngày lễ, đơn giá giờ cơ bản 40.000 VND.</p>
+                                        <p>- Nếu hệ số lễ là x2.0, tiền lễ cho ngày đó có thể khoảng 8 x 40.000 x 2.0 = 640.000 VND.</p>
+                                        <p>Dữ liệu thực tế của bạn được lấy từ bảng chấm công và hiển thị ở mục "Chi tiết tiền lễ theo ngày".</p>
+                                    </div>
+
+                                    <div className="rounded-lg border p-3 text-sm space-y-2">
+                                        <p className="font-medium">4) Thưởng thủ công</p>
+                                        <p>Thưởng thủ công là các khoản cộng thêm do quản lý nhập theo đợt (thưởng hiệu suất, thưởng dự án, thưởng đột xuất...).</p>
+                                        <p>Tháng đang xem, tổng thưởng thủ công: {formatMoney(Number(currentMonthSalary?.total_manual_bonus ?? 0))}.</p>
+                                    </div>
+
+                                    <div className="rounded-lg border bg-emerald-50/60 p-3 text-sm space-y-2">
+                                        <p className="font-medium">5) Ví dụ tính lương hoàn chỉnh (theo dữ liệu tháng đang xem)</p>
+                                        <p>- Lương cơ bản sau thâm niên: {formatMoney(Number(currentMonthSalary?.base_salary ?? 0))}</p>
+                                        <p>- Tổng thưởng lễ: {formatMoney(Number(currentMonthSalary?.total_holiday_bonus ?? 0))}</p>
+                                        <p>- Tổng thưởng thủ công: {formatMoney(Number(currentMonthSalary?.total_manual_bonus ?? 0))}</p>
+                                        <p className="font-semibold">= Lương thực nhận: {formatMoney(Number(currentMonthSalary?.final_salary ?? 0))}</p>
                                     </div>
                                 </TabsContent>
                             </Tabs>

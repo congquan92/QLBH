@@ -256,6 +256,11 @@ Route::middleware('auth')->group(function () {
         Route::get('/top-products', [StatisticalController::class, 'getTopProducts']);
         Route::get('/categories', [StatisticalController::class, 'getCategories']);
         Route::get('/top-customers', [StatisticalController::class, 'getTopCustomers']);
+        Route::get('/overview', [StatisticalController::class, 'getOverview']);
+        Route::get('/workforce', [StatisticalController::class, 'getWorkforce']);
+        Route::get('/salary', [StatisticalController::class, 'getSalaryStatistics']);
+        Route::get('/product-exports', [StatisticalController::class, 'getProductExports']);
+        Route::get('/export-report', [StatisticalController::class, 'exportReport']);
     });
 
     Route::prefix('voucher')->group(function () {

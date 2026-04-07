@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { Shift } from "@/types/admin-crud";
 import type { UserProfile } from "@/types/user";
-import { Plus, Loader2, CalendarPlus, User, Clock, Search } from "lucide-react";
+import { Plus, Loader2, CalendarPlus, User, Clock, Search, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 
 type AssignForm = {
@@ -18,12 +18,20 @@ type Props = {
     assignForm: AssignForm;
     shifts: Shift[];
     employees: UserProfile[];
+    dayShifts: Array<{
+        shift_id: number | null;
+        shift_name: string;
+        time: string;
+        type: string;
+    }>;
+    isLoadingDayShifts: boolean;
     isSaving: boolean;
     onFormChange: (form: AssignForm) => void;
+    onRevokeSpecialShift: (shiftId: number) => void;
     onSubmit: () => void;
 };
 
-export function AssignShiftForm({ assignForm, shifts, employees, isSaving, onFormChange, onSubmit }: Props) {
+export function AssignShiftForm({ assignForm, shifts, employees, dayShifts, isLoadingDayShifts, isSaving, onFormChange, onRevokeSpecialShift, onSubmit }: Props) {
     const [employeeQuery, setEmployeeQuery] = useState("");
 
     const filteredEmployees = useMemo(() => {
@@ -155,6 +163,44 @@ export function AssignShiftForm({ assignForm, shifts, employees, isSaving, onFor
                     )}
                     Phân ca
                 </Button>
+
+                <div className="rounded-lg border p-3 space-y-2">
+                    <p className="text-sm font-medium">Ca đã có trong ngày được chọn</p>
+                    {isLoadingDayShifts ? (
+                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            Đang tải lịch hiện tại...
+                        </p>
+                    ) : dayShifts.length === 0 ? (
+                        <p className="text-xs text-muted-foreground">Ngày này chưa có ca mặc định hoặc ca đặc biệt.</p>
+                    ) : (
+                        <div className="space-y-2">
+                            {dayShifts.map((shift, index) => {
+                                const isSpecial = String(shift.type || "").toLowerCase().includes("đặc biệt");
+                                return (
+                                    <div key={`${shift.shift_id ?? "none"}-${index}`} className="flex items-center justify-between gap-2 rounded-md border p-2">
+                                        <div className="text-xs">
+                                            <p className="font-medium">{shift.shift_name} ({shift.time})</p>
+                                            <p className="text-muted-foreground">Loại: {shift.type}</p>
+                                        </div>
+                                        {isSpecial && shift.shift_id ? (
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="sm"
+                                                disabled={isSaving}
+                                                onClick={() => onRevokeSpecialShift(shift.shift_id as number)}
+                                            >
+                                                <Trash2 className="mr-1 h-3.5 w-3.5" />
+                                                Thu hồi
+                                            </Button>
+                                        ) : null}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
             </div>
         </div>
     );
