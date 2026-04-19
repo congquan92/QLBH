@@ -3,8 +3,10 @@
 namespace App\Http\Service;
 
 use App\Enums\CheckInStatus;
+use App\Enums\LeaveStatus;
 use App\Models\Attendance;
 use App\Models\Holiday;
+use App\Models\LeaveRequest;
 use App\Models\PositionDefaultSchedule;
 use App\Models\ShiftAssignment;
 use App\Models\User;
@@ -102,20 +104,48 @@ class AttendanceService
      */
     private function getCurrentActiveShift(User $user, $today, $dayOfWeek, $now)
     {
+        $approvedLeaves = LeaveRequest::query()
+            ->where('user_id', $user->id)
+            ->where('status', LeaveStatus::APPROVED->value)
+            ->where(function ($query) use ($today) {
+                $query->where(function ($rangeQuery) use ($today) {
+                    $rangeQuery->whereNotNull('start_date')
+                        ->whereDate('start_date', '<=', $today)
+                        ->whereDate('end_date', '>=', $today);
+                })->orWhere(function ($legacyQuery) use ($today) {
+                    $legacyQuery->whereNull('start_date')
+                        ->whereDate('leave_date', $today);
+                });
+            })
+            ->get();
+
+        if ($approvedLeaves->contains(fn ($leave) => $leave->shift_id === null)) {
+            return null;
+        }
+
+        $leaveShiftIds = $approvedLeaves
+            ->pluck('shift_id')
+            ->filter(fn ($shiftId) => $shiftId !== null)
+            ->map(fn ($shiftId) => (int) $shiftId)
+            ->values()
+            ->all();
+
         // 1. Kiểm tra ca được gán đích danh (ShiftAssignment)
         $special = ShiftAssignment::where('user_id', $user->id)
             ->where('date', $today)
             ->with('shift')->first();
 
         $shift = null;
-        if ($special) {
+        if ($special && !in_array((int) $special->shift_id, $leaveShiftIds, true)) {
             $shift = $special->shift;
         } else {
             // 2. Nếu không có ca gán riêng, lấy ca mặc định theo chức vụ (PositionDefaultSchedule)
             $default = PositionDefaultSchedule::where('position_id', $user->position_id)
                 ->where('day_of_week', $dayOfWeek)
                 ->with('shift')->first();
-            $shift = $default ? $default->shift : null;
+            $shift = ($default && !in_array((int) $default->shift_id, $leaveShiftIds, true))
+                ? $default->shift
+                : null;
         }
 
         if ($shift) {

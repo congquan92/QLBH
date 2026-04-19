@@ -50,6 +50,16 @@ export function AssignShiftForm({ assignForm, shifts, employees, dayShifts, isLo
         });
     }, [employees, employeeQuery]);
 
+    const existingWorkingShifts = useMemo(
+        () => dayShifts.filter((shift) => shift.shift_id !== null && String(shift.type || "").toLowerCase() !== "nghỉ"),
+        [dayShifts]
+    );
+
+    const hasOffMarker = useMemo(
+        () => dayShifts.some((shift) => String(shift.type || "").toLowerCase() === "nghỉ"),
+        [dayShifts]
+    );
+
     return (
         <div className="rounded-xl border bg-card overflow-hidden">
             {/* Header */}
@@ -171,11 +181,15 @@ export function AssignShiftForm({ assignForm, shifts, employees, dayShifts, isLo
                             <Loader2 className="h-3.5 w-3.5 animate-spin" />
                             Đang tải lịch hiện tại...
                         </p>
-                    ) : dayShifts.length === 0 ? (
-                        <p className="text-xs text-muted-foreground">Ngày này chưa có ca mặc định hoặc ca đặc biệt.</p>
+                    ) : existingWorkingShifts.length === 0 ? (
+                        <p className="text-xs text-muted-foreground">
+                            {hasOffMarker
+                                ? "Nhân viên không có ca làm trong ngày này hoặc đang trong ngày nghỉ đã duyệt."
+                                : "Ngày này chưa có ca mặc định hoặc ca đặc biệt."}
+                        </p>
                     ) : (
                         <div className="space-y-2">
-                            {dayShifts.map((shift, index) => {
+                            {existingWorkingShifts.map((shift, index) => {
                                 const isSpecial = String(shift.type || "").toLowerCase().includes("đặc biệt");
                                 return (
                                     <div key={`${shift.shift_id ?? "none"}-${index}`} className="flex items-center justify-between gap-2 rounded-md border p-2">

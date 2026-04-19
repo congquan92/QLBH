@@ -12,6 +12,31 @@ use Exception;
 
 class ScheduleService
 {
+    private function leaveOverlapCondition($query, string $dateStr): void
+    {
+        $query->where(function ($subQuery) use ($dateStr) {
+            $subQuery->where(function ($rangeQuery) use ($dateStr) {
+                $rangeQuery->whereNotNull('start_date')
+                    ->whereDate('start_date', '<=', $dateStr)
+                    ->whereDate('end_date', '>=', $dateStr);
+            })->orWhere(function ($legacyQuery) use ($dateStr) {
+                $legacyQuery->whereNull('start_date')
+                    ->whereDate('leave_date', $dateStr);
+            });
+        });
+    }
+
+    private function getApprovedLeavesForUserOnDate(int $userId, string $dateStr)
+    {
+        return LeaveRequest::query()
+            ->where('user_id', $userId)
+            ->where('status', LeaveStatus::APPROVED->value)
+            ->where(function ($query) use ($dateStr) {
+                $this->leaveOverlapCondition($query, $dateStr);
+            })
+            ->get();
+    }
+
     /**
      * Lấy lịch làm việc của một nhân viên trong một khoảng ngày (Tuần)
      */
@@ -32,24 +57,23 @@ class ScheduleService
             ->get()
             ->groupBy('day_of_week');
 
-        $approvedLeaves = LeaveRequest::where('user_id', $user->id)
-            ->whereBetween('leave_date', [$start->format('Y-m-d'), $end->format('Y-m-d')])
-            ->where('status', 'APPROVED')
-            ->get()
-            ->groupBy(function ($data) {
-                return Carbon::parse($data->leave_date)->format('Y-m-d');
-            });
-
         for ($date = $start->copy(); $date->lte($end); $date->addDay()) {
             $dateStr = $date->format('Y-m-d');
             $dayOfWeek = $date->dayOfWeekIso;
 
-            $leaveShiftIds = isset($approvedLeaves[$dateStr])
-                ? $approvedLeaves[$dateStr]->pluck('shift_id')->toArray()
-                : [];
+            $approvedLeaves = $this->getApprovedLeavesForUserOnDate((int) $user->id, $dateStr);
+            $isFullDayLeave = $approvedLeaves->contains(fn ($leave) => $leave->shift_id === null);
+            $leaveShiftIds = $approvedLeaves
+                ->pluck('shift_id')
+                ->filter(fn ($shiftId) => $shiftId !== null)
+                ->map(fn ($shiftId) => (int) $shiftId)
+                ->values()
+                ->all();
 
             $dayShifts = [];
-            if (isset($assignments[$dateStr])) {
+            if ($isFullDayLeave) {
+                $dayShifts = [];
+            } elseif (isset($assignments[$dateStr])) {
                 foreach ($assignments[$dateStr] as $item) {
                     if (!in_array($item->shift_id, $leaveShiftIds)) {
                         $dayShifts[] = [
@@ -103,8 +127,11 @@ class ScheduleService
         $users = User::with(['position.defaultSchedules.shift'])->get();
 
         // 2. Tối ưu: Lấy toàn bộ đơn nghỉ và ca đặc biệt của ngày đó TRƯỚC khi vào vòng lặp
-        $allApprovedLeaves = LeaveRequest::where('leave_date', $date)
-            ->where('status', 'APPROVED')
+        $allApprovedLeaves = LeaveRequest::query()
+            ->where('status', LeaveStatus::APPROVED->value)
+            ->where(function ($query) use ($date) {
+                $this->leaveOverlapCondition($query, $date);
+            })
             ->get()
             ->groupBy('user_id');
 
@@ -115,16 +142,25 @@ class ScheduleService
 
         $finalSchedule = $users->map(function ($user) use ($dayOfWeek, $allApprovedLeaves, $allSpecialAssignments) {
             // Lấy danh sách ID ca nghỉ của user này
-            $userLeaves = isset($allApprovedLeaves[$user->id])
-                ? $allApprovedLeaves[$user->id]->pluck('shift_id')->toArray()
-                : [];
+            $approvedLeaves = $allApprovedLeaves[$user->id] ?? collect();
+            $isFullDayLeave = $approvedLeaves->contains(fn ($leave) => $leave->shift_id === null);
+            $userLeaveShiftIds = $approvedLeaves
+                ->pluck('shift_id')
+                ->filter(fn ($shiftId) => $shiftId !== null)
+                ->map(fn ($shiftId) => (int) $shiftId)
+                ->values()
+                ->all();
 
             $dayShifts = collect();
+
+            if ($isFullDayLeave) {
+                return null;
+            }
 
             // 3. Kiểm tra Ca đặc biệt (Ưu tiên)
             if (isset($allSpecialAssignments[$user->id])) {
                 foreach ($allSpecialAssignments[$user->id] as $assign) {
-                    if (!in_array($assign->shift_id, $userLeaves)) {
+                    if (!in_array($assign->shift_id, $userLeaveShiftIds)) {
                         $dayShifts->push([
                             'id' => $assign->shift->id,
                             'name' => $assign->shift->name,
@@ -138,7 +174,7 @@ class ScheduleService
             else if ($user->position && $user->position->defaultSchedules) {
                 $defaults = $user->position->defaultSchedules->where('day_of_week', $dayOfWeek);
                 foreach ($defaults as $default) {
-                    if (!in_array($default->shift_id, $userLeaves)) {
+                    if (!in_array($default->shift_id, $userLeaveShiftIds)) {
                         $dayShifts->push([
                             'id' => $default->shift->id,
                             'name' => $default->shift->name,
@@ -172,6 +208,22 @@ class ScheduleService
 
         $user = User::with(['position.defaultSchedules.shift'])->findOrFail($userId);
         $dayOfWeek = Carbon::parse($date)->dayOfWeek;
+
+        $approvedLeaves = $this->getApprovedLeavesForUserOnDate((int) $userId, (string) $date);
+        if ($approvedLeaves->contains(fn ($leave) => $leave->shift_id === null)) {
+            throw new Exception('Không thể phân ca. Nhân viên đang có đơn nghỉ đã duyệt trong ngày này.');
+        }
+
+        $leaveShiftIds = $approvedLeaves
+            ->pluck('shift_id')
+            ->filter(fn ($shiftId) => $shiftId !== null)
+            ->map(fn ($shiftId) => (int) $shiftId)
+            ->values()
+            ->all();
+
+        if (in_array((int) $newShift->id, $leaveShiftIds, true)) {
+            throw new Exception('Không thể phân ca. Nhân viên đã được duyệt nghỉ cho ca này trong ngày đã chọn.');
+        }
 
         $defaultSchedules = collect($user->position?->defaultSchedules ?? [])->where('day_of_week', $dayOfWeek);
         foreach ($defaultSchedules as $defaultSchedule) {
@@ -224,10 +276,27 @@ class ScheduleService
     {
         $assignment = ShiftAssignment::findOrFail($id);
         $newShift = Shift::findOrFail($data['shift_id']);
+        $date = (string) ($data['date'] ?? $assignment->date);
+
+        $approvedLeaves = $this->getApprovedLeavesForUserOnDate((int) $assignment->user_id, $date);
+        if ($approvedLeaves->contains(fn ($leave) => $leave->shift_id === null)) {
+            throw new Exception('Không thể cập nhật ca. Nhân viên đang có đơn nghỉ đã duyệt trong ngày này.');
+        }
+
+        $leaveShiftIds = $approvedLeaves
+            ->pluck('shift_id')
+            ->filter(fn ($shiftId) => $shiftId !== null)
+            ->map(fn ($shiftId) => (int) $shiftId)
+            ->values()
+            ->all();
+
+        if (in_array((int) $newShift->id, $leaveShiftIds, true)) {
+            throw new Exception('Không thể cập nhật ca. Nhân viên đã được duyệt nghỉ cho ca này trong ngày đã chọn.');
+        }
 
         // Kiểm tra trùng lặp (Overlapping) tương tự như lúc tạo mới
         $existing = ShiftAssignment::where('user_id', $assignment->user_id)
-            ->where('date', $data['date'] ?? $assignment->date)
+            ->where('date', $date)
             ->where('id', '!=', $id)
             ->get();
 
@@ -263,20 +332,24 @@ class ScheduleService
     {
         $dateStr = Carbon::parse($date)->format('Y-m-d');
 
-        // 1. Ưu tiên 1: Kiểm tra nghỉ phép ĐÃ DUYỆT
-        $isOnLeave = LeaveRequest::where('user_id', $user->id)
-            ->where('leave_date', $dateStr)
-            ->where('status', LeaveStatus::APPROVED)
-            ->exists();
+        $approvedLeaves = $this->getApprovedLeavesForUserOnDate((int) $user->id, $dateStr);
+        $isFullDayLeave = $approvedLeaves->contains(fn ($leave) => $leave->shift_id === null);
+        $leaveShiftIds = $approvedLeaves
+            ->pluck('shift_id')
+            ->filter(fn ($shiftId) => $shiftId !== null)
+            ->map(fn ($shiftId) => (int) $shiftId)
+            ->values()
+            ->all();
 
-        if ($isOnLeave)
-            return null; // Trả về null để hiểu là nghỉ
+        if ($isFullDayLeave) {
+            return null;
+        }
 
         // 2. Ưu tiên 2: Ca đặc biệt
         $specific = ShiftAssignment::where('user_id', $user->id)
             ->where('date', $dateStr)
             ->with('shift')->first();
-        if ($specific)
+        if ($specific && !in_array((int) $specific->shift_id, $leaveShiftIds, true))
             return $specific->shift;
 
         // 3. Ưu tiên 3: Lịch mặc định theo chức vụ
@@ -285,7 +358,11 @@ class ScheduleService
             ->where('day_of_week', $dayOfWeek)
             ->with('shift')->first();
 
-        return $default ? $default->shift : null;
+        if (!$default || in_array((int) $default->shift_id, $leaveShiftIds, true)) {
+            return null;
+        }
+
+        return $default->shift;
     }
     /**
      * Lấy danh sách quân số theo từng ca làm việc trong ngày

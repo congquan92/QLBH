@@ -12,7 +12,9 @@ import { LeaveHeader } from "./_components/leave-header";
 import { LeaveList } from "./_components/leave-list";
 
 type LeaveForm = {
-    leave_date: string;
+    leave_type: "ANNUAL" | "SICK_MATERNITY" | "RESIGNATION";
+    start_date: string;
+    end_date: string;
     shift_id: string;
     reason: string;
 };
@@ -78,15 +80,26 @@ export default function UserLeavePage() {
     }
 
     async function handleSubmit(form: LeaveForm) {
-        if (!form.leave_date || !form.shift_id) {
+        const isResignation = form.leave_type === "RESIGNATION";
+        const isSingleDay = Boolean(form.start_date) && Boolean(form.end_date) && form.start_date === form.end_date;
+
+        if ((!isResignation && (!form.start_date || !form.end_date)) || (!isResignation && isSingleDay && !form.shift_id)) {
             toast.error("Vui lòng điền đầy đủ thông tin");
             return;
         }
+
+        const fallbackDate = new Date(Date.now() + 86400000).toISOString().split("T")[0];
+        const startDate = form.start_date || fallbackDate;
+        const endDate = form.end_date || startDate;
+
         setIsSubmitting(true);
         try {
             await LeaveApi.create({
-                leave_date: form.leave_date,
-                shift_id: parseInt(form.shift_id),
+                leave_type: form.leave_type,
+                start_date: startDate,
+                end_date: endDate,
+                leave_date: startDate,
+                shift_id: isResignation || !isSingleDay ? undefined : parseInt(form.shift_id),
                 reason: form.reason,
             });
             toast.success("Đã gửi đơn nghỉ phép thành công");

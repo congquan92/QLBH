@@ -13,7 +13,9 @@ import type { Shift } from "@/types/admin-crud";
 const TOMORROW_MIN_DATE = new Date(Date.now() + 86400000).toISOString().split("T")[0];
 
 type LeaveForm = {
-    leave_date: string;
+    leave_type: "ANNUAL" | "SICK_MATERNITY" | "RESIGNATION";
+    start_date: string;
+    end_date: string;
     shift_id: string;
     reason: string;
 };
@@ -26,11 +28,21 @@ type Props = {
     onSubmit: (form: LeaveForm) => Promise<void>;
 };
 
-const emptyForm: LeaveForm = { leave_date: "", shift_id: "", reason: "" };
+const emptyForm: LeaveForm = {
+    leave_type: "ANNUAL",
+    start_date: "",
+    end_date: "",
+    shift_id: "",
+    reason: "",
+};
 
 export function LeaveHeader({ shifts, isSubmitting, isLoadingShifts, onLeaveDateChange, onSubmit }: Props) {
     const [open, setOpen] = useState(false);
     const [form, setForm] = useState<LeaveForm>(emptyForm);
+    const isResignation = form.leave_type === "RESIGNATION";
+    const isSingleDay = Boolean(form.start_date) && Boolean(form.end_date) && form.start_date === form.end_date;
+    const shouldSelectShift = !isResignation && isSingleDay;
+    const effectiveDate = isResignation ? (form.start_date || TOMORROW_MIN_DATE) : form.start_date;
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
@@ -72,44 +84,114 @@ export function LeaveHeader({ shifts, isSubmitting, isLoadingShifts, onLeaveDate
 
                     <form onSubmit={handleSubmit} className="space-y-4 pt-2">
                         <div className="space-y-2">
-                            <Label htmlFor="leave_date">Ngày nghỉ</Label>
-                            <Input
-                                id="leave_date"
-                                type="date"
-                                value={form.leave_date}
-                                onChange={(e) => {
-                                    const nextDate = e.target.value;
-                                    setForm((prev) => ({ ...prev, leave_date: nextDate, shift_id: "" }));
-                                    void onLeaveDateChange(nextDate);
-                                }}
-                                required
-                                min={TOMORROW_MIN_DATE}
-                            />
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label htmlFor="shift_id">Ca làm việc</Label>
+                            <Label htmlFor="leave_type">Loại nghỉ</Label>
                             <Select
-                                value={form.shift_id}
-                                onValueChange={(val) => setForm({ ...form, shift_id: val })}
-                                required
-                                disabled={!form.leave_date || isLoadingShifts || shifts.length === 0}
+                                value={form.leave_type}
+                                onValueChange={(value) => {
+                                    const nextType = value as LeaveForm["leave_type"];
+                                    if (nextType === "RESIGNATION") {
+                                        const autoDate = TOMORROW_MIN_DATE;
+                                        setForm((prev) => ({
+                                            ...prev,
+                                            leave_type: nextType,
+                                            start_date: autoDate,
+                                            end_date: autoDate,
+                                            shift_id: "",
+                                        }));
+                                        void onLeaveDateChange(autoDate);
+                                        return;
+                                    }
+
+                                    setForm((prev) => ({
+                                        ...prev,
+                                        leave_type: nextType,
+                                        start_date: prev.start_date || "",
+                                        end_date: prev.end_date || prev.start_date || "",
+                                    }));
+                                }}
                             >
-                                <SelectTrigger id="shift_id">
-                                    <SelectValue placeholder={isLoadingShifts ? "Đang tải ca làm việc..." : "Chọn ca làm việc"} />
+                                <SelectTrigger id="leave_type">
+                                    <SelectValue placeholder="Chọn loại nghỉ" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {shifts.map((shift) => (
-                                        <SelectItem key={shift.id} value={String(shift.id)}>
-                                            {shift.name} {shift.start_time && shift.end_time ? `(${shift.start_time} - ${shift.end_time})` : ""}
-                                        </SelectItem>
-                                    ))}
+                                    <SelectItem value="ANNUAL">Nghỉ phép</SelectItem>
+                                    <SelectItem value="SICK_MATERNITY">Nghỉ ốm đau / thai sản</SelectItem>
+                                    <SelectItem value="RESIGNATION">Nghỉ việc</SelectItem>
                                 </SelectContent>
                             </Select>
-                            {form.leave_date && !isLoadingShifts && shifts.length === 0 ? (
-                                <p className="text-xs text-muted-foreground">Bạn không có lịch làm việc trong ngày đã chọn.</p>
-                            ) : null}
                         </div>
+
+                        {!isResignation ? (
+                            <>
+                                <div className="space-y-2">
+                                    <Label htmlFor="start_date">Ngày bắt đầu</Label>
+                                    <Input
+                                        id="start_date"
+                                        type="date"
+                                        value={form.start_date}
+                                        onChange={(e) => {
+                                            const nextDate = e.target.value;
+                                            setForm((prev) => ({
+                                                ...prev,
+                                                start_date: nextDate,
+                                                end_date: prev.end_date || nextDate,
+                                                shift_id: "",
+                                            }));
+                                            void onLeaveDateChange(nextDate);
+                                        }}
+                                        required
+                                        min={TOMORROW_MIN_DATE}
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="end_date">Ngày kết thúc</Label>
+                                    <Input
+                                        id="end_date"
+                                        type="date"
+                                        value={form.end_date}
+                                        onChange={(e) => {
+                                            const nextDate = e.target.value;
+                                            setForm((prev) => ({ ...prev, end_date: nextDate }));
+                                        }}
+                                        required
+                                        min={form.start_date || TOMORROW_MIN_DATE}
+                                    />
+                                </div>
+                            </>
+                        ) : null}
+
+                        {shouldSelectShift ? (
+                            <div className="space-y-2">
+                                <Label htmlFor="shift_id">Ca làm việc</Label>
+                                <Select
+                                    value={form.shift_id}
+                                    onValueChange={(val) => setForm({ ...form, shift_id: val })}
+                                    required
+                                    disabled={!effectiveDate || isLoadingShifts || shifts.length === 0}
+                                >
+                                    <SelectTrigger id="shift_id">
+                                        <SelectValue placeholder={isLoadingShifts ? "Đang tải ca làm việc..." : "Chọn ca làm việc"} />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {shifts.map((shift) => (
+                                            <SelectItem key={shift.id} value={String(shift.id)}>
+                                                {shift.name} {shift.start_time && shift.end_time ? `(${shift.start_time} - ${shift.end_time})` : ""}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                {effectiveDate && !isLoadingShifts && shifts.length === 0 ? (
+                                    <p className="text-xs text-muted-foreground">Bạn không có lịch làm việc trong ngày đã chọn.</p>
+                                ) : null}
+                            </div>
+                        ) : null}
+
+                        {!isResignation && !shouldSelectShift && form.start_date && form.end_date ? (
+                            <p className="rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+                                Đơn nghỉ theo khoảng thời gian sẽ tự áp dụng theo lịch làm việc thực tế của từng ngày, không cần chọn ca cố định.
+                            </p>
+                        ) : null}
 
                         <div className="space-y-2">
                             <Label htmlFor="reason">
@@ -119,7 +201,7 @@ export function LeaveHeader({ shifts, isSubmitting, isLoadingShifts, onLeaveDate
                         </div>
 
                         <div className="flex gap-2 pt-2">
-                            <Button type="submit" disabled={isSubmitting || !form.shift_id} className="flex-1">
+                            <Button type="submit" disabled={isSubmitting || (shouldSelectShift && !form.shift_id)} className="flex-1">
                                 {isSubmitting ? (
                                     <>
                                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />

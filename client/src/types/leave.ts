@@ -8,6 +8,9 @@ export interface LeaveShift {
 
 export interface LeaveRequest {
     id: number;
+    leave_type?: "ANNUAL" | "SICK_MATERNITY" | "RESIGNATION";
+    start_date?: string;
+    end_date?: string;
     leave_date: string;
     shift_id?: number;
     shift_name?: string;      // dùng cho admin list (findAll)
@@ -24,8 +27,11 @@ export interface LeaveRequest {
 
 
 export interface CreateLeavePayload {
-    leave_date: string;
-    shift_id: number;
+    leave_type?: "ANNUAL" | "SICK_MATERNITY" | "RESIGNATION";
+    leave_date?: string;
+    start_date?: string;
+    end_date?: string;
+    shift_id?: number;
     reason?: string;
 }
 

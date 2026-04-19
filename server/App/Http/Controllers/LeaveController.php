@@ -67,15 +67,31 @@ class LeaveController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'leave_date' => 'required|date|after:today',
-            'shift_id' => 'required|exists:shifts,id',
+            'leave_type' => 'nullable|string|in:ANNUAL,SICK_MATERNITY,RESIGNATION',
+            'leave_date' => 'nullable|date|after:today',
+            'start_date' => 'nullable|date|after:today',
+            'end_date' => 'nullable|date|after_or_equal:start_date',
+            'shift_id' => 'nullable|exists:shifts,id',
             'reason' => 'nullable|string|max:255',
         ], [
-            'leave_date.required' => 'Ngày nghỉ không được để trống.',
             'leave_date.after' => 'Ngày xin nghỉ phải sau ngày hôm nay.',
-            'shift_id.required' => 'Vui lòng chọn ca làm việc muốn nghỉ.',
+            'start_date.after' => 'Ngày bắt đầu phải sau ngày hôm nay.',
+            'end_date.after_or_equal' => 'Ngày kết thúc phải lớn hơn hoặc bằng ngày bắt đầu.',
             'shift_id.exists' => 'Ca làm việc không tồn tại.',
         ]);
+
+        $leaveType = $validated['leave_type'] ?? 'ANNUAL';
+        if ($leaveType !== 'RESIGNATION' && empty($validated['leave_date']) && empty($validated['start_date'])) {
+            return $this->error('Ngày nghỉ không được để trống.', 400);
+        }
+
+        $startDate = $validated['start_date'] ?? $validated['leave_date'] ?? null;
+        $endDate = $validated['end_date'] ?? $startDate;
+        $isSingleDay = $startDate !== null && $endDate !== null && $startDate === $endDate;
+
+        if ($leaveType !== 'RESIGNATION' && $isSingleDay && empty($validated['shift_id'])) {
+            return $this->error('Vui lòng chọn ca làm việc muốn nghỉ.', 400);
+        }
 
         $leave = $this->leaveService->createLeaveRequest($validated);
         return $this->success($leave, 'Gửi đơn nghỉ phép thành công.');

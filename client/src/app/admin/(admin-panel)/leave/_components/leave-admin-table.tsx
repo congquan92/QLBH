@@ -14,6 +14,30 @@ type Props = {
     onDelete: (id: number) => void;
 };
 
+const getLeaveTypeLabel = (leaveType?: string) => {
+    switch (leaveType) {
+        case "SICK_MATERNITY":
+            return "Ốm đau / thai sản";
+        case "RESIGNATION":
+            return "Nghỉ việc";
+        case "ANNUAL":
+        default:
+            return "Nghỉ phép";
+    }
+};
+
+const formatDateRange = (startDate?: string, endDate?: string, fallbackDate?: string) => {
+    const start = startDate || fallbackDate;
+    const end = endDate || start;
+
+    if (!start) return "-";
+    const startText = new Date(start).toLocaleDateString("vi-VN");
+    const endText = new Date(end as string).toLocaleDateString("vi-VN");
+
+    if (startText === endText) return startText;
+    return `${startText} - ${endText}`;
+};
+
 const getStatusColor = (status: string) => {
     switch (status) {
         case "PENDING":
@@ -67,7 +91,8 @@ export function LeaveAdminTable({ leaves, isLoading, updatingId, onApprove, onRe
                                 <tr>
                                     <th className="px-5 py-3 font-semibold text-muted-foreground">ID</th>
                                     <th className="px-5 py-3 font-semibold text-muted-foreground">Nhân viên</th>
-                                    <th className="px-5 py-3 font-semibold text-muted-foreground">Ngày nghỉ</th>
+                                    <th className="px-5 py-3 font-semibold text-muted-foreground">Loại nghỉ</th>
+                                    <th className="px-5 py-3 font-semibold text-muted-foreground">Khoảng nghỉ</th>
                                     <th className="px-5 py-3 font-semibold text-muted-foreground">Ca làm việc</th>
                                     <th className="px-5 py-3 font-semibold text-muted-foreground">Lý do</th>
                                     <th className="px-5 py-3 font-semibold text-muted-foreground">Ngày gửi</th>
@@ -93,12 +118,15 @@ export function LeaveAdminTable({ leaves, isLoading, updatingId, onApprove, onRe
                                                     {String(leave.user_name ?? leave.employee_name ?? "N/A")}
                                                 </td>
                                                 <td className="px-5 py-3.5">
-                                                    {new Date(leave.leave_date).toLocaleDateString("vi-VN")}
+                                                    {getLeaveTypeLabel(leave.leave_type)}
+                                                </td>
+                                                <td className="px-5 py-3.5">
+                                                    {formatDateRange(leave.start_date, leave.end_date, leave.leave_date)}
                                                 </td>
                                                 <td className="px-5 py-3.5">
                                                     {leave.shift?.name ?? leave.shift_name ?? "-"}
                                                 </td>
-                                                <td className="px-5 py-3.5 text-muted-foreground max-w-[180px] truncate">
+                                                <td className="px-5 py-3.5 text-muted-foreground max-w-45 truncate">
                                                     {leave.reason || <span className="italic text-muted-foreground/50">—</span>}
                                                 </td>
                                                 <td className="px-5 py-3.5 text-muted-foreground">
@@ -182,7 +210,7 @@ export function LeaveAdminTable({ leaves, isLoading, updatingId, onApprove, onRe
                                     })
                                 ) : (
                                     <tr>
-                                        <td className="px-5 py-16 text-center text-muted-foreground" colSpan={8}>
+                                        <td className="px-5 py-16 text-center text-muted-foreground" colSpan={9}>
                                             <div className="flex flex-col items-center gap-2">
                                                 <FileText className="h-10 w-10 text-muted-foreground/20" />
                                                 <span>Chưa có đơn nghỉ phép nào</span>

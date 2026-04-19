@@ -17,6 +17,7 @@ use App\Http\Service\VoucherService;
 use App\Http\States\OrderStateFactory;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\Voucher;
 use App\Models\VoucherUsage;
@@ -212,46 +213,54 @@ class OrderService
     }
     public function completeOrder($orderId)
     {
-        $currentUser = auth()->user();
-        $order = Order::where('id', $orderId)
-            ->firstOrFail();
-       Log::info("DEBUG - Current Order Status: " . $order->order_status->value);
-        if ($order->user_id !== $currentUser->id) {
-            throw new BusinessException(ErrorCode::BAD_REQUEST, 'Đơn này không thuộc về bạn !');
-        }
-        if ($order->order_status !== DeliveryStatus::COMPLETED) {
-            throw new BusinessException(ErrorCode::BAD_REQUEST, 'Đơn chưa hoàn thành !');
-        }
-        if ($order->payment_status == PaymentStatus::UNPAID) {
-            throw new BusinessException(ErrorCode::BAD_REQUEST, 'Đơn chưa thanh toán !');
-        }
-        if ($order->is_confirmed) {
-            throw new BusinessException(ErrorCode::BAD_REQUEST, 'Đơn này đã được xác nhận !');
-        }
-        $order->is_confirmed = true;
-        $currentUser->total_spent = $order->total_spent + $order->total_amount;
-        $this->userSerive->updateRank($currentUser);
-        $order->completed_at = Carbon::now();
-        $order->save();
-    }
-    private function updateSoldQuantity(array $orderItems)
-    {
-        DB::transaction(function () use ($orderItems) {
-            foreach ($orderItems as $item) {
-                $variant = ProductVariant::find($item->product_variant_id)->firstOrFail();
+        return DB::transaction(function () use ($orderId) {
+            $currentUser = auth()->user();
+            $order = Order::where('id', $orderId)
+                ->lockForUpdate()
+                ->firstOrFail();
 
-                if (!$variant || !$variant->product) {
-                    throw new BusinessException(ErrorCode::BAD_REQUEST, "Không tìm thấy thông tin sản phẩm cho item ID: {$item->id}");
-                }
+            Log::info("DEBUG - Current Order Status: " . $order->order_status->value);
 
-                $product = $variant->product;
-                if ($product->status !== Status::ACTIVE) {
-                    throw new BusinessException(ErrorCode::BAD_REQUEST, "Sản phẩm {$product->name} hiện không còn hoạt động.");
-                }
-                $product->increment('sold_quantity', $item->quantity);
+            if ($order->user_id !== $currentUser->id) {
+                throw new BusinessException(ErrorCode::BAD_REQUEST, 'Đơn này không thuộc về bạn !');
             }
-        });
+            if ($order->order_status !== DeliveryStatus::COMPLETED) {
+                throw new BusinessException(ErrorCode::BAD_REQUEST, 'Đơn chưa hoàn thành !');
+            }
+            if ($order->payment_status == PaymentStatus::UNPAID) {
+                throw new BusinessException(ErrorCode::BAD_REQUEST, 'Đơn chưa thanh toán !');
+            }
+            if ($order->is_confirmed) {
+                throw new BusinessException(ErrorCode::BAD_REQUEST, 'Đơn này đã được xác nhận !');
+            }
 
+            $orderItems = $order->orderItem()->get();
+            $this->updateSoldQuantity($orderItems);
+
+            $order->is_confirmed = true;
+            $currentUser->total_spent = ($currentUser->total_spent ?? 0) + $order->total_amount;
+            $this->userSerive->updateRank($currentUser);
+            $order->completed_at = Carbon::now();
+            $order->save();
+
+            return $order;
+        });
+    }
+
+    private function updateSoldQuantity($orderItems): void
+    {
+        foreach ($orderItems as $item) {
+            $product = Product::query()
+                ->where('id', $item->product_id)
+                ->lockForUpdate()
+                ->first();
+
+            if (!$product) {
+                throw new BusinessException(ErrorCode::BAD_REQUEST, "Không tìm thấy sản phẩm cho item ID: {$item->id}");
+            }
+
+            $product->increment('sold_quantity', (int) $item->quantity);
+        }
     }
 
     private function isPrivilegedOrderCanceller(): bool
